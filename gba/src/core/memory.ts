@@ -298,14 +298,16 @@ export class Memory {
       return this.ioView.getUint16(0x004, true) & 0xFF3F;
     }
 
-    // SIO/JOY space read logic
     const isSio = (off >= 0x120 && off <= 0x15F) && (off !== 0x130) && (off !== 0x132);
+    let mode = 0;
+    let isGpMode = false;
+    let isJoybus = false;
     if (isSio) {
       const siocnt = this.ioView.getUint16(0x128, true);
-      const mode = (siocnt >>> 12) & 3;
       const rcnt = this.ioView.getUint16(0x134, true);
-      const isGpMode = (mode === 3) && ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
-      const isJoybus = (mode === 3) && ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+      isGpMode = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
+      isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+      mode = (isGpMode || isJoybus) ? 3 : (siocnt >>> 12) & 3;
 
       let readable = false;
       if (off === 0x128) {
@@ -334,24 +336,19 @@ export class Memory {
 
     let val = this.ioView.getUint16(off, true);
     if (off === 0x128) {
-      const mode = (val >>> 12) & 3;
       if (mode === 0 || mode === 1) {
         val &= 0x708B;
         val |= 0x000C; // SI/SO pin float high
       } else if (mode === 2) {
         val &= 0x7083;
-        val |= 0x0008; // SI pin (bit 2) is grounded Parent (0), SD pin (bit 3) floats high (1)
+        val |= 0x000C; // SI/SD pins float high (1)
       } else if (mode === 3) {
         val &= 0x76FF;
+        val |= 0x0100; // CTS pin floats high (1)
       }
     } else if (off === 0x134) {
-      const siocnt = this.ioView.getUint16(0x128, true);
-      const mode = (siocnt >>> 12) & 3;
-      const rcnt = this.ioView.getUint16(0x134, true);
-      const isGpMode = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
-      const isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
       if (!isGpMode && !isJoybus) {
-        val = 0x000B; // RCNT is read-only pin status if SIO mode is not GP/Joybus (SI pin is grounded 0, others float high 1)
+        val = 0x000F; // RCNT is read-only pin status if SIO mode is not GP/Joybus (all pins float high 1)
       } else {
         val &= 0xC1FF;
         // Pin float high logic for inputs:
@@ -363,8 +360,6 @@ export class Memory {
         }
       }
     } else if (off === 0x140) {
-      const rcnt = this.ioView.getUint16(0x134, true);
-      const isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
       if (!isJoybus) {
         val = 0; // JOYCNT is read-only 0 if not in Joybus mode
       } else {
@@ -583,19 +578,16 @@ export class Memory {
   // IO write with side effects (IF ack, HALTCNT, DMA enable check)
   private writeIO(off: number, val: number, size: 1 | 2 | 4) {
     const isSio = (off >= 0x120 && off <= 0x15F) && (off !== 0x130) && (off !== 0x132);
+    let mode = 0;
+    let isGpMode = false;
+    let isJoybus = false;
     if (isSio) {
       console.log(`SIO Write: off=0x${off.toString(16)} val=0x${val.toString(16)} size=${size}`);
       const siocnt = this.ioView.getUint16(0x128, true);
-      const mode = (siocnt >>> 12) & 3;
       const rcnt = this.ioView.getUint16(0x134, true);
-      const isGpMode = (mode === 3) && ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
-      const isJoybus = (mode === 3) && ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
-
-      if (off === 0x128 || (off <= 0x128 && off + 4 > 0x128)) {
-        if (isGpMode || isJoybus) {
-          return; // Ignore writes to SIOCNT when GP/Joybus mode is active
-        }
-      }
+      isGpMode = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
+      isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+      mode = (isGpMode || isJoybus) ? 3 : (siocnt >>> 12) & 3;
 
       let writable = false;
       if (off === 0x128) {
@@ -607,7 +599,7 @@ export class Memory {
       } else if (off === 0x122) {
         writable = !isGpMode && !isJoybus && (mode === 1);
       } else if (off === 0x134) {
-        writable = (mode === 3);
+        writable = true; // RCNT is always writable
       } else if (off === 0x140) {
         writable = isJoybus;
       } else if (off === 0x154 || off === 0x156) {
@@ -655,8 +647,18 @@ export class Memory {
         }
         this.ioView.setUint16(0x128, v & this.getSiocntMask(v), true);
       } else if (off === 0x134 || off === 0x135) {
+        const siocnt = this.ioView.getUint16(0x128, true);
+        const rcnt = this.ioView.getUint16(0x134, true);
+        const isGp = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
+        const isJoy = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+        const mode = (isGp || isJoy) ? 3 : (siocnt >>> 12) & 3;
         let v = this.ioView.getUint16(0x134, true);
-        this.ioView.setUint16(0x134, v & 0x81FF, true);
+        if (mode !== 3) {
+          v &= 0xC000;
+        } else {
+          v &= 0xC1FF;
+        }
+        this.ioView.setUint16(0x134, v, true);
       } else if (off === 0x140 || off === 0x141) {
         let v = this.ioView.getUint16(0x140, true);
         this.ioView.setUint16(0x140, v & 0x417B, true);
@@ -711,7 +713,6 @@ export class Memory {
         }
         val &= this.getSiocntMask(val);
       } else if (off === 0x134) {
-        const mode = (this.ioView.getUint16(0x128, true) >>> 12) & 3;
         if (mode !== 3) {
           val &= 0xC000;
         } else {
@@ -763,7 +764,10 @@ export class Memory {
       }
       if (off <= 0x134 && off + 4 > 0x134) {
         const siocnt = this.ioView.getUint16(0x128, true);
-        const mode = (siocnt >>> 12) & 3;
+        const rcnt = this.ioView.getUint16(0x134, true);
+        const isGp = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
+        const isJoy = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+        const mode = (isGp || isJoy) ? 3 : (siocnt >>> 12) & 3;
         let v = this.ioView.getUint16(0x134, true);
         if (mode !== 3) {
           v &= 0xC000;
