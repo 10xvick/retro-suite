@@ -1,0 +1,35 @@
+// Missing opcodes to implement:
+// $02 SET1 dp.0
+// $14 OR A, dp+X
+// $19 OR (X), (Y)
+// $1A DECW dp
+// $23 BBS dp.1, rel
+// $56 SBC A, !abs+Y
+// $62 SET1 dp.3
+// $69 CMP dp, dp
+// $79 CMP (X), (Y)
+// $7A ADDW YA, dp
+// $93 BBC dp.1, rel
+// $94 ADC A, dp+X
+// $9A SUBW YA, dp
+// $a0 EI (enable interrupts)
+// $a4 SBC A, dp
+// $a6 SBC A, (X)
+// $a8 SBC A, #imm (already added)
+// $aa MOV1 C, mem.bit
+// $c0 DI (disable interrupts)
+// $c2 SET1 dp.6
+// $c3 BBS dp.6, rel
+// $d3 BBC dp.6, rel
+// $d7 MOV [dp]+Y, A
+// $df DAA
+// $e3 BBC dp.7, rel
+// $e6 MOV A, (X)
+// $e7 MOV A, [dp+X]
+// $e9 MOV X, !abs
+// $eb MOV Y, dp
+// $ec MOV Y, !abs
+// $f6 MOV A, !abs+Y
+// $f7 MOV A, [dp]+Y
+// $f9 MOV X, dp+Y
+// $fa MOV dp, dp

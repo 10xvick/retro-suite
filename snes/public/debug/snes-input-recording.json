@@ -1,0 +1,2295 @@
+{
+  "coreId": "snes",
+  "romName": "Donkey Kong Country 2 - Diddy's Kong Quest (USA) (En,Fr) (Rev 1).sfc",
+  "inputs": [
+    {
+      "timestamp": 0,
+      "input": 0
+    },
+    {
+      "timestamp": 16.63948883490299,
+      "input": 0
+    },
+    {
+      "timestamp": 33.27897766980598,
+      "input": 0
+    },
+    {
+      "timestamp": 49.918466504708974,
+      "input": 0
+    },
+    {
+      "timestamp": 66.55795533961196,
+      "input": 0
+    },
+    {
+      "timestamp": 83.19744417451496,
+      "input": 0
+    },
+    {
+      "timestamp": 99.83693300941795,
+      "input": 0
+    },
+    {
+      "timestamp": 116.47642184432094,
+      "input": 0
+    },
+    {
+      "timestamp": 133.11591067922393,
+      "input": 0
+    },
+    {
+      "timestamp": 149.7553995141269,
+      "input": 0
+    },
+    {
+      "timestamp": 166.39488834902988,
+      "input": 0
+    },
+    {
+      "timestamp": 183.03437718393286,
+      "input": 0
+    },
+    {
+      "timestamp": 199.67386601883584,
+      "input": 0
+    },
+    {
+      "timestamp": 216.31335485373882,
+      "input": 0
+    },
+    {
+      "timestamp": 232.9528436886418,
+      "input": 0
+    },
+    {
+      "timestamp": 249.59233252354477,
+      "input": 0
+    },
+    {
+      "timestamp": 266.23182135844775,
+      "input": 0
+    },
+    {
+      "timestamp": 282.8713101933507,
+      "input": 0
+    },
+    {
+      "timestamp": 299.5107990282537,
+      "input": 0
+    },
+    {
+      "timestamp": 316.1502878631567,
+      "input": 0
+    },
+    {
+      "timestamp": 332.78977669805965,
+      "input": 0
+    },
+    {
+      "timestamp": 349.42926553296263,
+      "input": 0
+    },
+    {
+      "timestamp": 366.0687543678656,
+      "input": 0
+    },
+    {
+      "timestamp": 382.7082432027686,
+      "input": 0
+    },
+    {
+      "timestamp": 399.34773203767156,
+      "input": 0
+    },
+    {
+      "timestamp": 415.98722087257454,
+      "input": 0
+    },
+    {
+      "timestamp": 432.6267097074775,
+      "input": 0
+    },
+    {
+      "timestamp": 449.2661985423805,
+      "input": 0
+    },
+    {
+      "timestamp": 465.90568737728347,
+      "input": 0
+    },
+    {
+      "timestamp": 482.54517621218645,
+      "input": 0
+    },
+    {
+      "timestamp": 499.1846650470894,
+      "input": 0
+    },
+    {
+      "timestamp": 515.8241538819924,
+      "input": 0
+    },
+    {
+      "timestamp": 532.4636427168954,
+      "input": 0
+    },
+    {
+      "timestamp": 549.1031315517984,
+      "input": 0
+    },
+    {
+      "timestamp": 565.7426203867013,
+      "input": 0
+    },
+    {
+      "timestamp": 582.3821092216043,
+      "input": 0
+    },
+    {
+      "timestamp": 599.0215980565073,
+      "input": 0
+    },
+    {
+      "timestamp": 615.6610868914103,
+      "input": 0
+    },
+    {
+      "timestamp": 632.3005757263132,
+      "input": 0
+    },
+    {
+      "timestamp": 648.9400645612162,
+      "input": 0
+    },
+    {
+      "timestamp": 665.5795533961192,
+      "input": 0
+    },
+    {
+      "timestamp": 682.2190422310222,
+      "input": 0
+    },
+    {
+      "timestamp": 698.8585310659251,
+      "input": 0
+    },
+    {
+      "timestamp": 715.4980199008281,
+      "input": 0
+    },
+    {
+      "timestamp": 732.1375087357311,
+      "input": 0
+    },
+    {
+      "timestamp": 748.7769975706341,
+      "input": 0
+    },
+    {
+      "timestamp": 765.4164864055371,
+      "input": 0
+    },
+    {
+      "timestamp": 782.05597524044,
+      "input": 0
+    },
+    {
+      "timestamp": 798.695464075343,
+      "input": 0
+    },
+    {
+      "timestamp": 815.334952910246,
+      "input": 0
+    },
+    {
+      "timestamp": 831.974441745149,
+      "input": 0
+    },
+    {
+      "timestamp": 848.6139305800519,
+      "input": 0
+    },
+    {
+      "timestamp": 865.2534194149549,
+      "input": 0
+    },
+    {
+      "timestamp": 881.8929082498579,
+      "input": 0
+    },
+    {
+      "timestamp": 898.5323970847609,
+      "input": 0
+    },
+    {
+      "timestamp": 915.1718859196639,
+      "input": 0
+    },
+    {
+      "timestamp": 931.8113747545668,
+      "input": 0
+    },
+    {
+      "timestamp": 948.4508635894698,
+      "input": 0
+    },
+    {
+      "timestamp": 965.0903524243728,
+      "input": 0
+    },
+    {
+      "timestamp": 981.7298412592758,
+      "input": 0
+    },
+    {
+      "timestamp": 998.3693300941787,
+      "input": 0
+    },
+    {
+      "timestamp": 1015.0088189290817,
+      "input": 0
+    },
+    {
+      "timestamp": 1031.6483077639848,
+      "input": 0
+    },
+    {
+      "timestamp": 1048.2877965988878,
+      "input": 0
+    },
+    {
+      "timestamp": 1064.9272854337908,
+      "input": 0
+    },
+    {
+      "timestamp": 1081.5667742686937,
+      "input": 0
+    },
+    {
+      "timestamp": 1098.2062631035967,
+      "input": 0
+    },
+    {
+      "timestamp": 1114.8457519384997,
+      "input": 0
+    },
+    {
+      "timestamp": 1131.4852407734027,
+      "input": 0
+    },
+    {
+      "timestamp": 1148.1247296083056,
+      "input": 0
+    },
+    {
+      "timestamp": 1164.7642184432086,
+      "input": 0
+    },
+    {
+      "timestamp": 1181.4037072781116,
+      "input": 0
+    },
+    {
+      "timestamp": 1198.0431961130146,
+      "input": 0
+    },
+    {
+      "timestamp": 1214.6826849479176,
+      "input": 0
+    },
+    {
+      "timestamp": 1231.3221737828205,
+      "input": 0
+    },
+    {
+      "timestamp": 1247.9616626177235,
+      "input": 0
+    },
+    {
+      "timestamp": 1264.6011514526265,
+      "input": 0
+    },
+    {
+      "timestamp": 1281.2406402875295,
+      "input": 0
+    },
+    {
+      "timestamp": 1297.8801291224324,
+      "input": 0
+    },
+    {
+      "timestamp": 1314.5196179573354,
+      "input": 0
+    },
+    {
+      "timestamp": 1331.1591067922384,
+      "input": 0
+    },
+    {
+      "timestamp": 1347.7985956271414,
+      "input": 0
+    },
+    {
+      "timestamp": 1364.4380844620443,
+      "input": 0
+    },
+    {
+      "timestamp": 1381.0775732969473,
+      "input": 0
+    },
+    {
+      "timestamp": 1397.7170621318503,
+      "input": 0
+    },
+    {
+      "timestamp": 1414.3565509667533,
+      "input": 0
+    },
+    {
+      "timestamp": 1430.9960398016563,
+      "input": 0
+    },
+    {
+      "timestamp": 1447.6355286365592,
+      "input": 0
+    },
+    {
+      "timestamp": 1464.2750174714622,
+      "input": 0
+    },
+    {
+      "timestamp": 1480.9145063063652,
+      "input": 0
+    },
+    {
+      "timestamp": 1497.5539951412682,
+      "input": 0
+    },
+    {
+      "timestamp": 1514.1934839761711,
+      "input": 0
+    },
+    {
+      "timestamp": 1530.8329728110741,
+      "input": 0
+    },
+    {
+      "timestamp": 1547.472461645977,
+      "input": 0
+    },
+    {
+      "timestamp": 1564.11195048088,
+      "input": 0
+    },
+    {
+      "timestamp": 1580.751439315783,
+      "input": 0
+    },
+    {
+      "timestamp": 1597.390928150686,
+      "input": 0
+    },
+    {
+      "timestamp": 1614.030416985589,
+      "input": 0
+    },
+    {
+      "timestamp": 1630.669905820492,
+      "input": 0
+    },
+    {
+      "timestamp": 1647.309394655395,
+      "input": 0
+    },
+    {
+      "timestamp": 1663.948883490298,
+      "input": 0
+    },
+    {
+      "timestamp": 1680.588372325201,
+      "input": 0
+    },
+    {
+      "timestamp": 1697.2278611601039,
+      "input": 0
+    },
+    {
+      "timestamp": 1713.8673499950069,
+      "input": 0
+    },
+    {
+      "timestamp": 1730.5068388299098,
+      "input": 0
+    },
+    {
+      "timestamp": 1747.1463276648128,
+      "input": 0
+    },
+    {
+      "timestamp": 1763.7858164997158,
+      "input": 0
+    },
+    {
+      "timestamp": 1780.4253053346188,
+      "input": 0
+    },
+    {
+      "timestamp": 1797.0647941695217,
+      "input": 0
+    },
+    {
+      "timestamp": 1813.7042830044247,
+      "input": 0
+    },
+    {
+      "timestamp": 1830.3437718393277,
+      "input": 0
+    },
+    {
+      "timestamp": 1846.9832606742307,
+      "input": 0
+    },
+    {
+      "timestamp": 1863.6227495091337,
+      "input": 0
+    },
+    {
+      "timestamp": 1880.2622383440366,
+      "input": 0
+    },
+    {
+      "timestamp": 1896.9017271789396,
+      "input": 0
+    },
+    {
+      "timestamp": 1913.5412160138426,
+      "input": 0
+    },
+    {
+      "timestamp": 1930.1807048487456,
+      "input": 0
+    },
+    {
+      "timestamp": 1946.8201936836485,
+      "input": 0
+    },
+    {
+      "timestamp": 1963.4596825185515,
+      "input": 0
+    },
+    {
+      "timestamp": 1980.0991713534545,
+      "input": 0
+    },
+    {
+      "timestamp": 1996.7386601883575,
+      "input": 0
+    },
+    {
+      "timestamp": 2013.3781490232604,
+      "input": 0
+    },
+    {
+      "timestamp": 2030.0176378581634,
+      "input": 0
+    },
+    {
+      "timestamp": 2046.6571266930664,
+      "input": 0
+    },
+    {
+      "timestamp": 2063.2966155279696,
+      "input": 0
+    },
+    {
+      "timestamp": 2079.936104362873,
+      "input": 0
+    },
+    {
+      "timestamp": 2096.575593197776,
+      "input": 0
+    },
+    {
+      "timestamp": 2113.215082032679,
+      "input": 0
+    },
+    {
+      "timestamp": 2129.8545708675824,
+      "input": 0
+    },
+    {
+      "timestamp": 2146.4940597024856,
+      "input": 0
+    },
+    {
+      "timestamp": 2163.133548537389,
+      "input": 0
+    },
+    {
+      "timestamp": 2179.773037372292,
+      "input": 0
+    },
+    {
+      "timestamp": 2196.4125262071952,
+      "input": 0
+    },
+    {
+      "timestamp": 2213.0520150420984,
+      "input": 0
+    },
+    {
+      "timestamp": 2229.6915038770017,
+      "input": 0
+    },
+    {
+      "timestamp": 2246.330992711905,
+      "input": 0
+    },
+    {
+      "timestamp": 2262.970481546808,
+      "input": 0
+    },
+    {
+      "timestamp": 2279.6099703817113,
+      "input": 0
+    },
+    {
+      "timestamp": 2296.2494592166145,
+      "input": 0
+    },
+    {
+      "timestamp": 2312.8889480515177,
+      "input": 0
+    },
+    {
+      "timestamp": 2329.528436886421,
+      "input": 0
+    },
+    {
+      "timestamp": 2346.167925721324,
+      "input": 0
+    },
+    {
+      "timestamp": 2362.8074145562273,
+      "input": 0
+    },
+    {
+      "timestamp": 2379.4469033911305,
+      "input": 0
+    },
+    {
+      "timestamp": 2396.0863922260337,
+      "input": 0
+    },
+    {
+      "timestamp": 2412.725881060937,
+      "input": 0
+    },
+    {
+      "timestamp": 2429.36536989584,
+      "input": 0
+    },
+    {
+      "timestamp": 2446.0048587307433,
+      "input": 0
+    },
+    {
+      "timestamp": 2462.6443475656465,
+      "input": 0
+    },
+    {
+      "timestamp": 2479.2838364005497,
+      "input": 0
+    },
+    {
+      "timestamp": 2495.923325235453,
+      "input": 0
+    },
+    {
+      "timestamp": 2512.562814070356,
+      "input": 0
+    },
+    {
+      "timestamp": 2529.2023029052593,
+      "input": 0
+    },
+    {
+      "timestamp": 2545.8417917401625,
+      "input": 0
+    },
+    {
+      "timestamp": 2562.4812805750657,
+      "input": 0
+    },
+    {
+      "timestamp": 2579.120769409969,
+      "input": 0
+    },
+    {
+      "timestamp": 2595.760258244872,
+      "input": 0
+    },
+    {
+      "timestamp": 2612.3997470797754,
+      "input": 0
+    },
+    {
+      "timestamp": 2629.0392359146786,
+      "input": 0
+    },
+    {
+      "timestamp": 2645.6787247495818,
+      "input": 0
+    },
+    {
+      "timestamp": 2662.318213584485,
+      "input": 0
+    },
+    {
+      "timestamp": 2678.957702419388,
+      "input": 0
+    },
+    {
+      "timestamp": 2695.5971912542914,
+      "input": 0
+    },
+    {
+      "timestamp": 2712.2366800891946,
+      "input": 0
+    },
+    {
+      "timestamp": 2728.876168924098,
+      "input": 0
+    },
+    {
+      "timestamp": 2745.515657759001,
+      "input": 0
+    },
+    {
+      "timestamp": 2762.155146593904,
+      "input": 0
+    },
+    {
+      "timestamp": 2778.7946354288074,
+      "input": 0
+    },
+    {
+      "timestamp": 2795.4341242637106,
+      "input": 0
+    },
+    {
+      "timestamp": 2812.073613098614,
+      "input": 0
+    },
+    {
+      "timestamp": 2828.713101933517,
+      "input": 0
+    },
+    {
+      "timestamp": 2845.35259076842,
+      "input": 0
+    },
+    {
+      "timestamp": 2861.9920796033234,
+      "input": 0
+    },
+    {
+      "timestamp": 2878.6315684382266,
+      "input": 0
+    },
+    {
+      "timestamp": 2895.27105727313,
+      "input": 0
+    },
+    {
+      "timestamp": 2911.910546108033,
+      "input": 0
+    },
+    {
+      "timestamp": 2928.5500349429362,
+      "input": 0
+    },
+    {
+      "timestamp": 2945.1895237778394,
+      "input": 0
+    },
+    {
+      "timestamp": 2961.8290126127426,
+      "input": 0
+    },
+    {
+      "timestamp": 2978.468501447646,
+      "input": 0
+    },
+    {
+      "timestamp": 2995.107990282549,
+      "input": 0
+    },
+    {
+      "timestamp": 3011.7474791174523,
+      "input": 0
+    },
+    {
+      "timestamp": 3028.3869679523555,
+      "input": 0
+    },
+    {
+      "timestamp": 3045.0264567872587,
+      "input": 0
+    },
+    {
+      "timestamp": 3061.665945622162,
+      "input": 0
+    },
+    {
+      "timestamp": 3078.305434457065,
+      "input": 0
+    },
+    {
+      "timestamp": 3094.9449232919683,
+      "input": 0
+    },
+    {
+      "timestamp": 3111.5844121268715,
+      "input": 0
+    },
+    {
+      "timestamp": 3128.2239009617747,
+      "input": 0
+    },
+    {
+      "timestamp": 3144.863389796678,
+      "input": 0
+    },
+    {
+      "timestamp": 3161.502878631581,
+      "input": 0
+    },
+    {
+      "timestamp": 3178.1423674664843,
+      "input": 0
+    },
+    {
+      "timestamp": 3194.7818563013875,
+      "input": 0
+    },
+    {
+      "timestamp": 3211.4213451362907,
+      "input": 0
+    },
+    {
+      "timestamp": 3228.060833971194,
+      "input": 0
+    },
+    {
+      "timestamp": 3244.700322806097,
+      "input": 0
+    },
+    {
+      "timestamp": 3261.3398116410003,
+      "input": 0
+    },
+    {
+      "timestamp": 3277.9793004759035,
+      "input": 0
+    },
+    {
+      "timestamp": 3294.6187893108067,
+      "input": 0
+    },
+    {
+      "timestamp": 3311.25827814571,
+      "input": 0
+    },
+    {
+      "timestamp": 3327.897766980613,
+      "input": 0
+    },
+    {
+      "timestamp": 3344.5372558155163,
+      "input": 0
+    },
+    {
+      "timestamp": 3361.1767446504196,
+      "input": 0
+    },
+    {
+      "timestamp": 3377.8162334853228,
+      "input": 0
+    },
+    {
+      "timestamp": 3394.455722320226,
+      "input": 0
+    },
+    {
+      "timestamp": 3411.095211155129,
+      "input": 0
+    },
+    {
+      "timestamp": 3427.7346999900324,
+      "input": 0
+    },
+    {
+      "timestamp": 3444.3741888249356,
+      "input": 0
+    },
+    {
+      "timestamp": 3461.013677659839,
+      "input": 0
+    },
+    {
+      "timestamp": 3477.653166494742,
+      "input": 0
+    },
+    {
+      "timestamp": 3494.292655329645,
+      "input": 0
+    },
+    {
+      "timestamp": 3510.9321441645484,
+      "input": 0
+    },
+    {
+      "timestamp": 3527.5716329994516,
+      "input": 0
+    },
+    {
+      "timestamp": 3544.211121834355,
+      "input": 0
+    },
+    {
+      "timestamp": 3560.850610669258,
+      "input": 0
+    },
+    {
+      "timestamp": 3577.490099504161,
+      "input": 0
+    },
+    {
+      "timestamp": 3594.1295883390644,
+      "input": 0
+    },
+    {
+      "timestamp": 3610.7690771739676,
+      "input": 0
+    },
+    {
+      "timestamp": 3627.408566008871,
+      "input": 0
+    },
+    {
+      "timestamp": 3644.048054843774,
+      "input": 0
+    },
+    {
+      "timestamp": 3660.6875436786772,
+      "input": 0
+    },
+    {
+      "timestamp": 3677.3270325135804,
+      "input": 0
+    },
+    {
+      "timestamp": 3693.9665213484836,
+      "input": 0
+    },
+    {
+      "timestamp": 3710.606010183387,
+      "input": 0
+    },
+    {
+      "timestamp": 3727.24549901829,
+      "input": 0
+    },
+    {
+      "timestamp": 3743.8849878531933,
+      "input": 0
+    },
+    {
+      "timestamp": 3760.5244766880965,
+      "input": 0
+    },
+    {
+      "timestamp": 3777.1639655229997,
+      "input": 0
+    },
+    {
+      "timestamp": 3793.803454357903,
+      "input": 0
+    },
+    {
+      "timestamp": 3810.442943192806,
+      "input": 0
+    },
+    {
+      "timestamp": 3827.0824320277093,
+      "input": 0
+    },
+    {
+      "timestamp": 3843.7219208626125,
+      "input": 0
+    },
+    {
+      "timestamp": 3860.3614096975157,
+      "input": 0
+    },
+    {
+      "timestamp": 3877.000898532419,
+      "input": 0
+    },
+    {
+      "timestamp": 3893.640387367322,
+      "input": 0
+    },
+    {
+      "timestamp": 3910.2798762022253,
+      "input": 0
+    },
+    {
+      "timestamp": 3926.9193650371285,
+      "input": 0
+    },
+    {
+      "timestamp": 3943.5588538720317,
+      "input": 0
+    },
+    {
+      "timestamp": 3960.198342706935,
+      "input": 0
+    },
+    {
+      "timestamp": 3976.837831541838,
+      "input": 0
+    },
+    {
+      "timestamp": 3993.4773203767413,
+      "input": 0
+    },
+    {
+      "timestamp": 4010.1168092116445,
+      "input": 0
+    },
+    {
+      "timestamp": 4026.7562980465477,
+      "input": 0
+    },
+    {
+      "timestamp": 4043.395786881451,
+      "input": 0
+    },
+    {
+      "timestamp": 4060.035275716354,
+      "input": 0
+    },
+    {
+      "timestamp": 4076.6747645512573,
+      "input": 0
+    },
+    {
+      "timestamp": 4093.3142533861605,
+      "input": 0
+    },
+    {
+      "timestamp": 4109.953742221063,
+      "input": 0
+    },
+    {
+      "timestamp": 4126.5932310559665,
+      "input": 0
+    },
+    {
+      "timestamp": 4143.23271989087,
+      "input": 0
+    },
+    {
+      "timestamp": 4159.872208725773,
+      "input": 0
+    },
+    {
+      "timestamp": 4176.511697560676,
+      "input": 0
+    },
+    {
+      "timestamp": 4193.151186395579,
+      "input": 0
+    },
+    {
+      "timestamp": 4209.7906752304825,
+      "input": 0
+    },
+    {
+      "timestamp": 4226.430164065386,
+      "input": 0
+    },
+    {
+      "timestamp": 4243.069652900289,
+      "input": 0
+    },
+    {
+      "timestamp": 4259.709141735192,
+      "input": 0
+    },
+    {
+      "timestamp": 4276.348630570095,
+      "input": 0
+    },
+    {
+      "timestamp": 4292.9881194049985,
+      "input": 0
+    },
+    {
+      "timestamp": 4309.627608239902,
+      "input": 0
+    },
+    {
+      "timestamp": 4326.267097074805,
+      "input": 0
+    },
+    {
+      "timestamp": 4342.906585909708,
+      "input": 0
+    },
+    {
+      "timestamp": 4359.546074744611,
+      "input": 0
+    },
+    {
+      "timestamp": 4376.185563579515,
+      "input": 0
+    },
+    {
+      "timestamp": 4392.825052414418,
+      "input": 0
+    },
+    {
+      "timestamp": 4409.464541249321,
+      "input": 0
+    },
+    {
+      "timestamp": 4426.104030084224,
+      "input": 0
+    },
+    {
+      "timestamp": 4442.743518919127,
+      "input": 0
+    },
+    {
+      "timestamp": 4459.383007754031,
+      "input": 0
+    },
+    {
+      "timestamp": 4476.022496588934,
+      "input": 0
+    },
+    {
+      "timestamp": 4492.661985423837,
+      "input": 0
+    },
+    {
+      "timestamp": 4509.30147425874,
+      "input": 0
+    },
+    {
+      "timestamp": 4525.940963093643,
+      "input": 0
+    },
+    {
+      "timestamp": 4542.580451928547,
+      "input": 0
+    },
+    {
+      "timestamp": 4559.21994076345,
+      "input": 0
+    },
+    {
+      "timestamp": 4575.859429598353,
+      "input": 0
+    },
+    {
+      "timestamp": 4592.498918433256,
+      "input": 0
+    },
+    {
+      "timestamp": 4609.138407268159,
+      "input": 0
+    },
+    {
+      "timestamp": 4625.777896103063,
+      "input": 0
+    },
+    {
+      "timestamp": 4642.417384937966,
+      "input": 0
+    },
+    {
+      "timestamp": 4659.056873772869,
+      "input": 0
+    },
+    {
+      "timestamp": 4675.696362607772,
+      "input": 0
+    },
+    {
+      "timestamp": 4692.335851442675,
+      "input": 0
+    },
+    {
+      "timestamp": 4708.975340277579,
+      "input": 0
+    },
+    {
+      "timestamp": 4725.614829112482,
+      "input": 0
+    },
+    {
+      "timestamp": 4742.254317947385,
+      "input": 0
+    },
+    {
+      "timestamp": 4758.893806782288,
+      "input": 0
+    },
+    {
+      "timestamp": 4775.5332956171915,
+      "input": 0
+    },
+    {
+      "timestamp": 4792.172784452095,
+      "input": 0
+    },
+    {
+      "timestamp": 4808.812273286998,
+      "input": 0
+    },
+    {
+      "timestamp": 4825.451762121901,
+      "input": 0
+    },
+    {
+      "timestamp": 4842.091250956804,
+      "input": 0
+    },
+    {
+      "timestamp": 4858.7307397917075,
+      "input": 0
+    },
+    {
+      "timestamp": 4875.370228626611,
+      "input": 0
+    },
+    {
+      "timestamp": 4892.009717461514,
+      "input": 0
+    },
+    {
+      "timestamp": 4908.649206296417,
+      "input": 0
+    },
+    {
+      "timestamp": 4925.28869513132,
+      "input": 0
+    },
+    {
+      "timestamp": 4941.9281839662235,
+      "input": 0
+    },
+    {
+      "timestamp": 4958.567672801127,
+      "input": 0
+    },
+    {
+      "timestamp": 4975.20716163603,
+      "input": 0
+    },
+    {
+      "timestamp": 4991.846650470933,
+      "input": 0
+    },
+    {
+      "timestamp": 5008.486139305836,
+      "input": 0
+    },
+    {
+      "timestamp": 5025.1256281407395,
+      "input": 0
+    },
+    {
+      "timestamp": 5041.765116975643,
+      "input": 0
+    },
+    {
+      "timestamp": 5058.404605810546,
+      "input": 0
+    },
+    {
+      "timestamp": 5075.044094645449,
+      "input": 0
+    },
+    {
+      "timestamp": 5091.683583480352,
+      "input": 0
+    },
+    {
+      "timestamp": 5108.323072315256,
+      "input": 0
+    },
+    {
+      "timestamp": 5124.962561150159,
+      "input": 0
+    },
+    {
+      "timestamp": 5141.602049985062,
+      "input": 0
+    },
+    {
+      "timestamp": 5158.241538819965,
+      "input": 0
+    },
+    {
+      "timestamp": 5174.881027654868,
+      "input": 0
+    },
+    {
+      "timestamp": 5191.520516489772,
+      "input": 0
+    },
+    {
+      "timestamp": 5208.160005324675,
+      "input": 0
+    },
+    {
+      "timestamp": 5224.799494159578,
+      "input": 0
+    },
+    {
+      "timestamp": 5241.438982994481,
+      "input": 0
+    },
+    {
+      "timestamp": 5258.078471829384,
+      "input": 0
+    },
+    {
+      "timestamp": 5274.717960664288,
+      "input": 0
+    },
+    {
+      "timestamp": 5291.357449499191,
+      "input": 0
+    },
+    {
+      "timestamp": 5307.996938334094,
+      "input": 0
+    },
+    {
+      "timestamp": 5324.636427168997,
+      "input": 0
+    },
+    {
+      "timestamp": 5341.2759160039,
+      "input": 0
+    },
+    {
+      "timestamp": 5357.915404838804,
+      "input": 0
+    },
+    {
+      "timestamp": 5374.554893673707,
+      "input": 0
+    },
+    {
+      "timestamp": 5391.19438250861,
+      "input": 0
+    },
+    {
+      "timestamp": 5407.833871343513,
+      "input": 0
+    },
+    {
+      "timestamp": 5424.473360178416,
+      "input": 0
+    },
+    {
+      "timestamp": 5441.11284901332,
+      "input": 0
+    },
+    {
+      "timestamp": 5457.752337848223,
+      "input": 0
+    },
+    {
+      "timestamp": 5474.391826683126,
+      "input": 0
+    },
+    {
+      "timestamp": 5491.031315518029,
+      "input": 0
+    },
+    {
+      "timestamp": 5507.6708043529325,
+      "input": 0
+    },
+    {
+      "timestamp": 5524.310293187836,
+      "input": 0
+    },
+    {
+      "timestamp": 5540.949782022739,
+      "input": 0
+    },
+    {
+      "timestamp": 5557.589270857642,
+      "input": 0
+    },
+    {
+      "timestamp": 5574.228759692545,
+      "input": 0
+    },
+    {
+      "timestamp": 5590.8682485274485,
+      "input": 0
+    },
+    {
+      "timestamp": 5607.507737362352,
+      "input": 0
+    },
+    {
+      "timestamp": 5624.147226197255,
+      "input": 0
+    },
+    {
+      "timestamp": 5640.786715032158,
+      "input": 0
+    },
+    {
+      "timestamp": 5657.426203867061,
+      "input": 0
+    },
+    {
+      "timestamp": 5674.0656927019645,
+      "input": 0
+    },
+    {
+      "timestamp": 5690.705181536868,
+      "input": 0
+    },
+    {
+      "timestamp": 5707.344670371771,
+      "input": 0
+    },
+    {
+      "timestamp": 5723.984159206674,
+      "input": 0
+    },
+    {
+      "timestamp": 5740.623648041577,
+      "input": 0
+    },
+    {
+      "timestamp": 5757.2631368764805,
+      "input": 0
+    },
+    {
+      "timestamp": 5773.902625711384,
+      "input": 0
+    },
+    {
+      "timestamp": 5790.542114546287,
+      "input": 0
+    },
+    {
+      "timestamp": 5807.18160338119,
+      "input": 0
+    },
+    {
+      "timestamp": 5823.821092216093,
+      "input": 0
+    },
+    {
+      "timestamp": 5840.460581050997,
+      "input": 0
+    },
+    {
+      "timestamp": 5857.1000698859,
+      "input": 0
+    },
+    {
+      "timestamp": 5873.739558720803,
+      "input": 0
+    },
+    {
+      "timestamp": 5890.379047555706,
+      "input": 0
+    },
+    {
+      "timestamp": 5907.018536390609,
+      "input": 0
+    },
+    {
+      "timestamp": 5923.658025225513,
+      "input": 0
+    },
+    {
+      "timestamp": 5940.297514060416,
+      "input": 0
+    },
+    {
+      "timestamp": 5956.937002895319,
+      "input": 0
+    },
+    {
+      "timestamp": 5973.576491730222,
+      "input": 0
+    },
+    {
+      "timestamp": 5990.215980565125,
+      "input": 0
+    },
+    {
+      "timestamp": 6006.855469400029,
+      "input": 0
+    },
+    {
+      "timestamp": 6023.494958234932,
+      "input": 0
+    },
+    {
+      "timestamp": 6040.134447069835,
+      "input": 0
+    },
+    {
+      "timestamp": 6056.773935904738,
+      "input": 0
+    },
+    {
+      "timestamp": 6073.413424739641,
+      "input": 0
+    },
+    {
+      "timestamp": 6090.052913574545,
+      "input": 0
+    },
+    {
+      "timestamp": 6106.692402409448,
+      "input": 0
+    },
+    {
+      "timestamp": 6123.331891244351,
+      "input": 0
+    },
+    {
+      "timestamp": 6139.971380079254,
+      "input": 0
+    },
+    {
+      "timestamp": 6156.610868914157,
+      "input": 0
+    },
+    {
+      "timestamp": 6173.250357749061,
+      "input": 0
+    },
+    {
+      "timestamp": 6189.889846583964,
+      "input": 0
+    },
+    {
+      "timestamp": 6206.529335418867,
+      "input": 0
+    },
+    {
+      "timestamp": 6223.16882425377,
+      "input": 0
+    },
+    {
+      "timestamp": 6239.8083130886735,
+      "input": 0
+    },
+    {
+      "timestamp": 6256.447801923577,
+      "input": 0
+    },
+    {
+      "timestamp": 6273.08729075848,
+      "input": 0
+    },
+    {
+      "timestamp": 6289.726779593383,
+      "input": 0
+    },
+    {
+      "timestamp": 6306.366268428286,
+      "input": 0
+    },
+    {
+      "timestamp": 6323.0057572631895,
+      "input": 0
+    },
+    {
+      "timestamp": 6339.645246098093,
+      "input": 0
+    },
+    {
+      "timestamp": 6356.284734932996,
+      "input": 0
+    },
+    {
+      "timestamp": 6372.924223767899,
+      "input": 0
+    },
+    {
+      "timestamp": 6389.563712602802,
+      "input": 0
+    },
+    {
+      "timestamp": 6406.2032014377055,
+      "input": 0
+    },
+    {
+      "timestamp": 6422.842690272609,
+      "input": 0
+    },
+    {
+      "timestamp": 6439.482179107512,
+      "input": 0
+    },
+    {
+      "timestamp": 6456.121667942415,
+      "input": 0
+    },
+    {
+      "timestamp": 6472.761156777318,
+      "input": 0
+    },
+    {
+      "timestamp": 6489.4006456122215,
+      "input": 0
+    },
+    {
+      "timestamp": 6506.040134447125,
+      "input": 0
+    },
+    {
+      "timestamp": 6522.679623282028,
+      "input": 0
+    },
+    {
+      "timestamp": 6539.319112116931,
+      "input": 0
+    },
+    {
+      "timestamp": 6555.958600951834,
+      "input": 0
+    },
+    {
+      "timestamp": 6572.598089786738,
+      "input": 0
+    },
+    {
+      "timestamp": 6589.237578621641,
+      "input": 0
+    },
+    {
+      "timestamp": 6605.877067456544,
+      "input": 0
+    },
+    {
+      "timestamp": 6622.516556291447,
+      "input": 0
+    },
+    {
+      "timestamp": 6639.15604512635,
+      "input": 0
+    },
+    {
+      "timestamp": 6655.795533961254,
+      "input": 0
+    },
+    {
+      "timestamp": 6672.435022796157,
+      "input": 0
+    },
+    {
+      "timestamp": 6689.07451163106,
+      "input": 0
+    },
+    {
+      "timestamp": 6705.714000465963,
+      "input": 0
+    },
+    {
+      "timestamp": 6722.353489300866,
+      "input": 0
+    },
+    {
+      "timestamp": 6738.99297813577,
+      "input": 0
+    },
+    {
+      "timestamp": 6755.632466970673,
+      "input": 0
+    },
+    {
+      "timestamp": 6772.271955805576,
+      "input": 0
+    },
+    {
+      "timestamp": 6788.911444640479,
+      "input": 0
+    },
+    {
+      "timestamp": 6805.550933475382,
+      "input": 0
+    },
+    {
+      "timestamp": 6822.190422310286,
+      "input": 0
+    },
+    {
+      "timestamp": 6838.829911145189,
+      "input": 0
+    },
+    {
+      "timestamp": 6855.469399980092,
+      "input": 0
+    },
+    {
+      "timestamp": 6872.108888814995,
+      "input": 0
+    },
+    {
+      "timestamp": 6888.748377649898,
+      "input": 0
+    },
+    {
+      "timestamp": 6905.387866484802,
+      "input": 0
+    },
+    {
+      "timestamp": 6922.027355319705,
+      "input": 0
+    },
+    {
+      "timestamp": 6938.666844154608,
+      "input": 0
+    },
+    {
+      "timestamp": 6955.306332989511,
+      "input": 0
+    },
+    {
+      "timestamp": 6971.945821824414,
+      "input": 0
+    },
+    {
+      "timestamp": 6988.585310659318,
+      "input": 0
+    },
+    {
+      "timestamp": 7005.224799494221,
+      "input": 0
+    },
+    {
+      "timestamp": 7021.864288329124,
+      "input": 0
+    },
+    {
+      "timestamp": 7038.503777164027,
+      "input": 0
+    },
+    {
+      "timestamp": 7055.1432659989305,
+      "input": 0
+    },
+    {
+      "timestamp": 7071.782754833834,
+      "input": 0
+    },
+    {
+      "timestamp": 7088.422243668737,
+      "input": 0
+    },
+    {
+      "timestamp": 7105.06173250364,
+      "input": 0
+    },
+    {
+      "timestamp": 7121.701221338543,
+      "input": 0
+    },
+    {
+      "timestamp": 7138.3407101734465,
+      "input": 0
+    },
+    {
+      "timestamp": 7154.98019900835,
+      "input": 0
+    },
+    {
+      "timestamp": 7171.619687843253,
+      "input": 0
+    },
+    {
+      "timestamp": 7188.259176678156,
+      "input": 0
+    },
+    {
+      "timestamp": 7204.898665513059,
+      "input": 0
+    },
+    {
+      "timestamp": 7221.5381543479625,
+      "input": 0
+    },
+    {
+      "timestamp": 7238.177643182866,
+      "input": 0
+    },
+    {
+      "timestamp": 7254.817132017769,
+      "input": 0
+    },
+    {
+      "timestamp": 7271.456620852672,
+      "input": 0
+    },
+    {
+      "timestamp": 7288.096109687575,
+      "input": 0
+    },
+    {
+      "timestamp": 7304.7355985224785,
+      "input": 0
+    },
+    {
+      "timestamp": 7321.375087357382,
+      "input": 0
+    },
+    {
+      "timestamp": 7338.014576192285,
+      "input": 0
+    },
+    {
+      "timestamp": 7354.654065027188,
+      "input": 0
+    },
+    {
+      "timestamp": 7371.293553862091,
+      "input": 0
+    },
+    {
+      "timestamp": 7387.933042696995,
+      "input": 0
+    },
+    {
+      "timestamp": 7404.572531531898,
+      "input": 0
+    },
+    {
+      "timestamp": 7421.212020366801,
+      "input": 0
+    },
+    {
+      "timestamp": 7437.851509201704,
+      "input": 0
+    },
+    {
+      "timestamp": 7454.490998036607,
+      "input": 0
+    },
+    {
+      "timestamp": 7471.130486871511,
+      "input": 0
+    },
+    {
+      "timestamp": 7487.769975706414,
+      "input": 0
+    },
+    {
+      "timestamp": 7504.409464541317,
+      "input": 0
+    },
+    {
+      "timestamp": 7521.04895337622,
+      "input": 0
+    },
+    {
+      "timestamp": 7537.688442211123,
+      "input": 0
+    },
+    {
+      "timestamp": 7554.327931046027,
+      "input": 0
+    },
+    {
+      "timestamp": 7570.96741988093,
+      "input": 0
+    },
+    {
+      "timestamp": 7587.606908715833,
+      "input": 0
+    },
+    {
+      "timestamp": 7604.246397550736,
+      "input": 0
+    },
+    {
+      "timestamp": 7620.885886385639,
+      "input": 0
+    },
+    {
+      "timestamp": 7637.525375220543,
+      "input": 0
+    },
+    {
+      "timestamp": 7654.164864055446,
+      "input": 0
+    },
+    {
+      "timestamp": 7670.804352890349,
+      "input": 0
+    },
+    {
+      "timestamp": 7687.443841725252,
+      "input": 0
+    },
+    {
+      "timestamp": 7704.083330560155,
+      "input": 0
+    },
+    {
+      "timestamp": 7720.722819395059,
+      "input": 0
+    },
+    {
+      "timestamp": 7737.362308229962,
+      "input": 0
+    },
+    {
+      "timestamp": 7754.001797064865,
+      "input": 0
+    },
+    {
+      "timestamp": 7770.641285899768,
+      "input": 0
+    },
+    {
+      "timestamp": 7787.2807747346715,
+      "input": 0
+    },
+    {
+      "timestamp": 7803.920263569575,
+      "input": 0
+    },
+    {
+      "timestamp": 7820.559752404478,
+      "input": 0
+    },
+    {
+      "timestamp": 7837.199241239381,
+      "input": 0
+    },
+    {
+      "timestamp": 7853.838730074284,
+      "input": 0
+    },
+    {
+      "timestamp": 7870.4782189091875,
+      "input": 0
+    },
+    {
+      "timestamp": 7887.117707744091,
+      "input": 0
+    },
+    {
+      "timestamp": 7903.757196578994,
+      "input": 0
+    },
+    {
+      "timestamp": 7920.396685413897,
+      "input": 0
+    },
+    {
+      "timestamp": 7937.0361742488,
+      "input": 0
+    },
+    {
+      "timestamp": 7953.6756630837035,
+      "input": 0
+    },
+    {
+      "timestamp": 7970.315151918607,
+      "input": 0
+    },
+    {
+      "timestamp": 7986.95464075351,
+      "input": 0
+    },
+    {
+      "timestamp": 8003.594129588413,
+      "input": 0
+    },
+    {
+      "timestamp": 8020.233618423316,
+      "input": 0
+    },
+    {
+      "timestamp": 8036.8731072582195,
+      "input": 0
+    },
+    {
+      "timestamp": 8053.512596093123,
+      "input": 0
+    },
+    {
+      "timestamp": 8070.152084928026,
+      "input": 0
+    },
+    {
+      "timestamp": 8086.791573762929,
+      "input": 0
+    },
+    {
+      "timestamp": 8103.431062597832,
+      "input": 0
+    },
+    {
+      "timestamp": 8120.070551432736,
+      "input": 0
+    },
+    {
+      "timestamp": 8136.710040267639,
+      "input": 0
+    },
+    {
+      "timestamp": 8153.349529102542,
+      "input": 0
+    },
+    {
+      "timestamp": 8169.989017937445,
+      "input": 0
+    },
+    {
+      "timestamp": 8186.628506772348,
+      "input": 0
+    },
+    {
+      "timestamp": 8203.267995607252,
+      "input": 0
+    },
+    {
+      "timestamp": 8219.907484442154,
+      "input": 0
+    },
+    {
+      "timestamp": 8236.546973277056,
+      "input": 0
+    },
+    {
+      "timestamp": 8253.186462111958,
+      "input": 0
+    },
+    {
+      "timestamp": 8269.82595094686,
+      "input": 0
+    },
+    {
+      "timestamp": 8286.465439781763,
+      "input": 0
+    },
+    {
+      "timestamp": 8303.104928616665,
+      "input": 0
+    },
+    {
+      "timestamp": 8319.744417451568,
+      "input": 0
+    },
+    {
+      "timestamp": 8336.38390628647,
+      "input": 0
+    },
+    {
+      "timestamp": 8353.023395121372,
+      "input": 0
+    },
+    {
+      "timestamp": 8369.662883956275,
+      "input": 0
+    },
+    {
+      "timestamp": 8386.302372791177,
+      "input": 0
+    },
+    {
+      "timestamp": 8402.94186162608,
+      "input": 0
+    },
+    {
+      "timestamp": 8419.581350460981,
+      "input": 0
+    },
+    {
+      "timestamp": 8436.220839295884,
+      "input": 0
+    },
+    {
+      "timestamp": 8452.860328130786,
+      "input": 0
+    },
+    {
+      "timestamp": 8469.499816965688,
+      "input": 0
+    },
+    {
+      "timestamp": 8486.13930580059,
+      "input": 0
+    },
+    {
+      "timestamp": 8502.778794635493,
+      "input": 0
+    },
+    {
+      "timestamp": 8519.418283470395,
+      "input": 0
+    },
+    {
+      "timestamp": 8536.057772305297,
+      "input": 0
+    },
+    {
+      "timestamp": 8552.6972611402,
+      "input": 0
+    },
+    {
+      "timestamp": 8569.336749975102,
+      "input": 0
+    },
+    {
+      "timestamp": 8585.976238810004,
+      "input": 0
+    },
+    {
+      "timestamp": 8602.615727644907,
+      "input": 0
+    },
+    {
+      "timestamp": 8619.255216479809,
+      "input": 0
+    },
+    {
+      "timestamp": 8635.894705314711,
+      "input": 0
+    },
+    {
+      "timestamp": 8652.534194149614,
+      "input": 0
+    },
+    {
+      "timestamp": 8669.173682984516,
+      "input": 0
+    },
+    {
+      "timestamp": 8685.813171819418,
+      "input": 0
+    },
+    {
+      "timestamp": 8702.45266065432,
+      "input": 0
+    },
+    {
+      "timestamp": 8719.092149489223,
+      "input": 0
+    },
+    {
+      "timestamp": 8735.731638324125,
+      "input": 0
+    },
+    {
+      "timestamp": 8752.371127159027,
+      "input": 0
+    },
+    {
+      "timestamp": 8769.01061599393,
+      "input": 0
+    },
+    {
+      "timestamp": 8785.650104828832,
+      "input": 0
+    },
+    {
+      "timestamp": 8802.289593663734,
+      "input": 0
+    },
+    {
+      "timestamp": 8818.929082498636,
+      "input": 0
+    },
+    {
+      "timestamp": 8835.568571333539,
+      "input": 0
+    },
+    {
+      "timestamp": 8852.208060168441,
+      "input": 0
+    },
+    {
+      "timestamp": 8868.847549003343,
+      "input": 0
+    },
+    {
+      "timestamp": 8885.487037838246,
+      "input": 0
+    },
+    {
+      "timestamp": 8902.126526673148,
+      "input": 0
+    },
+    {
+      "timestamp": 8918.76601550805,
+      "input": 0
+    },
+    {
+      "timestamp": 8935.405504342953,
+      "input": 0
+    },
+    {
+      "timestamp": 8952.044993177855,
+      "input": 0
+    },
+    {
+      "timestamp": 8968.684482012757,
+      "input": 0
+    },
+    {
+      "timestamp": 8985.32397084766,
+      "input": 0
+    },
+    {
+      "timestamp": 9001.963459682562,
+      "input": 0
+    },
+    {
+      "timestamp": 9018.602948517464,
+      "input": 0
+    },
+    {
+      "timestamp": 9035.242437352366,
+      "input": 0
+    },
+    {
+      "timestamp": 9051.881926187269,
+      "input": 0
+    },
+    {
+      "timestamp": 9068.521415022171,
+      "input": 0
+    },
+    {
+      "timestamp": 9085.160903857073,
+      "input": 0
+    },
+    {
+      "timestamp": 9101.800392691976,
+      "input": 0
+    },
+    {
+      "timestamp": 9118.439881526878,
+      "input": 0
+    },
+    {
+      "timestamp": 9135.07937036178,
+      "input": 0
+    },
+    {
+      "timestamp": 9151.718859196682,
+      "input": 0
+    },
+    {
+      "timestamp": 9168.358348031585,
+      "input": 0
+    },
+    {
+      "timestamp": 9184.997836866487,
+      "input": 0
+    },
+    {
+      "timestamp": 9201.63732570139,
+      "input": 0
+    },
+    {
+      "timestamp": 9218.276814536292,
+      "input": 0
+    },
+    {
+      "timestamp": 9234.916303371194,
+      "input": 0
+    },
+    {
+      "timestamp": 9251.555792206096,
+      "input": 0
+    },
+    {
+      "timestamp": 9268.195281040998,
+      "input": 0
+    },
+    {
+      "timestamp": 9284.8347698759,
+      "input": 0
+    },
+    {
+      "timestamp": 9301.474258710803,
+      "input": 0
+    },
+    {
+      "timestamp": 9318.113747545705,
+      "input": 0
+    },
+    {
+      "timestamp": 9334.753236380608,
+      "input": 0
+    },
+    {
+      "timestamp": 9351.39272521551,
+      "input": 0
+    },
+    {
+      "timestamp": 9368.032214050412,
+      "input": 0
+    },
+    {
+      "timestamp": 9384.671702885315,
+      "input": 0
+    },
+    {
+      "timestamp": 9401.311191720217,
+      "input": 0
+    },
+    {
+      "timestamp": 9417.95068055512,
+      "input": 0
+    },
+    {
+      "timestamp": 9434.590169390021,
+      "input": 0
+    },
+    {
+      "timestamp": 9451.229658224924,
+      "input": 0
+    },
+    {
+      "timestamp": 9467.869147059826,
+      "input": 0
+    },
+    {
+      "timestamp": 9484.508635894728,
+      "input": 0
+    },
+    {
+      "timestamp": 9501.14812472963,
+      "input": 0
+    }
+  ],
+  "screenshots": []
+}

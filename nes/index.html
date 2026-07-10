@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NES Virtual Machine</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="thin-header">
+      <div class="header-logo">
+        <h1>NES Emulator</h1>
+        <span class="header-subtitle">MOS 6502 CPU + RP2C02 PPU + MMC3</span>
+      </div>
+    </header>
+
+    <main class="app-layout" id="app-layout">
+      <!-- Left Panel: Console Controls -->
+      <aside class="panel panel-left" id="panel-left">
+        <div class="card controls-card">
+          <div class="card-title">Console Controls</div>
+          <button class="btn btn-primary" id="btn-load-tmnt">Quick Load TMNT III</button>
+          <button class="btn btn-primary" id="btn-load-jungle">Quick Load Jungle Book</button>
+          <label class="file-upload-label" for="rom-upload">
+            <span>Browse Local .nes ROM</span>
+            <input type="file" id="rom-upload" accept=".nes" />
+          </label>
+          <div class="btn-group">
+            <button class="btn" id="btn-pause">Pause</button>
+            <button class="btn" id="btn-reset">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Panel: Game Screen -->
+      <section class="panel-center" id="panel-center">
+        <div class="screen-wrapper" id="screen-wrapper">
+          <div class="screen-container">
+            <canvas id="screen" width="256" height="240"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Debugger & Keymap -->
+      <aside class="panel panel-right" id="panel-right">
+        <div class="card">
+          <div class="card-title">CPU Status</div>
+          <div class="register-grid">
+            <div class="reg-item"><span class="reg-label">PC</span><span class="reg-value" id="reg-pc">0x0000</span></div>
+            <div class="reg-item"><span class="reg-label">SP</span><span class="reg-value" id="reg-sp">0x00</span></div>
+            <div class="reg-item"><span class="reg-label">A</span><span class="reg-value" id="reg-a">0x00</span></div>
+            <div class="reg-item"><span class="reg-label">X</span><span class="reg-value" id="reg-x">0x00</span></div>
+            <div class="reg-item"><span class="reg-label">Y</span><span class="reg-value" id="reg-y">0x00</span></div>
+            <div class="reg-item"><span class="reg-label">Scanline</span><span class="reg-value" id="reg-scanline">0</span></div>
+          </div>
+          
+          <div class="flags-block">
+            <span class="flag" id="flag-N">N</span>
+            <span class="flag" id="flag-V">V</span>
+            <span class="flag" id="flag-U">U</span>
+            <span class="flag" id="flag-B">B</span>
+            <span class="flag" id="flag-D">D</span>
+            <span class="flag" id="flag-I">I</span>
+            <span class="flag" id="flag-Z">Z</span>
+            <span class="flag" id="flag-C">C</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Keyboard Keymap</div>
+          <div class="keyboard-guide">
+            <ul>
+              <li><span class="key-cap">◀</span> / <span class="key-cap">▶</span> Left / Right</li>
+              <li><span class="key-cap">▲</span> / <span class="key-cap">▼</span> Up / Down</li>
+              <li><span class="key-cap">Z</span> button B</li>
+              <li><span class="key-cap">X</span> button A</li>
+              <li><span class="key-cap">Shift</span> Select</li>
+              <li><span class="key-cap">Enter</span> Start</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="thin-footer">
+      <div class="footer-left">
+        <div class="footer-stat">Rom: <span id="info-rom" class="info-val">No ROM loaded</span></div>
+      </div>
+      <div class="footer-center">
+        <button class="btn-header" id="btn-fullscreen">Fullscreen</button>
+        <div class="stretch-control">
+          <label for="stretch-slider">Stretch Screen</label>
+          <input type="range" id="stretch-slider" min="0" max="100" value="0" />
+          <span id="stretch-value">0%</span>
+        </div>
+      </div>
+      <div class="footer-right">
+        <div class="footer-stat">FPS: <span id="info-fps" class="info-val">0</span></div>
+        <div class="footer-stat">Cycles: <span id="info-cycles" class="info-val">0</span></div>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

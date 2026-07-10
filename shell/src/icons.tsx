@@ -1,0 +1,25 @@
+// Re-export icons from lucide-react for App.tsx
+export {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Cpu,
+  ImageIcon,
+  Grid,
+  List,
+  Upload,
+  FileText,
+  Save,
+  Maximize,
+  Minimize,
+  PanelLeft,
+  PanelRight,
+  PanelBottom,
+  X,
+  Monitor,
+  Settings,
+  Check,
+  AlertCircle,
+  RefreshCw
+} from 'lucide-react';

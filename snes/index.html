@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SNES Emulator</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="thin-header">
+      <div class="header-logo">
+        <h1>SNES Emulator</h1>
+        <span class="header-subtitle">65C816 CPU + S-PPU1/2 + S-DSP + SPC700</span>
+      </div>
+    </header>
+
+    <main class="app-layout" id="app-layout">
+      <aside class="panel panel-left" id="panel-left">
+        <div class="card controls-card">
+          <div class="card-title">Console Controls</div>
+          <label class="file-upload-label" for="rom-upload">
+            <span>Browse Local .sfc/.smc ROM</span>
+            <input type="file" id="rom-upload" accept=".sfc,.smc" />
+          </label>
+          <div class="btn-group">
+            <button class="btn" id="btn-pause">Pause</button>
+            <button class="btn" id="btn-reset">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel-center" id="panel-center">
+        <div class="screen-wrapper" id="screen-wrapper">
+          <div class="screen-container">
+            <canvas id="screen" width="256" height="224"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel panel-right" id="panel-right">
+        <div class="card">
+          <div class="card-title">CPU Status</div>
+          <div class="register-grid">
+            <div class="reg-item"><span class="reg-label">PC</span><span class="reg-value" id="reg-pc">0x000000</span></div>
+            <div class="reg-item"><span class="reg-label">A</span><span class="reg-value" id="reg-a">0x0000</span></div>
+            <div class="reg-item"><span class="reg-label">X</span><span class="reg-value" id="reg-x">0x0000</span></div>
+            <div class="reg-item"><span class="reg-label">Y</span><span class="reg-value" id="reg-y">0x0000</span></div>
+            <div class="reg-item"><span class="reg-label">S</span><span class="reg-value" id="reg-s">0x0000</span></div>
+            <div class="reg-item"><span class="reg-label">Scanline</span><span class="reg-value" id="reg-scanline">0</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Keyboard Keymap</div>
+          <div class="keyboard-guide">
+            <ul>
+              <li><span class="key-cap">◀</span> / <span class="key-cap">▶</span> Left / Right</li>
+              <li><span class="key-cap">▲</span> / <span class="key-cap">▼</span> Up / Down</li>
+              <li><span class="key-cap">Z</span> Button B</li>
+              <li><span class="key-cap">X</span> Button A</li>
+              <li><span class="key-cap">A</span> Button Y</li>
+              <li><span class="key-cap">S</span> Button X</li>
+              <li><span class="key-cap">Q</span> L-Shoulder</li>
+              <li><span class="key-cap">W</span> R-Shoulder</li>
+              <li><span class="key-cap">Shift</span> Select</li>
+              <li><span class="key-cap">Enter</span> Start</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="thin-footer">
+      <div class="footer-left">
+        <div class="footer-stat">Rom: <span id="info-rom" class="info-val">No ROM loaded</span></div>
+      </div>
+      <div class="footer-center">
+        <button class="btn-header" id="btn-fullscreen">Fullscreen</button>
+        <div class="stretch-control">
+          <label for="stretch-slider">Stretch Screen</label>
+          <input type="range" id="stretch-slider" min="0" max="100" value="0" />
+          <span id="stretch-value">0%</span>
+        </div>
+      </div>
+      <div class="footer-right">
+        <div class="footer-stat">FPS: <span id="info-fps" class="info-val">0</span></div>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "emulators-monorepo",
+  "private": true,
+  "workspaces": [
+    "shell",
+    "snes",
+    "nes",
+    "gb",
+    "gba"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=shell",
+    "build": "npm run build --workspace=shell"
+  },
+  "dependencies": {
+    "create-vite": "^9.1.1"
+  }
+}

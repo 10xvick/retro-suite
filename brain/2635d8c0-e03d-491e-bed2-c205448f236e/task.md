@@ -1,0 +1,8 @@
+- `[x]` Write the SNES test runner: [test_snes.ts](file:///c:/Users/Priya%20singh/dev/ai-dev/emulators/snes/src/test_snes.ts)
+- `[x]` Test and verify PeterLemon's CPU instruction tests (23/23 PASSED!)
+- `[x]` Diagnose and fix PPU BG Mode 0 text rendering timing lag (verified via screenshots)
+- `[x]` Implement BCD (Binary Coded Decimal) mode for 8-bit/16-bit `ADC` and `SBC` in CPU
+- `[x]` Run and document Sour's Mesen timing and DMA IRQ test suites (verified via screenshots)
+- `[x]` Test and verify PeterLemon's SPC700 instruction tests (7/7 PASSED!)
+- `[x]` Run and verify 93143 H-blank DMA VRAM and Motive test suites (verified via screenshots)
+- `[x]` Implement UI sidebar button/panel to run and render all tests for GB, NES, and SNES cores (verified via in-app execution)

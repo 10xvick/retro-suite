@@ -1,0 +1,3008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Jungle Book — Sprite Sheet Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #060810; color: #e2e8f0; font-family: 'Inter',sans-serif; min-height: 100vh; }
+header { background: linear-gradient(135deg, #0e1117, #111827); border-bottom: 1px solid #1e2d40; padding: 16px 24px; }
+header h1 { font-size: 18px; font-weight: 700; color: #3b82f6; }
+header p { font-size: 12px; color: #64748b; margin-top: 4px; }
+.filters { background: #0e1117; border-bottom: 1px solid #1e2d40; padding: 10px 24px; display:flex; gap:12px; align-items:center; }
+.filters label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+select, input { background: #161b27; color: #e2e8f0; border: 1px solid #1e2d40; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family:'Inter',sans-serif; }
+.grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 20px 24px; }
+.card {
+  background: #0e1117; border: 1px solid #1e2d40; border-radius: 10px;
+  overflow: hidden; cursor: pointer; transition: border-color 0.2s, transform 0.2s;
+  max-width: 400px;
+}
+.card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+.card img { display: block; max-width: 100%; image-rendering: pixelated; background: #050607; }
+.card-info { padding: 8px 12px; }
+.card-title { font-size: 12px; font-weight: 600; color: #3b82f6; font-family: monospace; }
+.card-meta { font-size: 10px; color: #64748b; margin-top: 2px; }
+.badge { display: inline-block; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🕹️ The Jungle Book — Sprite Sheet Gallery</h1>
+  <p>420 sheets • Real CGRAM palettes • 16×16 and 32×32 sprites</p>
+</header>
+<div class="filters">
+  <label>Filter</label>
+  <input type="text" id="search" placeholder="Region address..." oninput="filter()" style="min-width:150px">
+  <label>Palette</label>
+  <select id="pal-filter" onchange="filter()">
+    <option value="">All palettes</option>
+    <option value="10">Pal 10</option><option value="11">Pal 11</option><option value="12">Pal 12</option><option value="13">Pal 13</option><option value="14">Pal 14</option><option value="15">Pal 15</option>
+  </select>
+  <label>Size</label>
+  <select id="size-filter" onchange="filter()">
+    <option value="">All sizes</option>
+    <option value="16x16">16×16</option>
+    <option value="32x32">32×32</option>
+  </select>
+</div>
+<div class="grid" id="grid">
+
+  <div class="card" data-region="$83:8000" data-pal="10" data-file="r83_8000_p10_16x16.png">
+    <img src="r83_8000_p10_16x16.png" loading="lazy" title="$83:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="11" data-file="r83_8000_p11_16x16.png">
+    <img src="r83_8000_p11_16x16.png" loading="lazy" title="$83:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="12" data-file="r83_8000_p12_16x16.png">
+    <img src="r83_8000_p12_16x16.png" loading="lazy" title="$83:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="13" data-file="r83_8000_p13_16x16.png">
+    <img src="r83_8000_p13_16x16.png" loading="lazy" title="$83:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="14" data-file="r83_8000_p14_16x16.png">
+    <img src="r83_8000_p14_16x16.png" loading="lazy" title="$83:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="15" data-file="r83_8000_p15_16x16.png">
+    <img src="r83_8000_p15_16x16.png" loading="lazy" title="$83:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="10" data-file="r84_8000_p10_16x16.png">
+    <img src="r84_8000_p10_16x16.png" loading="lazy" title="$84:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="11" data-file="r84_8000_p11_16x16.png">
+    <img src="r84_8000_p11_16x16.png" loading="lazy" title="$84:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="12" data-file="r84_8000_p12_16x16.png">
+    <img src="r84_8000_p12_16x16.png" loading="lazy" title="$84:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="13" data-file="r84_8000_p13_16x16.png">
+    <img src="r84_8000_p13_16x16.png" loading="lazy" title="$84:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="14" data-file="r84_8000_p14_16x16.png">
+    <img src="r84_8000_p14_16x16.png" loading="lazy" title="$84:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="15" data-file="r84_8000_p15_16x16.png">
+    <img src="r84_8000_p15_16x16.png" loading="lazy" title="$84:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="10" data-file="r8D_8000_p10_16x16.png">
+    <img src="r8D_8000_p10_16x16.png" loading="lazy" title="$8D:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="11" data-file="r8D_8000_p11_16x16.png">
+    <img src="r8D_8000_p11_16x16.png" loading="lazy" title="$8D:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="12" data-file="r8D_8000_p12_16x16.png">
+    <img src="r8D_8000_p12_16x16.png" loading="lazy" title="$8D:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="13" data-file="r8D_8000_p13_16x16.png">
+    <img src="r8D_8000_p13_16x16.png" loading="lazy" title="$8D:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="14" data-file="r8D_8000_p14_16x16.png">
+    <img src="r8D_8000_p14_16x16.png" loading="lazy" title="$8D:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="15" data-file="r8D_8000_p15_16x16.png">
+    <img src="r8D_8000_p15_16x16.png" loading="lazy" title="$8D:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="10" data-file="r91_8000_p10_16x16.png">
+    <img src="r91_8000_p10_16x16.png" loading="lazy" title="$91:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="11" data-file="r91_8000_p11_16x16.png">
+    <img src="r91_8000_p11_16x16.png" loading="lazy" title="$91:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="12" data-file="r91_8000_p12_16x16.png">
+    <img src="r91_8000_p12_16x16.png" loading="lazy" title="$91:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="13" data-file="r91_8000_p13_16x16.png">
+    <img src="r91_8000_p13_16x16.png" loading="lazy" title="$91:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="14" data-file="r91_8000_p14_16x16.png">
+    <img src="r91_8000_p14_16x16.png" loading="lazy" title="$91:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="15" data-file="r91_8000_p15_16x16.png">
+    <img src="r91_8000_p15_16x16.png" loading="lazy" title="$91:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="10" data-file="r93_8000_p10_16x16.png">
+    <img src="r93_8000_p10_16x16.png" loading="lazy" title="$93:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="11" data-file="r93_8000_p11_16x16.png">
+    <img src="r93_8000_p11_16x16.png" loading="lazy" title="$93:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="12" data-file="r93_8000_p12_16x16.png">
+    <img src="r93_8000_p12_16x16.png" loading="lazy" title="$93:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="13" data-file="r93_8000_p13_16x16.png">
+    <img src="r93_8000_p13_16x16.png" loading="lazy" title="$93:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="14" data-file="r93_8000_p14_16x16.png">
+    <img src="r93_8000_p14_16x16.png" loading="lazy" title="$93:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="15" data-file="r93_8000_p15_16x16.png">
+    <img src="r93_8000_p15_16x16.png" loading="lazy" title="$93:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="10" data-file="r94_8000_p10_16x16.png">
+    <img src="r94_8000_p10_16x16.png" loading="lazy" title="$94:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="11" data-file="r94_8000_p11_16x16.png">
+    <img src="r94_8000_p11_16x16.png" loading="lazy" title="$94:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="12" data-file="r94_8000_p12_16x16.png">
+    <img src="r94_8000_p12_16x16.png" loading="lazy" title="$94:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="13" data-file="r94_8000_p13_16x16.png">
+    <img src="r94_8000_p13_16x16.png" loading="lazy" title="$94:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="14" data-file="r94_8000_p14_16x16.png">
+    <img src="r94_8000_p14_16x16.png" loading="lazy" title="$94:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="15" data-file="r94_8000_p15_16x16.png">
+    <img src="r94_8000_p15_16x16.png" loading="lazy" title="$94:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="10" data-file="r9B_8000_p10_16x16.png">
+    <img src="r9B_8000_p10_16x16.png" loading="lazy" title="$9B:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 10 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="11" data-file="r9B_8000_p11_16x16.png">
+    <img src="r9B_8000_p11_16x16.png" loading="lazy" title="$9B:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 11 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="12" data-file="r9B_8000_p12_16x16.png">
+    <img src="r9B_8000_p12_16x16.png" loading="lazy" title="$9B:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 12 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="13" data-file="r9B_8000_p13_16x16.png">
+    <img src="r9B_8000_p13_16x16.png" loading="lazy" title="$9B:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 13 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="14" data-file="r9B_8000_p14_16x16.png">
+    <img src="r9B_8000_p14_16x16.png" loading="lazy" title="$9B:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 14 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="15" data-file="r9B_8000_p15_16x16.png">
+    <img src="r9B_8000_p15_16x16.png" loading="lazy" title="$9B:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 15 • 256 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="10" data-file="rA2_8000_p10_16x16.png">
+    <img src="rA2_8000_p10_16x16.png" loading="lazy" title="$A2:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 10 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="11" data-file="rA2_8000_p11_16x16.png">
+    <img src="rA2_8000_p11_16x16.png" loading="lazy" title="$A2:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 11 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="12" data-file="rA2_8000_p12_16x16.png">
+    <img src="rA2_8000_p12_16x16.png" loading="lazy" title="$A2:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 12 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="13" data-file="rA2_8000_p13_16x16.png">
+    <img src="rA2_8000_p13_16x16.png" loading="lazy" title="$A2:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 13 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="14" data-file="rA2_8000_p14_16x16.png">
+    <img src="rA2_8000_p14_16x16.png" loading="lazy" title="$A2:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 14 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="15" data-file="rA2_8000_p15_16x16.png">
+    <img src="rA2_8000_p15_16x16.png" loading="lazy" title="$A2:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 15 • 247 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="10" data-file="r9E_8000_p10_16x16.png">
+    <img src="r9E_8000_p10_16x16.png" loading="lazy" title="$9E:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 10 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="11" data-file="r9E_8000_p11_16x16.png">
+    <img src="r9E_8000_p11_16x16.png" loading="lazy" title="$9E:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 11 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="12" data-file="r9E_8000_p12_16x16.png">
+    <img src="r9E_8000_p12_16x16.png" loading="lazy" title="$9E:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 12 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="13" data-file="r9E_8000_p13_16x16.png">
+    <img src="r9E_8000_p13_16x16.png" loading="lazy" title="$9E:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 13 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="14" data-file="r9E_8000_p14_16x16.png">
+    <img src="r9E_8000_p14_16x16.png" loading="lazy" title="$9E:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 14 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="15" data-file="r9E_8000_p15_16x16.png">
+    <img src="r9E_8000_p15_16x16.png" loading="lazy" title="$9E:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 15 • 242 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="10" data-file="r81_8000_p10_16x16.png">
+    <img src="r81_8000_p10_16x16.png" loading="lazy" title="$81:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 10 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="11" data-file="r81_8000_p11_16x16.png">
+    <img src="r81_8000_p11_16x16.png" loading="lazy" title="$81:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 11 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="12" data-file="r81_8000_p12_16x16.png">
+    <img src="r81_8000_p12_16x16.png" loading="lazy" title="$81:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 12 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="13" data-file="r81_8000_p13_16x16.png">
+    <img src="r81_8000_p13_16x16.png" loading="lazy" title="$81:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 13 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="14" data-file="r81_8000_p14_16x16.png">
+    <img src="r81_8000_p14_16x16.png" loading="lazy" title="$81:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 14 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="15" data-file="r81_8000_p15_16x16.png">
+    <img src="r81_8000_p15_16x16.png" loading="lazy" title="$81:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 15 • 239 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="10" data-file="r90_8E20_p10_16x16.png">
+    <img src="r90_8E20_p10_16x16.png" loading="lazy" title="$90:8E20 Pal10">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 10 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="11" data-file="r90_8E20_p11_16x16.png">
+    <img src="r90_8E20_p11_16x16.png" loading="lazy" title="$90:8E20 Pal11">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 11 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="12" data-file="r90_8E20_p12_16x16.png">
+    <img src="r90_8E20_p12_16x16.png" loading="lazy" title="$90:8E20 Pal12">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 12 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="13" data-file="r90_8E20_p13_16x16.png">
+    <img src="r90_8E20_p13_16x16.png" loading="lazy" title="$90:8E20 Pal13">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 13 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="14" data-file="r90_8E20_p14_16x16.png">
+    <img src="r90_8E20_p14_16x16.png" loading="lazy" title="$90:8E20 Pal14">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 14 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="15" data-file="r90_8E20_p15_16x16.png">
+    <img src="r90_8E20_p15_16x16.png" loading="lazy" title="$90:8E20 Pal15">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 15 • 227 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="10" data-file="r8E_9AA0_p10_16x16.png">
+    <img src="r8E_9AA0_p10_16x16.png" loading="lazy" title="$8E:9AA0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 10 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="11" data-file="r8E_9AA0_p11_16x16.png">
+    <img src="r8E_9AA0_p11_16x16.png" loading="lazy" title="$8E:9AA0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 11 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="12" data-file="r8E_9AA0_p12_16x16.png">
+    <img src="r8E_9AA0_p12_16x16.png" loading="lazy" title="$8E:9AA0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 12 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="13" data-file="r8E_9AA0_p13_16x16.png">
+    <img src="r8E_9AA0_p13_16x16.png" loading="lazy" title="$8E:9AA0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 13 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="14" data-file="r8E_9AA0_p14_16x16.png">
+    <img src="r8E_9AA0_p14_16x16.png" loading="lazy" title="$8E:9AA0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 14 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="15" data-file="r8E_9AA0_p15_16x16.png">
+    <img src="r8E_9AA0_p15_16x16.png" loading="lazy" title="$8E:9AA0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 15 • 202 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="10" data-file="r8B_9F80_p10_16x16.png">
+    <img src="r8B_9F80_p10_16x16.png" loading="lazy" title="$8B:9F80 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 10 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="11" data-file="r8B_9F80_p11_16x16.png">
+    <img src="r8B_9F80_p11_16x16.png" loading="lazy" title="$8B:9F80 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 11 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="12" data-file="r8B_9F80_p12_16x16.png">
+    <img src="r8B_9F80_p12_16x16.png" loading="lazy" title="$8B:9F80 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 12 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="13" data-file="r8B_9F80_p13_16x16.png">
+    <img src="r8B_9F80_p13_16x16.png" loading="lazy" title="$8B:9F80 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 13 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="14" data-file="r8B_9F80_p14_16x16.png">
+    <img src="r8B_9F80_p14_16x16.png" loading="lazy" title="$8B:9F80 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 14 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="15" data-file="r8B_9F80_p15_16x16.png">
+    <img src="r8B_9F80_p15_16x16.png" loading="lazy" title="$8B:9F80 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 15 • 193 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="10" data-file="r8F_A060_p10_16x16.png">
+    <img src="r8F_A060_p10_16x16.png" loading="lazy" title="$8F:A060 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 10 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="11" data-file="r8F_A060_p11_16x16.png">
+    <img src="r8F_A060_p11_16x16.png" loading="lazy" title="$8F:A060 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 11 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="12" data-file="r8F_A060_p12_16x16.png">
+    <img src="r8F_A060_p12_16x16.png" loading="lazy" title="$8F:A060 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 12 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="13" data-file="r8F_A060_p13_16x16.png">
+    <img src="r8F_A060_p13_16x16.png" loading="lazy" title="$8F:A060 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 13 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="14" data-file="r8F_A060_p14_16x16.png">
+    <img src="r8F_A060_p14_16x16.png" loading="lazy" title="$8F:A060 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 14 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="15" data-file="r8F_A060_p15_16x16.png">
+    <img src="r8F_A060_p15_16x16.png" loading="lazy" title="$8F:A060 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 15 • 191 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="10" data-file="rA5_8000_p10_16x16.png">
+    <img src="rA5_8000_p10_16x16.png" loading="lazy" title="$A5:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 10 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="11" data-file="rA5_8000_p11_16x16.png">
+    <img src="rA5_8000_p11_16x16.png" loading="lazy" title="$A5:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 11 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="12" data-file="rA5_8000_p12_16x16.png">
+    <img src="rA5_8000_p12_16x16.png" loading="lazy" title="$A5:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 12 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="13" data-file="rA5_8000_p13_16x16.png">
+    <img src="rA5_8000_p13_16x16.png" loading="lazy" title="$A5:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 13 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="14" data-file="rA5_8000_p14_16x16.png">
+    <img src="rA5_8000_p14_16x16.png" loading="lazy" title="$A5:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 14 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="15" data-file="rA5_8000_p15_16x16.png">
+    <img src="rA5_8000_p15_16x16.png" loading="lazy" title="$A5:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 15 • 186 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="10" data-file="r95_8000_p10_16x16.png">
+    <img src="r95_8000_p10_16x16.png" loading="lazy" title="$95:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 10 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="11" data-file="r95_8000_p11_16x16.png">
+    <img src="r95_8000_p11_16x16.png" loading="lazy" title="$95:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 11 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="12" data-file="r95_8000_p12_16x16.png">
+    <img src="r95_8000_p12_16x16.png" loading="lazy" title="$95:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 12 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="13" data-file="r95_8000_p13_16x16.png">
+    <img src="r95_8000_p13_16x16.png" loading="lazy" title="$95:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 13 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="14" data-file="r95_8000_p14_16x16.png">
+    <img src="r95_8000_p14_16x16.png" loading="lazy" title="$95:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 14 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="15" data-file="r95_8000_p15_16x16.png">
+    <img src="r95_8000_p15_16x16.png" loading="lazy" title="$95:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 15 • 178 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="10" data-file="r96_8000_p10_16x16.png">
+    <img src="r96_8000_p10_16x16.png" loading="lazy" title="$96:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 10 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="11" data-file="r96_8000_p11_16x16.png">
+    <img src="r96_8000_p11_16x16.png" loading="lazy" title="$96:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 11 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="12" data-file="r96_8000_p12_16x16.png">
+    <img src="r96_8000_p12_16x16.png" loading="lazy" title="$96:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 12 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="13" data-file="r96_8000_p13_16x16.png">
+    <img src="r96_8000_p13_16x16.png" loading="lazy" title="$96:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 13 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="14" data-file="r96_8000_p14_16x16.png">
+    <img src="r96_8000_p14_16x16.png" loading="lazy" title="$96:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 14 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="15" data-file="r96_8000_p15_16x16.png">
+    <img src="r96_8000_p15_16x16.png" loading="lazy" title="$96:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 15 • 176 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="10" data-file="r97_8000_p10_16x16.png">
+    <img src="r97_8000_p10_16x16.png" loading="lazy" title="$97:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 10 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="11" data-file="r97_8000_p11_16x16.png">
+    <img src="r97_8000_p11_16x16.png" loading="lazy" title="$97:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 11 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="12" data-file="r97_8000_p12_16x16.png">
+    <img src="r97_8000_p12_16x16.png" loading="lazy" title="$97:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 12 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="13" data-file="r97_8000_p13_16x16.png">
+    <img src="r97_8000_p13_16x16.png" loading="lazy" title="$97:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 13 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="14" data-file="r97_8000_p14_16x16.png">
+    <img src="r97_8000_p14_16x16.png" loading="lazy" title="$97:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 14 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="15" data-file="r97_8000_p15_16x16.png">
+    <img src="r97_8000_p15_16x16.png" loading="lazy" title="$97:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 15 • 172 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="10" data-file="rBF_8000_p10_16x16.png">
+    <img src="rBF_8000_p10_16x16.png" loading="lazy" title="$BF:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 10 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="11" data-file="rBF_8000_p11_16x16.png">
+    <img src="rBF_8000_p11_16x16.png" loading="lazy" title="$BF:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 11 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="12" data-file="rBF_8000_p12_16x16.png">
+    <img src="rBF_8000_p12_16x16.png" loading="lazy" title="$BF:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 12 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="13" data-file="rBF_8000_p13_16x16.png">
+    <img src="rBF_8000_p13_16x16.png" loading="lazy" title="$BF:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 13 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="14" data-file="rBF_8000_p14_16x16.png">
+    <img src="rBF_8000_p14_16x16.png" loading="lazy" title="$BF:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 14 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="15" data-file="rBF_8000_p15_16x16.png">
+    <img src="rBF_8000_p15_16x16.png" loading="lazy" title="$BF:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 15 • 171 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="10" data-file="r80_8720_p10_16x16.png">
+    <img src="r80_8720_p10_16x16.png" loading="lazy" title="$80:8720 Pal10">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 10 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="11" data-file="r80_8720_p11_16x16.png">
+    <img src="r80_8720_p11_16x16.png" loading="lazy" title="$80:8720 Pal11">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 11 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="12" data-file="r80_8720_p12_16x16.png">
+    <img src="r80_8720_p12_16x16.png" loading="lazy" title="$80:8720 Pal12">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 12 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="13" data-file="r80_8720_p13_16x16.png">
+    <img src="r80_8720_p13_16x16.png" loading="lazy" title="$80:8720 Pal13">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 13 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="14" data-file="r80_8720_p14_16x16.png">
+    <img src="r80_8720_p14_16x16.png" loading="lazy" title="$80:8720 Pal14">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 14 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="15" data-file="r80_8720_p15_16x16.png">
+    <img src="r80_8720_p15_16x16.png" loading="lazy" title="$80:8720 Pal15">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 15 • 167 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="10" data-file="r8C_8000_p10_16x16.png">
+    <img src="r8C_8000_p10_16x16.png" loading="lazy" title="$8C:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 10 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="11" data-file="r8C_8000_p11_16x16.png">
+    <img src="r8C_8000_p11_16x16.png" loading="lazy" title="$8C:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 11 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="12" data-file="r8C_8000_p12_16x16.png">
+    <img src="r8C_8000_p12_16x16.png" loading="lazy" title="$8C:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 12 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="13" data-file="r8C_8000_p13_16x16.png">
+    <img src="r8C_8000_p13_16x16.png" loading="lazy" title="$8C:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 13 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="14" data-file="r8C_8000_p14_16x16.png">
+    <img src="r8C_8000_p14_16x16.png" loading="lazy" title="$8C:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 14 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8C:8000" data-pal="15" data-file="r8C_8000_p15_16x16.png">
+    <img src="r8C_8000_p15_16x16.png" loading="lazy" title="$8C:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8C:8000</div>
+      <div class="card-meta">Pal 15 • 161 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="10" data-file="r99_8000_p10_16x16.png">
+    <img src="r99_8000_p10_16x16.png" loading="lazy" title="$99:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 10 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="11" data-file="r99_8000_p11_16x16.png">
+    <img src="r99_8000_p11_16x16.png" loading="lazy" title="$99:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 11 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="12" data-file="r99_8000_p12_16x16.png">
+    <img src="r99_8000_p12_16x16.png" loading="lazy" title="$99:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 12 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="13" data-file="r99_8000_p13_16x16.png">
+    <img src="r99_8000_p13_16x16.png" loading="lazy" title="$99:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 13 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="14" data-file="r99_8000_p14_16x16.png">
+    <img src="r99_8000_p14_16x16.png" loading="lazy" title="$99:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 14 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$99:8000" data-pal="15" data-file="r99_8000_p15_16x16.png">
+    <img src="r99_8000_p15_16x16.png" loading="lazy" title="$99:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$99:8000</div>
+      <div class="card-meta">Pal 15 • 153 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="10" data-file="r9A_8000_p10_16x16.png">
+    <img src="r9A_8000_p10_16x16.png" loading="lazy" title="$9A:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 10 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="11" data-file="r9A_8000_p11_16x16.png">
+    <img src="r9A_8000_p11_16x16.png" loading="lazy" title="$9A:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 11 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="12" data-file="r9A_8000_p12_16x16.png">
+    <img src="r9A_8000_p12_16x16.png" loading="lazy" title="$9A:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 12 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="13" data-file="r9A_8000_p13_16x16.png">
+    <img src="r9A_8000_p13_16x16.png" loading="lazy" title="$9A:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 13 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="14" data-file="r9A_8000_p14_16x16.png">
+    <img src="r9A_8000_p14_16x16.png" loading="lazy" title="$9A:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 14 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9A:8000" data-pal="15" data-file="r9A_8000_p15_16x16.png">
+    <img src="r9A_8000_p15_16x16.png" loading="lazy" title="$9A:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9A:8000</div>
+      <div class="card-meta">Pal 15 • 150 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="10" data-file="r82_8000_p10_16x16.png">
+    <img src="r82_8000_p10_16x16.png" loading="lazy" title="$82:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 10 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="11" data-file="r82_8000_p11_16x16.png">
+    <img src="r82_8000_p11_16x16.png" loading="lazy" title="$82:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 11 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="12" data-file="r82_8000_p12_16x16.png">
+    <img src="r82_8000_p12_16x16.png" loading="lazy" title="$82:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 12 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="13" data-file="r82_8000_p13_16x16.png">
+    <img src="r82_8000_p13_16x16.png" loading="lazy" title="$82:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 13 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="14" data-file="r82_8000_p14_16x16.png">
+    <img src="r82_8000_p14_16x16.png" loading="lazy" title="$82:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 14 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:8000" data-pal="15" data-file="r82_8000_p15_16x16.png">
+    <img src="r82_8000_p15_16x16.png" loading="lazy" title="$82:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$82:8000</div>
+      <div class="card-meta">Pal 15 • 148 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="10" data-file="rBE_8CC0_p10_16x16.png">
+    <img src="rBE_8CC0_p10_16x16.png" loading="lazy" title="$BE:8CC0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 10 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="11" data-file="rBE_8CC0_p11_16x16.png">
+    <img src="rBE_8CC0_p11_16x16.png" loading="lazy" title="$BE:8CC0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 11 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="12" data-file="rBE_8CC0_p12_16x16.png">
+    <img src="rBE_8CC0_p12_16x16.png" loading="lazy" title="$BE:8CC0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 12 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="13" data-file="rBE_8CC0_p13_16x16.png">
+    <img src="rBE_8CC0_p13_16x16.png" loading="lazy" title="$BE:8CC0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 13 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="14" data-file="rBE_8CC0_p14_16x16.png">
+    <img src="rBE_8CC0_p14_16x16.png" loading="lazy" title="$BE:8CC0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 14 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:8CC0" data-pal="15" data-file="rBE_8CC0_p15_16x16.png">
+    <img src="rBE_8CC0_p15_16x16.png" loading="lazy" title="$BE:8CC0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BE:8CC0</div>
+      <div class="card-meta">Pal 15 • 137 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="10" data-file="r9D_C800_p10_16x16.png">
+    <img src="r9D_C800_p10_16x16.png" loading="lazy" title="$9D:C800 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 10 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="11" data-file="r9D_C800_p11_16x16.png">
+    <img src="r9D_C800_p11_16x16.png" loading="lazy" title="$9D:C800 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 11 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="12" data-file="r9D_C800_p12_16x16.png">
+    <img src="r9D_C800_p12_16x16.png" loading="lazy" title="$9D:C800 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 12 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="13" data-file="r9D_C800_p13_16x16.png">
+    <img src="r9D_C800_p13_16x16.png" loading="lazy" title="$9D:C800 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 13 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="14" data-file="r9D_C800_p14_16x16.png">
+    <img src="r9D_C800_p14_16x16.png" loading="lazy" title="$9D:C800 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 14 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9D:C800" data-pal="15" data-file="r9D_C800_p15_16x16.png">
+    <img src="r9D_C800_p15_16x16.png" loading="lazy" title="$9D:C800 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9D:C800</div>
+      <div class="card-meta">Pal 15 • 112 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="10" data-file="r8A_C8C0_p10_16x16.png">
+    <img src="r8A_C8C0_p10_16x16.png" loading="lazy" title="$8A:C8C0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 10 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="11" data-file="r8A_C8C0_p11_16x16.png">
+    <img src="r8A_C8C0_p11_16x16.png" loading="lazy" title="$8A:C8C0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 11 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="12" data-file="r8A_C8C0_p12_16x16.png">
+    <img src="r8A_C8C0_p12_16x16.png" loading="lazy" title="$8A:C8C0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 12 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="13" data-file="r8A_C8C0_p13_16x16.png">
+    <img src="r8A_C8C0_p13_16x16.png" loading="lazy" title="$8A:C8C0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 13 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="14" data-file="r8A_C8C0_p14_16x16.png">
+    <img src="r8A_C8C0_p14_16x16.png" loading="lazy" title="$8A:C8C0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 14 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:C8C0" data-pal="15" data-file="r8A_C8C0_p15_16x16.png">
+    <img src="r8A_C8C0_p15_16x16.png" loading="lazy" title="$8A:C8C0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8A:C8C0</div>
+      <div class="card-meta">Pal 15 • 110 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="10" data-file="r82_CA80_p10_16x16.png">
+    <img src="r82_CA80_p10_16x16.png" loading="lazy" title="$82:CA80 Pal10">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 10 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="11" data-file="r82_CA80_p11_16x16.png">
+    <img src="r82_CA80_p11_16x16.png" loading="lazy" title="$82:CA80 Pal11">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 11 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="12" data-file="r82_CA80_p12_16x16.png">
+    <img src="r82_CA80_p12_16x16.png" loading="lazy" title="$82:CA80 Pal12">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 12 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="13" data-file="r82_CA80_p13_16x16.png">
+    <img src="r82_CA80_p13_16x16.png" loading="lazy" title="$82:CA80 Pal13">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 13 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="14" data-file="r82_CA80_p14_16x16.png">
+    <img src="r82_CA80_p14_16x16.png" loading="lazy" title="$82:CA80 Pal14">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 14 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$82:CA80" data-pal="15" data-file="r82_CA80_p15_16x16.png">
+    <img src="r82_CA80_p15_16x16.png" loading="lazy" title="$82:CA80 Pal15">
+    <div class="card-info">
+      <div class="card-title">$82:CA80</div>
+      <div class="card-meta">Pal 15 • 107 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="10" data-file="r92_8000_p10_16x16.png">
+    <img src="r92_8000_p10_16x16.png" loading="lazy" title="$92:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 10 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="11" data-file="r92_8000_p11_16x16.png">
+    <img src="r92_8000_p11_16x16.png" loading="lazy" title="$92:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 11 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="12" data-file="r92_8000_p12_16x16.png">
+    <img src="r92_8000_p12_16x16.png" loading="lazy" title="$92:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 12 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="13" data-file="r92_8000_p13_16x16.png">
+    <img src="r92_8000_p13_16x16.png" loading="lazy" title="$92:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 13 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="14" data-file="r92_8000_p14_16x16.png">
+    <img src="r92_8000_p14_16x16.png" loading="lazy" title="$92:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 14 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$92:8000" data-pal="15" data-file="r92_8000_p15_16x16.png">
+    <img src="r92_8000_p15_16x16.png" loading="lazy" title="$92:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$92:8000</div>
+      <div class="card-meta">Pal 15 • 101 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="10" data-file="rA4_8000_p10_16x16.png">
+    <img src="rA4_8000_p10_16x16.png" loading="lazy" title="$A4:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 10 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="11" data-file="rA4_8000_p11_16x16.png">
+    <img src="rA4_8000_p11_16x16.png" loading="lazy" title="$A4:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 11 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="12" data-file="rA4_8000_p12_16x16.png">
+    <img src="rA4_8000_p12_16x16.png" loading="lazy" title="$A4:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 12 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="13" data-file="rA4_8000_p13_16x16.png">
+    <img src="rA4_8000_p13_16x16.png" loading="lazy" title="$A4:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 13 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="14" data-file="rA4_8000_p14_16x16.png">
+    <img src="rA4_8000_p14_16x16.png" loading="lazy" title="$A4:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 14 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A4:8000" data-pal="15" data-file="rA4_8000_p15_16x16.png">
+    <img src="rA4_8000_p15_16x16.png" loading="lazy" title="$A4:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A4:8000</div>
+      <div class="card-meta">Pal 15 • 98 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="10" data-file="rBA_9E00_p10_16x16.png">
+    <img src="rBA_9E00_p10_16x16.png" loading="lazy" title="$BA:9E00 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 10 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="11" data-file="rBA_9E00_p11_16x16.png">
+    <img src="rBA_9E00_p11_16x16.png" loading="lazy" title="$BA:9E00 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 11 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="12" data-file="rBA_9E00_p12_16x16.png">
+    <img src="rBA_9E00_p12_16x16.png" loading="lazy" title="$BA:9E00 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 12 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="13" data-file="rBA_9E00_p13_16x16.png">
+    <img src="rBA_9E00_p13_16x16.png" loading="lazy" title="$BA:9E00 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 13 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="14" data-file="rBA_9E00_p14_16x16.png">
+    <img src="rBA_9E00_p14_16x16.png" loading="lazy" title="$BA:9E00 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 14 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:9E00" data-pal="15" data-file="rBA_9E00_p15_16x16.png">
+    <img src="rBA_9E00_p15_16x16.png" loading="lazy" title="$BA:9E00 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BA:9E00</div>
+      <div class="card-meta">Pal 15 • 94 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="10" data-file="rA6_8000_p10_16x16.png">
+    <img src="rA6_8000_p10_16x16.png" loading="lazy" title="$A6:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 10 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="11" data-file="rA6_8000_p11_16x16.png">
+    <img src="rA6_8000_p11_16x16.png" loading="lazy" title="$A6:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 11 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="12" data-file="rA6_8000_p12_16x16.png">
+    <img src="rA6_8000_p12_16x16.png" loading="lazy" title="$A6:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 12 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="13" data-file="rA6_8000_p13_16x16.png">
+    <img src="rA6_8000_p13_16x16.png" loading="lazy" title="$A6:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 13 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="14" data-file="rA6_8000_p14_16x16.png">
+    <img src="rA6_8000_p14_16x16.png" loading="lazy" title="$A6:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 14 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:8000" data-pal="15" data-file="rA6_8000_p15_16x16.png">
+    <img src="rA6_8000_p15_16x16.png" loading="lazy" title="$A6:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A6:8000</div>
+      <div class="card-meta">Pal 15 • 93 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="10" data-file="rBE_D1C0_p10_16x16.png">
+    <img src="rBE_D1C0_p10_16x16.png" loading="lazy" title="$BE:D1C0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 10 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="11" data-file="rBE_D1C0_p11_16x16.png">
+    <img src="rBE_D1C0_p11_16x16.png" loading="lazy" title="$BE:D1C0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 11 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="12" data-file="rBE_D1C0_p12_16x16.png">
+    <img src="rBE_D1C0_p12_16x16.png" loading="lazy" title="$BE:D1C0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 12 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="13" data-file="rBE_D1C0_p13_16x16.png">
+    <img src="rBE_D1C0_p13_16x16.png" loading="lazy" title="$BE:D1C0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 13 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="14" data-file="rBE_D1C0_p14_16x16.png">
+    <img src="rBE_D1C0_p14_16x16.png" loading="lazy" title="$BE:D1C0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 14 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BE:D1C0" data-pal="15" data-file="rBE_D1C0_p15_16x16.png">
+    <img src="rBE_D1C0_p15_16x16.png" loading="lazy" title="$BE:D1C0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BE:D1C0</div>
+      <div class="card-meta">Pal 15 • 92 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="10" data-file="rB8_D8C0_p10_16x16.png">
+    <img src="rB8_D8C0_p10_16x16.png" loading="lazy" title="$B8:D8C0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 10 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="11" data-file="rB8_D8C0_p11_16x16.png">
+    <img src="rB8_D8C0_p11_16x16.png" loading="lazy" title="$B8:D8C0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 11 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="12" data-file="rB8_D8C0_p12_16x16.png">
+    <img src="rB8_D8C0_p12_16x16.png" loading="lazy" title="$B8:D8C0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 12 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="13" data-file="rB8_D8C0_p13_16x16.png">
+    <img src="rB8_D8C0_p13_16x16.png" loading="lazy" title="$B8:D8C0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 13 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="14" data-file="rB8_D8C0_p14_16x16.png">
+    <img src="rB8_D8C0_p14_16x16.png" loading="lazy" title="$B8:D8C0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 14 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B8:D8C0" data-pal="15" data-file="rB8_D8C0_p15_16x16.png">
+    <img src="rB8_D8C0_p15_16x16.png" loading="lazy" title="$B8:D8C0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$B8:D8C0</div>
+      <div class="card-meta">Pal 15 • 78 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="10" data-file="r8A_94C0_p10_16x16.png">
+    <img src="r8A_94C0_p10_16x16.png" loading="lazy" title="$8A:94C0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 10 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="11" data-file="r8A_94C0_p11_16x16.png">
+    <img src="r8A_94C0_p11_16x16.png" loading="lazy" title="$8A:94C0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 11 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="12" data-file="r8A_94C0_p12_16x16.png">
+    <img src="r8A_94C0_p12_16x16.png" loading="lazy" title="$8A:94C0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 12 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="13" data-file="r8A_94C0_p13_16x16.png">
+    <img src="r8A_94C0_p13_16x16.png" loading="lazy" title="$8A:94C0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 13 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="14" data-file="r8A_94C0_p14_16x16.png">
+    <img src="r8A_94C0_p14_16x16.png" loading="lazy" title="$8A:94C0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 14 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8A:94C0" data-pal="15" data-file="r8A_94C0_p15_16x16.png">
+    <img src="r8A_94C0_p15_16x16.png" loading="lazy" title="$8A:94C0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8A:94C0</div>
+      <div class="card-meta">Pal 15 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="10" data-file="rA6_D980_p10_16x16.png">
+    <img src="rA6_D980_p10_16x16.png" loading="lazy" title="$A6:D980 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 10 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="11" data-file="rA6_D980_p11_16x16.png">
+    <img src="rA6_D980_p11_16x16.png" loading="lazy" title="$A6:D980 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 11 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="12" data-file="rA6_D980_p12_16x16.png">
+    <img src="rA6_D980_p12_16x16.png" loading="lazy" title="$A6:D980 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 12 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="13" data-file="rA6_D980_p13_16x16.png">
+    <img src="rA6_D980_p13_16x16.png" loading="lazy" title="$A6:D980 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 13 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="14" data-file="rA6_D980_p14_16x16.png">
+    <img src="rA6_D980_p14_16x16.png" loading="lazy" title="$A6:D980 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 14 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A6:D980" data-pal="15" data-file="rA6_D980_p15_16x16.png">
+    <img src="rA6_D980_p15_16x16.png" loading="lazy" title="$A6:D980 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A6:D980</div>
+      <div class="card-meta">Pal 15 • 77 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="10" data-file="rAB_8000_p10_16x16.png">
+    <img src="rAB_8000_p10_16x16.png" loading="lazy" title="$AB:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 10 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="11" data-file="rAB_8000_p11_16x16.png">
+    <img src="rAB_8000_p11_16x16.png" loading="lazy" title="$AB:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 11 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="12" data-file="rAB_8000_p12_16x16.png">
+    <img src="rAB_8000_p12_16x16.png" loading="lazy" title="$AB:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 12 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="13" data-file="rAB_8000_p13_16x16.png">
+    <img src="rAB_8000_p13_16x16.png" loading="lazy" title="$AB:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 13 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="14" data-file="rAB_8000_p14_16x16.png">
+    <img src="rAB_8000_p14_16x16.png" loading="lazy" title="$AB:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 14 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AB:8000" data-pal="15" data-file="rAB_8000_p15_16x16.png">
+    <img src="rAB_8000_p15_16x16.png" loading="lazy" title="$AB:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$AB:8000</div>
+      <div class="card-meta">Pal 15 • 73 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="10" data-file="rAC_8000_p10_16x16.png">
+    <img src="rAC_8000_p10_16x16.png" loading="lazy" title="$AC:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 10 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="11" data-file="rAC_8000_p11_16x16.png">
+    <img src="rAC_8000_p11_16x16.png" loading="lazy" title="$AC:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 11 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="12" data-file="rAC_8000_p12_16x16.png">
+    <img src="rAC_8000_p12_16x16.png" loading="lazy" title="$AC:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 12 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="13" data-file="rAC_8000_p13_16x16.png">
+    <img src="rAC_8000_p13_16x16.png" loading="lazy" title="$AC:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 13 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="14" data-file="rAC_8000_p14_16x16.png">
+    <img src="rAC_8000_p14_16x16.png" loading="lazy" title="$AC:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 14 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AC:8000" data-pal="15" data-file="rAC_8000_p15_16x16.png">
+    <img src="rAC_8000_p15_16x16.png" loading="lazy" title="$AC:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$AC:8000</div>
+      <div class="card-meta">Pal 15 • 70 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="10" data-file="rB9_AF60_p10_16x16.png">
+    <img src="rB9_AF60_p10_16x16.png" loading="lazy" title="$B9:AF60 Pal10">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 10 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="11" data-file="rB9_AF60_p11_16x16.png">
+    <img src="rB9_AF60_p11_16x16.png" loading="lazy" title="$B9:AF60 Pal11">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 11 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="12" data-file="rB9_AF60_p12_16x16.png">
+    <img src="rB9_AF60_p12_16x16.png" loading="lazy" title="$B9:AF60 Pal12">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 12 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="13" data-file="rB9_AF60_p13_16x16.png">
+    <img src="rB9_AF60_p13_16x16.png" loading="lazy" title="$B9:AF60 Pal13">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 13 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="14" data-file="rB9_AF60_p14_16x16.png">
+    <img src="rB9_AF60_p14_16x16.png" loading="lazy" title="$B9:AF60 Pal14">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 14 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B9:AF60" data-pal="15" data-file="rB9_AF60_p15_16x16.png">
+    <img src="rB9_AF60_p15_16x16.png" loading="lazy" title="$B9:AF60 Pal15">
+    <div class="card-info">
+      <div class="card-title">$B9:AF60</div>
+      <div class="card-meta">Pal 15 • 69 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="10" data-file="rAE_BF00_p10_16x16.png">
+    <img src="rAE_BF00_p10_16x16.png" loading="lazy" title="$AE:BF00 Pal10">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 10 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="11" data-file="rAE_BF00_p11_16x16.png">
+    <img src="rAE_BF00_p11_16x16.png" loading="lazy" title="$AE:BF00 Pal11">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 11 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="12" data-file="rAE_BF00_p12_16x16.png">
+    <img src="rAE_BF00_p12_16x16.png" loading="lazy" title="$AE:BF00 Pal12">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 12 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="13" data-file="rAE_BF00_p13_16x16.png">
+    <img src="rAE_BF00_p13_16x16.png" loading="lazy" title="$AE:BF00 Pal13">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 13 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="14" data-file="rAE_BF00_p14_16x16.png">
+    <img src="rAE_BF00_p14_16x16.png" loading="lazy" title="$AE:BF00 Pal14">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 14 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AE:BF00" data-pal="15" data-file="rAE_BF00_p15_16x16.png">
+    <img src="rAE_BF00_p15_16x16.png" loading="lazy" title="$AE:BF00 Pal15">
+    <div class="card-info">
+      <div class="card-title">$AE:BF00</div>
+      <div class="card-meta">Pal 15 • 66 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="10" data-file="rAD_A100_p10_16x16.png">
+    <img src="rAD_A100_p10_16x16.png" loading="lazy" title="$AD:A100 Pal10">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="11" data-file="rAD_A100_p11_16x16.png">
+    <img src="rAD_A100_p11_16x16.png" loading="lazy" title="$AD:A100 Pal11">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="12" data-file="rAD_A100_p12_16x16.png">
+    <img src="rAD_A100_p12_16x16.png" loading="lazy" title="$AD:A100 Pal12">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="13" data-file="rAD_A100_p13_16x16.png">
+    <img src="rAD_A100_p13_16x16.png" loading="lazy" title="$AD:A100 Pal13">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="14" data-file="rAD_A100_p14_16x16.png">
+    <img src="rAD_A100_p14_16x16.png" loading="lazy" title="$AD:A100 Pal14">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AD:A100" data-pal="15" data-file="rAD_A100_p15_16x16.png">
+    <img src="rAD_A100_p15_16x16.png" loading="lazy" title="$AD:A100 Pal15">
+    <div class="card-info">
+      <div class="card-title">$AD:A100</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="10" data-file="r8F_8000_p10_16x16.png">
+    <img src="r8F_8000_p10_16x16.png" loading="lazy" title="$8F:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="11" data-file="r8F_8000_p11_16x16.png">
+    <img src="r8F_8000_p11_16x16.png" loading="lazy" title="$8F:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="12" data-file="r8F_8000_p12_16x16.png">
+    <img src="r8F_8000_p12_16x16.png" loading="lazy" title="$8F:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="13" data-file="r8F_8000_p13_16x16.png">
+    <img src="r8F_8000_p13_16x16.png" loading="lazy" title="$8F:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="14" data-file="r8F_8000_p14_16x16.png">
+    <img src="r8F_8000_p14_16x16.png" loading="lazy" title="$8F:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:8000" data-pal="15" data-file="r8F_8000_p15_16x16.png">
+    <img src="r8F_8000_p15_16x16.png" loading="lazy" title="$8F:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8F:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="10" data-file="r8B_8000_p10_16x16.png">
+    <img src="r8B_8000_p10_16x16.png" loading="lazy" title="$8B:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 10 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="11" data-file="r8B_8000_p11_16x16.png">
+    <img src="r8B_8000_p11_16x16.png" loading="lazy" title="$8B:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 11 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="12" data-file="r8B_8000_p12_16x16.png">
+    <img src="r8B_8000_p12_16x16.png" loading="lazy" title="$8B:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 12 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="13" data-file="r8B_8000_p13_16x16.png">
+    <img src="r8B_8000_p13_16x16.png" loading="lazy" title="$8B:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 13 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="14" data-file="r8B_8000_p14_16x16.png">
+    <img src="r8B_8000_p14_16x16.png" loading="lazy" title="$8B:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 14 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:8000" data-pal="15" data-file="r8B_8000_p15_16x16.png">
+    <img src="r8B_8000_p15_16x16.png" loading="lazy" title="$8B:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8B:8000</div>
+      <div class="card-meta">Pal 15 • 62 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="10" data-file="rAF_9D80_p10_16x16.png">
+    <img src="rAF_9D80_p10_16x16.png" loading="lazy" title="$AF:9D80 Pal10">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 10 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="11" data-file="rAF_9D80_p11_16x16.png">
+    <img src="rAF_9D80_p11_16x16.png" loading="lazy" title="$AF:9D80 Pal11">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 11 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="12" data-file="rAF_9D80_p12_16x16.png">
+    <img src="rAF_9D80_p12_16x16.png" loading="lazy" title="$AF:9D80 Pal12">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 12 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="13" data-file="rAF_9D80_p13_16x16.png">
+    <img src="rAF_9D80_p13_16x16.png" loading="lazy" title="$AF:9D80 Pal13">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 13 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="14" data-file="rAF_9D80_p14_16x16.png">
+    <img src="rAF_9D80_p14_16x16.png" loading="lazy" title="$AF:9D80 Pal14">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 14 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$AF:9D80" data-pal="15" data-file="rAF_9D80_p15_16x16.png">
+    <img src="rAF_9D80_p15_16x16.png" loading="lazy" title="$AF:9D80 Pal15">
+    <div class="card-info">
+      <div class="card-title">$AF:9D80</div>
+      <div class="card-meta">Pal 15 • 59 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="10" data-file="rBB_8000_p10_16x16.png">
+    <img src="rBB_8000_p10_16x16.png" loading="lazy" title="$BB:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 10 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="11" data-file="rBB_8000_p11_16x16.png">
+    <img src="rBB_8000_p11_16x16.png" loading="lazy" title="$BB:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 11 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="12" data-file="rBB_8000_p12_16x16.png">
+    <img src="rBB_8000_p12_16x16.png" loading="lazy" title="$BB:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 12 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="13" data-file="rBB_8000_p13_16x16.png">
+    <img src="rBB_8000_p13_16x16.png" loading="lazy" title="$BB:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 13 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="14" data-file="rBB_8000_p14_16x16.png">
+    <img src="rBB_8000_p14_16x16.png" loading="lazy" title="$BB:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 14 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:8000" data-pal="15" data-file="rBB_8000_p15_16x16.png">
+    <img src="rBB_8000_p15_16x16.png" loading="lazy" title="$BB:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BB:8000</div>
+      <div class="card-meta">Pal 15 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="10" data-file="rBB_D640_p10_16x16.png">
+    <img src="rBB_D640_p10_16x16.png" loading="lazy" title="$BB:D640 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 10 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="11" data-file="rBB_D640_p11_16x16.png">
+    <img src="rBB_D640_p11_16x16.png" loading="lazy" title="$BB:D640 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 11 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="12" data-file="rBB_D640_p12_16x16.png">
+    <img src="rBB_D640_p12_16x16.png" loading="lazy" title="$BB:D640 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 12 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="13" data-file="rBB_D640_p13_16x16.png">
+    <img src="rBB_D640_p13_16x16.png" loading="lazy" title="$BB:D640 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 13 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="14" data-file="rBB_D640_p14_16x16.png">
+    <img src="rBB_D640_p14_16x16.png" loading="lazy" title="$BB:D640 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 14 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BB:D640" data-pal="15" data-file="rBB_D640_p15_16x16.png">
+    <img src="rBB_D640_p15_16x16.png" loading="lazy" title="$BB:D640 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BB:D640</div>
+      <div class="card-meta">Pal 15 • 55 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="10" data-file="rB2_9B00_p10_16x16.png">
+    <img src="rB2_9B00_p10_16x16.png" loading="lazy" title="$B2:9B00 Pal10">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 10 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="11" data-file="rB2_9B00_p11_16x16.png">
+    <img src="rB2_9B00_p11_16x16.png" loading="lazy" title="$B2:9B00 Pal11">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 11 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="12" data-file="rB2_9B00_p12_16x16.png">
+    <img src="rB2_9B00_p12_16x16.png" loading="lazy" title="$B2:9B00 Pal12">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 12 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="13" data-file="rB2_9B00_p13_16x16.png">
+    <img src="rB2_9B00_p13_16x16.png" loading="lazy" title="$B2:9B00 Pal13">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 13 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="14" data-file="rB2_9B00_p14_16x16.png">
+    <img src="rB2_9B00_p14_16x16.png" loading="lazy" title="$B2:9B00 Pal14">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 14 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B2:9B00" data-pal="15" data-file="rB2_9B00_p15_16x16.png">
+    <img src="rB2_9B00_p15_16x16.png" loading="lazy" title="$B2:9B00 Pal15">
+    <div class="card-info">
+      <div class="card-title">$B2:9B00</div>
+      <div class="card-meta">Pal 15 • 54 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="10" data-file="r8E_80C0_p10_16x16.png">
+    <img src="r8E_80C0_p10_16x16.png" loading="lazy" title="$8E:80C0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 10 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="11" data-file="r8E_80C0_p11_16x16.png">
+    <img src="r8E_80C0_p11_16x16.png" loading="lazy" title="$8E:80C0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 11 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="12" data-file="r8E_80C0_p12_16x16.png">
+    <img src="r8E_80C0_p12_16x16.png" loading="lazy" title="$8E:80C0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 12 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="13" data-file="r8E_80C0_p13_16x16.png">
+    <img src="r8E_80C0_p13_16x16.png" loading="lazy" title="$8E:80C0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 13 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="14" data-file="r8E_80C0_p14_16x16.png">
+    <img src="r8E_80C0_p14_16x16.png" loading="lazy" title="$8E:80C0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 14 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:80C0" data-pal="15" data-file="r8E_80C0_p15_16x16.png">
+    <img src="r8E_80C0_p15_16x16.png" loading="lazy" title="$8E:80C0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8E:80C0</div>
+      <div class="card-meta">Pal 15 • 50 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="10" data-file="rBA_E740_p10_16x16.png">
+    <img src="rBA_E740_p10_16x16.png" loading="lazy" title="$BA:E740 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 10 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="11" data-file="rBA_E740_p11_16x16.png">
+    <img src="rBA_E740_p11_16x16.png" loading="lazy" title="$BA:E740 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 11 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="12" data-file="rBA_E740_p12_16x16.png">
+    <img src="rBA_E740_p12_16x16.png" loading="lazy" title="$BA:E740 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 12 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="13" data-file="rBA_E740_p13_16x16.png">
+    <img src="rBA_E740_p13_16x16.png" loading="lazy" title="$BA:E740 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 13 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="14" data-file="rBA_E740_p14_16x16.png">
+    <img src="rBA_E740_p14_16x16.png" loading="lazy" title="$BA:E740 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 14 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BA:E740" data-pal="15" data-file="rBA_E740_p15_16x16.png">
+    <img src="rBA_E740_p15_16x16.png" loading="lazy" title="$BA:E740 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BA:E740</div>
+      <div class="card-meta">Pal 15 • 49 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="10" data-file="rB7_C100_p10_16x16.png">
+    <img src="rB7_C100_p10_16x16.png" loading="lazy" title="$B7:C100 Pal10">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 10 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="11" data-file="rB7_C100_p11_16x16.png">
+    <img src="rB7_C100_p11_16x16.png" loading="lazy" title="$B7:C100 Pal11">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 11 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="12" data-file="rB7_C100_p12_16x16.png">
+    <img src="rB7_C100_p12_16x16.png" loading="lazy" title="$B7:C100 Pal12">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 12 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="13" data-file="rB7_C100_p13_16x16.png">
+    <img src="rB7_C100_p13_16x16.png" loading="lazy" title="$B7:C100 Pal13">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 13 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="14" data-file="rB7_C100_p14_16x16.png">
+    <img src="rB7_C100_p14_16x16.png" loading="lazy" title="$B7:C100 Pal14">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 14 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$B7:C100" data-pal="15" data-file="rB7_C100_p15_16x16.png">
+    <img src="rB7_C100_p15_16x16.png" loading="lazy" title="$B7:C100 Pal15">
+    <div class="card-info">
+      <div class="card-title">$B7:C100</div>
+      <div class="card-meta">Pal 15 • 45 sprites <span class="badge">16×16</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="10" data-file="r83_8000_p10_32x32.png">
+    <img src="r83_8000_p10_32x32.png" loading="lazy" title="$83:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="11" data-file="r83_8000_p11_32x32.png">
+    <img src="r83_8000_p11_32x32.png" loading="lazy" title="$83:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="12" data-file="r83_8000_p12_32x32.png">
+    <img src="r83_8000_p12_32x32.png" loading="lazy" title="$83:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="13" data-file="r83_8000_p13_32x32.png">
+    <img src="r83_8000_p13_32x32.png" loading="lazy" title="$83:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="14" data-file="r83_8000_p14_32x32.png">
+    <img src="r83_8000_p14_32x32.png" loading="lazy" title="$83:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$83:8000" data-pal="15" data-file="r83_8000_p15_32x32.png">
+    <img src="r83_8000_p15_32x32.png" loading="lazy" title="$83:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$83:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="10" data-file="r84_8000_p10_32x32.png">
+    <img src="r84_8000_p10_32x32.png" loading="lazy" title="$84:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="11" data-file="r84_8000_p11_32x32.png">
+    <img src="r84_8000_p11_32x32.png" loading="lazy" title="$84:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="12" data-file="r84_8000_p12_32x32.png">
+    <img src="r84_8000_p12_32x32.png" loading="lazy" title="$84:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="13" data-file="r84_8000_p13_32x32.png">
+    <img src="r84_8000_p13_32x32.png" loading="lazy" title="$84:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="14" data-file="r84_8000_p14_32x32.png">
+    <img src="r84_8000_p14_32x32.png" loading="lazy" title="$84:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$84:8000" data-pal="15" data-file="r84_8000_p15_32x32.png">
+    <img src="r84_8000_p15_32x32.png" loading="lazy" title="$84:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$84:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="10" data-file="r8D_8000_p10_32x32.png">
+    <img src="r8D_8000_p10_32x32.png" loading="lazy" title="$8D:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="11" data-file="r8D_8000_p11_32x32.png">
+    <img src="r8D_8000_p11_32x32.png" loading="lazy" title="$8D:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="12" data-file="r8D_8000_p12_32x32.png">
+    <img src="r8D_8000_p12_32x32.png" loading="lazy" title="$8D:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="13" data-file="r8D_8000_p13_32x32.png">
+    <img src="r8D_8000_p13_32x32.png" loading="lazy" title="$8D:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="14" data-file="r8D_8000_p14_32x32.png">
+    <img src="r8D_8000_p14_32x32.png" loading="lazy" title="$8D:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8D:8000" data-pal="15" data-file="r8D_8000_p15_32x32.png">
+    <img src="r8D_8000_p15_32x32.png" loading="lazy" title="$8D:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8D:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="10" data-file="r91_8000_p10_32x32.png">
+    <img src="r91_8000_p10_32x32.png" loading="lazy" title="$91:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="11" data-file="r91_8000_p11_32x32.png">
+    <img src="r91_8000_p11_32x32.png" loading="lazy" title="$91:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="12" data-file="r91_8000_p12_32x32.png">
+    <img src="r91_8000_p12_32x32.png" loading="lazy" title="$91:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="13" data-file="r91_8000_p13_32x32.png">
+    <img src="r91_8000_p13_32x32.png" loading="lazy" title="$91:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="14" data-file="r91_8000_p14_32x32.png">
+    <img src="r91_8000_p14_32x32.png" loading="lazy" title="$91:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$91:8000" data-pal="15" data-file="r91_8000_p15_32x32.png">
+    <img src="r91_8000_p15_32x32.png" loading="lazy" title="$91:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$91:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="10" data-file="r93_8000_p10_32x32.png">
+    <img src="r93_8000_p10_32x32.png" loading="lazy" title="$93:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="11" data-file="r93_8000_p11_32x32.png">
+    <img src="r93_8000_p11_32x32.png" loading="lazy" title="$93:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="12" data-file="r93_8000_p12_32x32.png">
+    <img src="r93_8000_p12_32x32.png" loading="lazy" title="$93:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="13" data-file="r93_8000_p13_32x32.png">
+    <img src="r93_8000_p13_32x32.png" loading="lazy" title="$93:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="14" data-file="r93_8000_p14_32x32.png">
+    <img src="r93_8000_p14_32x32.png" loading="lazy" title="$93:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$93:8000" data-pal="15" data-file="r93_8000_p15_32x32.png">
+    <img src="r93_8000_p15_32x32.png" loading="lazy" title="$93:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$93:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="10" data-file="r94_8000_p10_32x32.png">
+    <img src="r94_8000_p10_32x32.png" loading="lazy" title="$94:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="11" data-file="r94_8000_p11_32x32.png">
+    <img src="r94_8000_p11_32x32.png" loading="lazy" title="$94:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="12" data-file="r94_8000_p12_32x32.png">
+    <img src="r94_8000_p12_32x32.png" loading="lazy" title="$94:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="13" data-file="r94_8000_p13_32x32.png">
+    <img src="r94_8000_p13_32x32.png" loading="lazy" title="$94:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="14" data-file="r94_8000_p14_32x32.png">
+    <img src="r94_8000_p14_32x32.png" loading="lazy" title="$94:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$94:8000" data-pal="15" data-file="r94_8000_p15_32x32.png">
+    <img src="r94_8000_p15_32x32.png" loading="lazy" title="$94:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$94:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="10" data-file="r9B_8000_p10_32x32.png">
+    <img src="r9B_8000_p10_32x32.png" loading="lazy" title="$9B:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 10 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="11" data-file="r9B_8000_p11_32x32.png">
+    <img src="r9B_8000_p11_32x32.png" loading="lazy" title="$9B:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 11 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="12" data-file="r9B_8000_p12_32x32.png">
+    <img src="r9B_8000_p12_32x32.png" loading="lazy" title="$9B:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 12 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="13" data-file="r9B_8000_p13_32x32.png">
+    <img src="r9B_8000_p13_32x32.png" loading="lazy" title="$9B:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 13 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="14" data-file="r9B_8000_p14_32x32.png">
+    <img src="r9B_8000_p14_32x32.png" loading="lazy" title="$9B:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 14 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9B:8000" data-pal="15" data-file="r9B_8000_p15_32x32.png">
+    <img src="r9B_8000_p15_32x32.png" loading="lazy" title="$9B:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9B:8000</div>
+      <div class="card-meta">Pal 15 • 64 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="10" data-file="rA2_8000_p10_32x32.png">
+    <img src="rA2_8000_p10_32x32.png" loading="lazy" title="$A2:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 10 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="11" data-file="rA2_8000_p11_32x32.png">
+    <img src="rA2_8000_p11_32x32.png" loading="lazy" title="$A2:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 11 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="12" data-file="rA2_8000_p12_32x32.png">
+    <img src="rA2_8000_p12_32x32.png" loading="lazy" title="$A2:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 12 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="13" data-file="rA2_8000_p13_32x32.png">
+    <img src="rA2_8000_p13_32x32.png" loading="lazy" title="$A2:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 13 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="14" data-file="rA2_8000_p14_32x32.png">
+    <img src="rA2_8000_p14_32x32.png" loading="lazy" title="$A2:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 14 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A2:8000" data-pal="15" data-file="rA2_8000_p15_32x32.png">
+    <img src="rA2_8000_p15_32x32.png" loading="lazy" title="$A2:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A2:8000</div>
+      <div class="card-meta">Pal 15 • 61 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="10" data-file="r9E_8000_p10_32x32.png">
+    <img src="r9E_8000_p10_32x32.png" loading="lazy" title="$9E:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 10 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="11" data-file="r9E_8000_p11_32x32.png">
+    <img src="r9E_8000_p11_32x32.png" loading="lazy" title="$9E:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 11 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="12" data-file="r9E_8000_p12_32x32.png">
+    <img src="r9E_8000_p12_32x32.png" loading="lazy" title="$9E:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 12 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="13" data-file="r9E_8000_p13_32x32.png">
+    <img src="r9E_8000_p13_32x32.png" loading="lazy" title="$9E:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 13 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="14" data-file="r9E_8000_p14_32x32.png">
+    <img src="r9E_8000_p14_32x32.png" loading="lazy" title="$9E:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 14 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$9E:8000" data-pal="15" data-file="r9E_8000_p15_32x32.png">
+    <img src="r9E_8000_p15_32x32.png" loading="lazy" title="$9E:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$9E:8000</div>
+      <div class="card-meta">Pal 15 • 60 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="10" data-file="r81_8000_p10_32x32.png">
+    <img src="r81_8000_p10_32x32.png" loading="lazy" title="$81:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 10 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="11" data-file="r81_8000_p11_32x32.png">
+    <img src="r81_8000_p11_32x32.png" loading="lazy" title="$81:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 11 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="12" data-file="r81_8000_p12_32x32.png">
+    <img src="r81_8000_p12_32x32.png" loading="lazy" title="$81:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 12 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="13" data-file="r81_8000_p13_32x32.png">
+    <img src="r81_8000_p13_32x32.png" loading="lazy" title="$81:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 13 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="14" data-file="r81_8000_p14_32x32.png">
+    <img src="r81_8000_p14_32x32.png" loading="lazy" title="$81:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 14 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$81:8000" data-pal="15" data-file="r81_8000_p15_32x32.png">
+    <img src="r81_8000_p15_32x32.png" loading="lazy" title="$81:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$81:8000</div>
+      <div class="card-meta">Pal 15 • 59 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="10" data-file="r90_8E20_p10_32x32.png">
+    <img src="r90_8E20_p10_32x32.png" loading="lazy" title="$90:8E20 Pal10">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 10 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="11" data-file="r90_8E20_p11_32x32.png">
+    <img src="r90_8E20_p11_32x32.png" loading="lazy" title="$90:8E20 Pal11">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 11 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="12" data-file="r90_8E20_p12_32x32.png">
+    <img src="r90_8E20_p12_32x32.png" loading="lazy" title="$90:8E20 Pal12">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 12 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="13" data-file="r90_8E20_p13_32x32.png">
+    <img src="r90_8E20_p13_32x32.png" loading="lazy" title="$90:8E20 Pal13">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 13 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="14" data-file="r90_8E20_p14_32x32.png">
+    <img src="r90_8E20_p14_32x32.png" loading="lazy" title="$90:8E20 Pal14">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 14 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$90:8E20" data-pal="15" data-file="r90_8E20_p15_32x32.png">
+    <img src="r90_8E20_p15_32x32.png" loading="lazy" title="$90:8E20 Pal15">
+    <div class="card-info">
+      <div class="card-title">$90:8E20</div>
+      <div class="card-meta">Pal 15 • 56 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="10" data-file="r8E_9AA0_p10_32x32.png">
+    <img src="r8E_9AA0_p10_32x32.png" loading="lazy" title="$8E:9AA0 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 10 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="11" data-file="r8E_9AA0_p11_32x32.png">
+    <img src="r8E_9AA0_p11_32x32.png" loading="lazy" title="$8E:9AA0 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 11 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="12" data-file="r8E_9AA0_p12_32x32.png">
+    <img src="r8E_9AA0_p12_32x32.png" loading="lazy" title="$8E:9AA0 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 12 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="13" data-file="r8E_9AA0_p13_32x32.png">
+    <img src="r8E_9AA0_p13_32x32.png" loading="lazy" title="$8E:9AA0 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 13 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="14" data-file="r8E_9AA0_p14_32x32.png">
+    <img src="r8E_9AA0_p14_32x32.png" loading="lazy" title="$8E:9AA0 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 14 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8E:9AA0" data-pal="15" data-file="r8E_9AA0_p15_32x32.png">
+    <img src="r8E_9AA0_p15_32x32.png" loading="lazy" title="$8E:9AA0 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8E:9AA0</div>
+      <div class="card-meta">Pal 15 • 50 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="10" data-file="r8B_9F80_p10_32x32.png">
+    <img src="r8B_9F80_p10_32x32.png" loading="lazy" title="$8B:9F80 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 10 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="11" data-file="r8B_9F80_p11_32x32.png">
+    <img src="r8B_9F80_p11_32x32.png" loading="lazy" title="$8B:9F80 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 11 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="12" data-file="r8B_9F80_p12_32x32.png">
+    <img src="r8B_9F80_p12_32x32.png" loading="lazy" title="$8B:9F80 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 12 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="13" data-file="r8B_9F80_p13_32x32.png">
+    <img src="r8B_9F80_p13_32x32.png" loading="lazy" title="$8B:9F80 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 13 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="14" data-file="r8B_9F80_p14_32x32.png">
+    <img src="r8B_9F80_p14_32x32.png" loading="lazy" title="$8B:9F80 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 14 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8B:9F80" data-pal="15" data-file="r8B_9F80_p15_32x32.png">
+    <img src="r8B_9F80_p15_32x32.png" loading="lazy" title="$8B:9F80 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8B:9F80</div>
+      <div class="card-meta">Pal 15 • 48 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="10" data-file="r8F_A060_p10_32x32.png">
+    <img src="r8F_A060_p10_32x32.png" loading="lazy" title="$8F:A060 Pal10">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 10 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="11" data-file="r8F_A060_p11_32x32.png">
+    <img src="r8F_A060_p11_32x32.png" loading="lazy" title="$8F:A060 Pal11">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 11 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="12" data-file="r8F_A060_p12_32x32.png">
+    <img src="r8F_A060_p12_32x32.png" loading="lazy" title="$8F:A060 Pal12">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 12 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="13" data-file="r8F_A060_p13_32x32.png">
+    <img src="r8F_A060_p13_32x32.png" loading="lazy" title="$8F:A060 Pal13">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 13 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="14" data-file="r8F_A060_p14_32x32.png">
+    <img src="r8F_A060_p14_32x32.png" loading="lazy" title="$8F:A060 Pal14">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 14 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$8F:A060" data-pal="15" data-file="r8F_A060_p15_32x32.png">
+    <img src="r8F_A060_p15_32x32.png" loading="lazy" title="$8F:A060 Pal15">
+    <div class="card-info">
+      <div class="card-title">$8F:A060</div>
+      <div class="card-meta">Pal 15 • 47 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="10" data-file="rA5_8000_p10_32x32.png">
+    <img src="rA5_8000_p10_32x32.png" loading="lazy" title="$A5:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 10 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="11" data-file="rA5_8000_p11_32x32.png">
+    <img src="rA5_8000_p11_32x32.png" loading="lazy" title="$A5:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 11 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="12" data-file="rA5_8000_p12_32x32.png">
+    <img src="rA5_8000_p12_32x32.png" loading="lazy" title="$A5:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 12 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="13" data-file="rA5_8000_p13_32x32.png">
+    <img src="rA5_8000_p13_32x32.png" loading="lazy" title="$A5:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 13 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="14" data-file="rA5_8000_p14_32x32.png">
+    <img src="rA5_8000_p14_32x32.png" loading="lazy" title="$A5:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 14 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$A5:8000" data-pal="15" data-file="rA5_8000_p15_32x32.png">
+    <img src="rA5_8000_p15_32x32.png" loading="lazy" title="$A5:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$A5:8000</div>
+      <div class="card-meta">Pal 15 • 46 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="10" data-file="r95_8000_p10_32x32.png">
+    <img src="r95_8000_p10_32x32.png" loading="lazy" title="$95:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 10 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="11" data-file="r95_8000_p11_32x32.png">
+    <img src="r95_8000_p11_32x32.png" loading="lazy" title="$95:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 11 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="12" data-file="r95_8000_p12_32x32.png">
+    <img src="r95_8000_p12_32x32.png" loading="lazy" title="$95:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 12 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="13" data-file="r95_8000_p13_32x32.png">
+    <img src="r95_8000_p13_32x32.png" loading="lazy" title="$95:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 13 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="14" data-file="r95_8000_p14_32x32.png">
+    <img src="r95_8000_p14_32x32.png" loading="lazy" title="$95:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 14 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$95:8000" data-pal="15" data-file="r95_8000_p15_32x32.png">
+    <img src="r95_8000_p15_32x32.png" loading="lazy" title="$95:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$95:8000</div>
+      <div class="card-meta">Pal 15 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="10" data-file="r96_8000_p10_32x32.png">
+    <img src="r96_8000_p10_32x32.png" loading="lazy" title="$96:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 10 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="11" data-file="r96_8000_p11_32x32.png">
+    <img src="r96_8000_p11_32x32.png" loading="lazy" title="$96:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 11 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="12" data-file="r96_8000_p12_32x32.png">
+    <img src="r96_8000_p12_32x32.png" loading="lazy" title="$96:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 12 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="13" data-file="r96_8000_p13_32x32.png">
+    <img src="r96_8000_p13_32x32.png" loading="lazy" title="$96:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 13 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="14" data-file="r96_8000_p14_32x32.png">
+    <img src="r96_8000_p14_32x32.png" loading="lazy" title="$96:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 14 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$96:8000" data-pal="15" data-file="r96_8000_p15_32x32.png">
+    <img src="r96_8000_p15_32x32.png" loading="lazy" title="$96:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$96:8000</div>
+      <div class="card-meta">Pal 15 • 44 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="10" data-file="r97_8000_p10_32x32.png">
+    <img src="r97_8000_p10_32x32.png" loading="lazy" title="$97:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 10 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="11" data-file="r97_8000_p11_32x32.png">
+    <img src="r97_8000_p11_32x32.png" loading="lazy" title="$97:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 11 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="12" data-file="r97_8000_p12_32x32.png">
+    <img src="r97_8000_p12_32x32.png" loading="lazy" title="$97:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 12 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="13" data-file="r97_8000_p13_32x32.png">
+    <img src="r97_8000_p13_32x32.png" loading="lazy" title="$97:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 13 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="14" data-file="r97_8000_p14_32x32.png">
+    <img src="r97_8000_p14_32x32.png" loading="lazy" title="$97:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 14 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$97:8000" data-pal="15" data-file="r97_8000_p15_32x32.png">
+    <img src="r97_8000_p15_32x32.png" loading="lazy" title="$97:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$97:8000</div>
+      <div class="card-meta">Pal 15 • 43 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="10" data-file="rBF_8000_p10_32x32.png">
+    <img src="rBF_8000_p10_32x32.png" loading="lazy" title="$BF:8000 Pal10">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 10 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="11" data-file="rBF_8000_p11_32x32.png">
+    <img src="rBF_8000_p11_32x32.png" loading="lazy" title="$BF:8000 Pal11">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 11 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="12" data-file="rBF_8000_p12_32x32.png">
+    <img src="rBF_8000_p12_32x32.png" loading="lazy" title="$BF:8000 Pal12">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 12 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="13" data-file="rBF_8000_p13_32x32.png">
+    <img src="rBF_8000_p13_32x32.png" loading="lazy" title="$BF:8000 Pal13">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 13 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="14" data-file="rBF_8000_p14_32x32.png">
+    <img src="rBF_8000_p14_32x32.png" loading="lazy" title="$BF:8000 Pal14">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 14 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$BF:8000" data-pal="15" data-file="rBF_8000_p15_32x32.png">
+    <img src="rBF_8000_p15_32x32.png" loading="lazy" title="$BF:8000 Pal15">
+    <div class="card-info">
+      <div class="card-title">$BF:8000</div>
+      <div class="card-meta">Pal 15 • 42 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="10" data-file="r80_8720_p10_32x32.png">
+    <img src="r80_8720_p10_32x32.png" loading="lazy" title="$80:8720 Pal10">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 10 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="11" data-file="r80_8720_p11_32x32.png">
+    <img src="r80_8720_p11_32x32.png" loading="lazy" title="$80:8720 Pal11">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 11 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="12" data-file="r80_8720_p12_32x32.png">
+    <img src="r80_8720_p12_32x32.png" loading="lazy" title="$80:8720 Pal12">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 12 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="13" data-file="r80_8720_p13_32x32.png">
+    <img src="r80_8720_p13_32x32.png" loading="lazy" title="$80:8720 Pal13">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 13 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="14" data-file="r80_8720_p14_32x32.png">
+    <img src="r80_8720_p14_32x32.png" loading="lazy" title="$80:8720 Pal14">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 14 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+  <div class="card" data-region="$80:8720" data-pal="15" data-file="r80_8720_p15_32x32.png">
+    <img src="r80_8720_p15_32x32.png" loading="lazy" title="$80:8720 Pal15">
+    <div class="card-info">
+      <div class="card-title">$80:8720</div>
+      <div class="card-meta">Pal 15 • 41 sprites <span class="badge">32×32</span></div>
+    </div>
+  </div>
+</div>
+<script>
+function filter() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const pal = document.getElementById('pal-filter').value;
+  const sz = document.getElementById('size-filter').value;
+  document.querySelectorAll('.card').forEach(c => {
+    const reg = c.dataset.region.toLowerCase();
+    const p = c.dataset.pal;
+    const f = c.dataset.file;
+    const show = (!search || reg.includes(search)) && (!pal || p === pal) && (!sz || f.includes(sz));
+    c.style.display = show ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

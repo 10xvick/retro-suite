@@ -1,0 +1,54 @@
+name: Deploy to GitHub Pages via Portfolio Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SNES Emulator
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+
+      - name: Build project
+        run: npm run build
+
+      - name: Checkout Portfolio Repo
+        uses: actions/checkout@v4
+        with:
+          repository: '10xvick/10xvick.github.io'
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          path: 'portfolio'
+
+      - name: Deploy built files to Portfolio
+        run: |
+          mkdir -p portfolio/emulator/snes
+          # Clean up old files in emulator/snes
+          rm -rf portfolio/emulator/snes/*
+          # Copy new build files
+          cp -r dist/* portfolio/emulator/snes/
+          
+      - name: Commit and Push to Portfolio Repo
+        run: |
+          cd portfolio
+          git config user.name "vishal singh"
+          git config user.email "singh.vishal@hclsoftware.com"
+          git add emulator/snes
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy SNES Emulator to emulator/snes"
+            git push origin main
+          fi
