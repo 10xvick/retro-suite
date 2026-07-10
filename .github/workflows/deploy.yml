@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: '10xvick/10xvick.github.io'
-          token: ${{ secrets.DEPLOY_TOKEN }}
+          token: ${{ secrets.DEPLOY_SECRET }}
           path: 'portfolio'
 
       - name: Deploy built files to Portfolio
