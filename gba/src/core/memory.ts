@@ -711,6 +711,7 @@ export class Memory {
         }
         val &= this.getSiocntMask(val);
       } else if (off === 0x134) {
+        const mode = (this.ioView.getUint16(0x128, true) >>> 12) & 3;
         if (mode !== 3) {
           val &= 0xC000;
         } else {
