@@ -1,1 +1,6 @@
 node_modules/
+
+# Test ROMs
+gb/public/gb-test-roms/
+snes/public/snes-test-roms/
+
