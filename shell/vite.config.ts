@@ -73,7 +73,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'gba-core': path.resolve(__dirname, '../gba/src/index.ts')
+      'snes-core': path.resolve(__dirname, '../snes/src/index.ts'),
+      'nes-core': path.resolve(__dirname, '../nes/src/index.ts'),
+      'gb-core': path.resolve(__dirname, '../gb/src/index.ts'),
+      'gba-core': path.resolve(__dirname, '../gba/src/index.ts'),
     }
   },
   build: {

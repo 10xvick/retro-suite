@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages via Portfolio Repo
+name: Deploy Retro Suite to GitHub Pages
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout SNES Emulator
+      - name: Checkout Retro Suite
         uses: actions/checkout@v4
 
       - name: Set up Node
@@ -17,10 +17,10 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install
-
+        run: npm ci
 
       - name: Build project
         run: npm run build
@@ -39,16 +39,16 @@ jobs:
           rm -rf portfolio/emulator/retro-station/*
           # Copy new build files
           cp -r shell/dist/* portfolio/emulator/retro-station/
-          
+
       - name: Commit and Push to Portfolio Repo
         run: |
           cd portfolio
-          git config user.name "vishal singh"
-          git config user.email "singh.vishal@hclsoftware.com"
+          git config user.name "10xvick"
+          git config user.email "priyasingh24197@gmail.com"
           git add emulator/retro-station
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit"
           else
-            git commit -m "Deploy SNES Emulator to emulator/snes"
+            git commit -m "Deploy Retro Suite to emulator/retro-station"
             git push origin main
           fi
