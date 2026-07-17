@@ -95,6 +95,14 @@ const CATEGORIES = [
   "Video tests"
 ];
 
+function isSolidColor(fb: Uint32Array): boolean {
+  const first = fb[0];
+  for (let i = 1; i < fb.length; i += 13) {
+    if (fb[i] !== first) return false;
+  }
+  return true;
+}
+
 function runUntilIdle(gba: GBA, maxFrames: number): number {
   // Run at least 60 frames initially to let the test load and begin executing
   for (let f = 0; f < 60; f++) gba.runFrame();
@@ -113,8 +121,10 @@ function runUntilIdle(gba: GBA, maxFrames: number): number {
 
   for (; frames < maxFrames; frames++) {
     gba.runFrame();
-    const currentHash = getFbHash(gba.ppu.framebuffer);
-    if (currentHash === lastHash) {
+    const fb = gba.ppu.framebuffer;
+    const currentHash = getFbHash(fb);
+    const solid = isSolidColor(fb);
+    if (currentHash === lastHash && !solid) {
       idleCount++;
       if (idleCount >= 60) {
         break; // static screen for 60 consecutive frames (1 second of emulation time)
