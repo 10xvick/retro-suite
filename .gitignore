@@ -1,2 +1,19 @@
+# Dependencies
 node_modules/
 
+# Build and dist outputs
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Debug & Temporary media storage
+.tempmediaStorage/
+*.log
+*.tmp
+*.bmp
+
+# Include test and game ROMs in git
+!**/public/roms/**
+!**/public/roms/test/**
+!**/public/roms/game/**

@@ -104,12 +104,12 @@ function isSolidColor(fb: Uint32Array): boolean {
 }
 
 function runUntilIdle(gba: GBA, maxFrames: number): number {
-  // Run at least 60 frames initially to let the test load and begin executing
-  for (let f = 0; f < 60; f++) gba.runFrame();
+  // Run at least 300 frames initially to let the test load and complete execution
+  for (let f = 0; f < 300; f++) gba.runFrame();
 
   let lastHash = 0;
   let idleCount = 0;
-  let frames = 60;
+  let frames = 300;
   
   const getFbHash = (fb: Uint32Array) => {
     let hash = 0;
@@ -126,8 +126,8 @@ function runUntilIdle(gba: GBA, maxFrames: number): number {
     const solid = isSolidColor(fb);
     if (currentHash === lastHash && !solid) {
       idleCount++;
-      if (idleCount >= 60) {
-        break; // static screen for 60 consecutive frames (1 second of emulation time)
+      if (idleCount >= 120) {
+        break; // static screen for 120 consecutive frames (2 seconds of emulation time)
       }
     } else {
       idleCount = 0;
@@ -137,7 +137,7 @@ function runUntilIdle(gba: GBA, maxFrames: number): number {
   return frames;
 }
 
-async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
+export async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
   const categoryName = CATEGORIES[idx];
   console.log(`\n--------------------------------------------`);
   console.log(`Running GBA Test Suite: ${categoryName}...`);
@@ -145,6 +145,9 @@ async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
   // Reset and Boot GBA core
   gba.reset();
   gba.directBoot();
+  if (idx === 7) {
+    gba.cpu.enableTracing = true;
+  }
 
   // Wait 60 frames for menu to load
   for (let f = 0; f < 60; f++) gba.runFrame();
@@ -159,9 +162,9 @@ async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
     for (let f = 0; f < 8; f++) gba.runFrame();
   }
 
-  // Press A key to enter the test category (active low, A is bit 0)
-  const keyAPressed = 0x03FF & ~(1 << 0);
-  gba.mem.setKeyInput(keyAPressed);
+  // Press START key to run all tests in the selected category (active low, START is bit 3)
+  const keyStartPressed = 0x03FF & ~(1 << 3);
+  gba.mem.setKeyInput(keyStartPressed);
   for (let f = 0; f < 10; f++) gba.runFrame();
   gba.mem.setKeyInput(keyReleased);
   for (let f = 0; f < 10; f++) gba.runFrame();
@@ -180,20 +183,25 @@ async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
   const failed = isVideoTest ? false : hasRedPixels(frameBuffer);
 
   const cleanName = categoryName.replace(/[^a-zA-Z0-9]+/g, "_").toLowerCase();
+  const screenshotsDir = path.join(process.cwd(), 'gba', 'public', 'debug', 'screenshots');
+  if (!fs.existsSync(screenshotsDir)) {
+    fs.mkdirSync(screenshotsDir, { recursive: true });
+  }
+
   if (isVideoTest) {
-    const pngPath = path.join(process.cwd(), `gba_${cleanName}_visual.png`);
+    const pngPath = path.join(screenshotsDir, `gba_${cleanName}_visual.png`);
     savePNG(frameBuffer, width, height, pngPath);
     console.log(`[VISUAL] Saved screenshot to ${pngPath} for manual verification.`);
     return true;
   } else if (failed) {
     console.error(`[FAILURE] GBA Test ${categoryName} FAILED!`);
-    const pngPath = path.join(process.cwd(), `gba_${cleanName}_failed.png`);
+    const pngPath = path.join(screenshotsDir, `gba_${cleanName}_failed.png`);
     savePNG(frameBuffer, width, height, pngPath);
     console.log(`Saved screenshot to ${pngPath}`);
     return false;
   } else {
     console.log(`[SUCCESS] GBA Test ${categoryName} PASSED!`);
-    const pngPath = path.join(process.cwd(), `gba_${cleanName}_passed.png`);
+    const pngPath = path.join(screenshotsDir, `gba_${cleanName}_passed.png`);
     savePNG(frameBuffer, width, height, pngPath);
     console.log(`Saved screenshot to ${pngPath}`);
     return true;

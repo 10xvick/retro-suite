@@ -38,7 +38,7 @@ export const IO = {
 } as const;
 
 const SRAM_SIZE = 0x20000; // 128 KB
-const SRAM_MASK = 0x7FFF;  // 32 KB mirror
+const SRAM_MASK = 0xFFFF;  // 64 KB mirror
 
 export class Memory {
   bios: Uint8Array;
@@ -65,16 +65,42 @@ export class Memory {
   // BIOS protected memory
   lastBiosPc = 0;
   r15Shadow = 0;
-  lastInstruction = 0;
+  lastInstruction: number = 0;
+  lastOpenBus: number = 0xFEEDFACE;
   biosPrefetchOffset = 8;
   dmaEnableCallback: (() => void) | null = null;
   timerWriteCallback: ((timer: number, value: number) => void) | null = null;
+  winVWriteCallback: ((off: number) => void) | null = null;
+  irqCallback: (() => void) | null = null;
 
   halted = false;
-  // When true, CPU writes to KEYINPUT/KEYCNT are blocked (hardware is read-only)
-  // The emulator sets this AFTER boot so key input works during boot but
-  // cart code can't corrupt it later.
   blockKeyWrites = false;
+
+  // Debugging support
+  cpu: any = null;
+  gba: any = null;
+  readBreakpoints = new Set<number>();
+  writeBreakpoints = new Set<number>();
+
+  checkReadBreakpoint(addr: number) {
+    if (this.readBreakpoints.has(addr)) {
+      console.log(`[BREAKPOINT] Memory READ from 0x${addr.toString(16).padStart(8, '0')}`);
+      if (this.cpu) {
+        this.cpu.dumpTrace();
+        this.cpu.halted = true;
+      }
+    }
+  }
+
+  checkWriteBreakpoint(addr: number, val: number) {
+    if (this.writeBreakpoints.has(addr)) {
+      console.log(`[BREAKPOINT] Memory WRITE to 0x${addr.toString(16).padStart(8, '0')} val=0x${val.toString(16)}`);
+      if (this.cpu) {
+        this.cpu.dumpTrace();
+        this.cpu.halted = true;
+      }
+    }
+  }
 
   private ioView: DataView;
 
@@ -87,8 +113,7 @@ export class Memory {
     this.vram = new Uint8Array(VRAM_SIZE);
     this.oam = new Uint8Array(OAM_SIZE);
     this.cart = new Uint8Array(0);
-    this.sram = new Uint8Array(SRAM_SIZE);
-    this.sram.fill(0xFF);
+    this.sram = new Uint8Array(SRAM_SIZE * 2).fill(0xFF);
     this.ioView = new DataView(this.io.buffer);
   }
 
@@ -132,12 +157,11 @@ export class Memory {
       return;
     }
 
+    this.sram[this.sramOffset(addr)] = val;
     // Flash command sequence: 0xAA->0x5555, 0x55->0x2AAA, cmd->0x5555
     if (this.flashState === 0) {
       if (off === 0x5555 && val === 0xAA) { this.flashState = 1; return; }
       if (val === 0xF0) { this.flashState = 0; return; } // reset
-      // Not in command sequence: plain SRAM write (battery-backed SRAM)
-      this.sram[this.sramOffset(addr)] = val;
       return;
     }
     if (this.flashState === 1) {
@@ -206,7 +230,6 @@ export class Memory {
     return off;
   }
 
-  // ---- Open bus helpers ----
   getOpenBus8(addr: number): number {
     return (this.lastInstruction >>> ((addr & 3) * 8)) & 0xFF;
   }
@@ -251,97 +274,50 @@ export class Memory {
     return (this.bios[o] | (this.bios[o + 1] << 8) | (this.bios[o + 2] << 16) | (this.bios[o + 3] << 24)) >>> 0;
   }
 
-  // ---- Cart open bus (reads beyond actual ROM size) ----
-  // The GBA cart bus is 16-bit; open-bus value at aligned address A is
-  // (A>>1)&0xFFFF (low byte = (A>>1)&0xFF, high byte = (A>>9)&0xFF).
-  private cartOpenBus16(addr: number): number {
-    const off = (addr - 0x08000000) & 0x01FFFFFF;
-    return (off >> 1) & 0xffff;
+  getCartOpenBus16(addr: number): number {
+    const base = (addr - 0x08000000) & 0x01FFFFFF;
+    return (base >> 1) & 0xffff;
   }
 
-  private getSiocntMask(val: number): number {
-    const mode = (val >>> 12) & 3;
-    if (mode === 0) return 0x708B;
-    if (mode === 1) return 0x708B;
-    if (mode === 2) return 0x7083;
-    return 0xFFFF;
+  getCartOpenBus32(addr: number): number {
+    const base = (addr - 0x08000000) & 0x01FFFFFC;
+    const lo = (base >> 1) & 0xffff;
+    const hi = ((base + 2) >> 1) & 0xffff;
+    return ((hi << 16) | lo) >>> 0;
   }
 
-  private writeSiocnt(val: number, oldVal: number) {
-    const oldMode = (oldVal >>> 12) & 3;
-    const rcnt = this.ioView.getUint16(0x134, true);
-    const isGp = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
-    const isJoy = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
-    const newMode = (isGp || isJoy) ? 3 : (val >>> 12) & 3;
-
-    const isInternalClock = (newMode === 2) || ((newMode === 0 || newMode === 1) && (val & 0x0001) !== 0);
-    if ((val & 0x0080) && isInternalClock) {
-      if (newMode === 2) {
-        const sendVal = this.ioView.getUint16(0x12a, true);
-        this.ioView.setUint16(0x120, sendVal, true);
-        this.ioView.setUint16(0x122, 0xFFFF, true);
-        this.ioView.setUint16(0x124, 0xFFFF, true);
-        this.ioView.setUint16(0x126, 0xFFFF, true);
-      } else if (newMode === 1) {
-        this.ioView.setUint16(0x120, 0xFFFF, true);
-        this.ioView.setUint16(0x122, 0xFFFF, true);
-      } else if (newMode === 0) {
-        this.ioView.setUint16(0x12a, 0x00FF, true);
-      }
-      val &= ~0x0080;
-      if (val & 0x4000) {
-        const curIf = this.ioView.getUint16(0x202, true);
-        this.ioView.setUint16(0x202, curIf | 0x0080, true);
-        this.halted = false;
-      }
+  private writeSiocnt(val: number) {
+    const storedVal = val & 0x7F8F;
+    this.ioView.setUint16(0x128, storedVal, true);
+    if ((val & 0x0080) && (val & 0x4000)) {
+      const curIf = this.ioView.getUint16(0x202, true);
+      this.ioView.setUint16(0x202, curIf | 0x0080, true);
+      this.halted = false;
     }
-    this.ioView.setUint16(0x128, val & this.getSiocntMask(val), true);
   }
 
-  private writeRcnt(val: number, oldRcnt: number) {
-    const oldSiocnt = this.ioView.getUint16(0x128, true);
-
-    const nextGpMode = ((val & 0x8000) !== 0) && ((val & 0x4000) === 0);
-    const nextJoybus = ((val & 0x8000) !== 0) && ((val & 0x4000) !== 0);
-
-    if (nextJoybus) {
-      val &= 0xC000;
-    } else if (nextGpMode) {
-      val &= 0xC1FF;
-    } else {
-      const nextMode = (oldSiocnt >>> 12) & 3;
-      if (nextMode === 2) {
-        val = (val & 0xC000) | (oldRcnt & 0x3E00);
-      } else {
-        val = (val & 0xC100) | (oldRcnt & 0x3E00);
-      }
-    }
-    this.ioView.setUint16(0x134, val, true);
+  private writeRcnt(val: number) {
+    this.ioView.setUint16(0x134, val & 0xC1FF, true);
   }
 
   private writeJoycnt(val: number) {
     const rcnt = this.ioView.getUint16(0x134, true);
-    const isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
+    const isJoybus = (rcnt & 0xC000) === 0xC000;
     if (isJoybus) {
-      const cur = this.ioView.getUint16(0x140, true);
-      const writable = val & 0x0040; // Only bit 6 is writable by the CPU
-      const readonly = cur & 0x0006; // Keep bits 1 and 2 Send/Receive Complete status
-      if (val & 0x0001) {
-        // Reset: clear Send/Receive Complete status bits
-        this.ioView.setUint16(0x140, writable | 0x4000, true);
-      } else {
-        this.ioView.setUint16(0x140, writable | readonly | 0x4000, true);
-      }
+      this.ioView.setUint16(0x140, val & 0x0047, true);
+    } else {
+      this.ioView.setUint16(0x140, 0, true);
     }
   }
 
   // ---- IO register read/write ----
-  private ioReadMask16(off: number, addr: number): number {
+  private ioReadMask16(off: number, _addr?: number): number {
     const siocnt = this.ioView.getUint16(0x128, true);
     const rcnt = this.ioView.getUint16(0x134, true);
-    const isGpMode = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) === 0);
-    const isJoybus = ((rcnt & 0x8000) !== 0) && ((rcnt & 0x4000) !== 0);
-    const mode = (isGpMode || isJoybus) ? 3 : (siocnt >>> 12) & 3;
+    const isGpMode = (rcnt & 0xC000) === 0x8000;
+    const isJoybus = (rcnt & 0xC000) === 0xC000;
+    const isNormalSio = (rcnt & 0x8000) === 0;
+    const sioMode = isNormalSio ? ((siocnt >>> 12) & 3) : 3;
 
     // Completely write-only registers return 0 when read on GBA
     if (off >= 0x010 && off <= 0x01F) return 0; // BG offsets
@@ -351,15 +327,11 @@ export class Memory {
     if (off === 0x054) return 0; // BLDY
     if (off === 0x0B8 || off === 0x0C4 || off === 0x0D0 || off === 0x0DC) return 0; // DMA0-3 count
     if (off === 0x300) {
-      // 0x301 is HALTCNT (write-only, returns 0)
       return this.io[0x300];
     }
 
-    // BG control registers: mask out unused and mode-restricted bits
-    if (off === 0x008 || off === 0x00A) {
-      return this.ioView.getUint16(off, true) & 0xDFCF;
-    }
-    if (off === 0x00C || off === 0x00E) {
+    // BG control registers: mask out unused bits 4-5
+    if (off === 0x008 || off === 0x00A || off === 0x00C || off === 0x00E) {
       return this.ioView.getUint16(off, true) & 0xFFCF;
     }
 
@@ -372,128 +344,71 @@ export class Memory {
     if (!isSio) {
       return this.ioView.getUint16(off, true);
     }
-    let readable = false;
-    if (off === 0x128) {
-      readable = true;
-    } else if (off === 0x12A) {
-      readable = (isGpMode || isJoybus) ? true : (mode === 0 || mode === 2);
-    } else if (off === 0x120 || off === 0x122) {
-      readable = !isGpMode && !isJoybus && (mode === 1 || mode === 2);
-    } else if (off === 0x124 || off === 0x126) {
-      readable = !isGpMode && !isJoybus && (mode === 2);
-    } else if (off === 0x134) {
-      readable = true; // RCNT is always readable
-    } else if (off === 0x140) {
-      readable = isJoybus; // JOYCNT is active only in Joybus mode
-    } else if (off === 0x154 || off === 0x156) {
-      readable = isJoybus; // JOY_TRANS is active only in Joybus mode
-    } else if (off >= 0x150 && off <= 0x15C) {
-      readable = isJoybus; // Other JOY registers are active only in Joybus mode
-    }
 
-    if (!readable) {
-      if (isSio) {
-        console.log(`SIO Read: off=0x${off.toString(16)} val=0 (readonly/unmapped)`);
-      }
+    if (off === 0x120) {
+      if (isNormalSio && (sioMode === 1 || sioMode === 2)) return this.ioView.getUint16(0x120, true);
       return 0;
     }
-
-    let val = this.ioView.getUint16(off, true);
+    if (off === 0x122) {
+      if (isNormalSio && sioMode === 1) return this.ioView.getUint16(0x122, true);
+      if (isNormalSio && sioMode === 2) return 0xFFFF; // P1 disconnected
+      return 0;
+    }
+    if (off === 0x124) {
+      if (isNormalSio && sioMode === 2) return 0xFFFF; // P2 disconnected
+      return 0;
+    }
+    if (off === 0x126) {
+      if (isNormalSio && sioMode === 2) return 0xFFFF; // P3 disconnected
+      return 0;
+    }
     if (off === 0x128) {
-      const siocntMode = (val >>> 12) & 3;
-      if (siocntMode === 0 || siocntMode === 1) {
-        const isStart = (val & 0x0080) !== 0;
-        const isInternalClock = (val & 0x0001) !== 0;
-        val &= 0x708B;
-        val |= 0x0004; // SI pin always floats high (1)
-        if (isStart || !isInternalClock) {
-          val |= 0x0008; // SO pin floats high (1) when not R/W
-        }
-      } else if (siocntMode === 2) {
-        val &= 0x7083;
-        val |= 0x0008; // SI=0, SO=1 (floats high)
-      } else if (siocntMode === 3) {
-        // Return raw value
-      }
-    } else if (off === 0x12A) {
-      if (mode === 0 || mode === 2) {
-        val = this.ioView.getUint16(0x12A, true);
-      } else {
-        val = 0;
-      }
-    } else if (off === 0x120 || off === 0x122 || off === 0x124 || off === 0x126) {
-      if (mode === 2) {
-        const playerId = (this.ioView.getUint16(0x128, true) >>> 4) & 3;
-        const regId = (off - 0x120) >>> 1;
-        if (regId === playerId) {
-          val = this.ioView.getUint16(0x12A, true);
-        } else {
-          val = this.ioView.getUint16(off, true);
-        }
-      } else if (mode === 1) {
-        if (off === 0x120 || off === 0x122) {
-          val = this.ioView.getUint16(off, true);
-        } else {
-          val = 0;
-        }
-      } else {
-        val = 0;
-      }
-    } else if (off === 0x134) {
-      if (isJoybus) {
-        val &= 0xC000;
-      } else if (isGpMode) {
-        val &= 0xC1FF;
-        // Pin float high logic for inputs:
-        // For each pin 0..3: if direction (bit i+4) is 0 (input), data (bit i) floats high (1)
+      let pinStatus = 0x000C; // default SI=1, SO=1 (float high)
+      if (isNormalSio && sioMode === 2) pinStatus = 0x0008; // P0 master: SI=0, SO=1
+      return (siocnt & 0x7083) | pinStatus;
+    }
+    if (off === 0x12A) {
+      if (isNormalSio && (sioMode === 0 || sioMode === 2)) return this.ioView.getUint16(0x12A, true) & 0x00FF;
+      return 0;
+    }
+    if (off === 0x134) {
+      if (isJoybus) return 0xC000;
+      if (isGpMode) {
+        let val = rcnt & 0xC1FF;
         for (let i = 0; i < 4; i++) {
-          if (!(val & (1 << (i + 4)))) {
-            val |= (1 << i);
-          }
+          if (!(val & (1 << (i + 4)))) val |= (1 << i); // inputs float high (1)
         }
-      } else {
-        const modeBits = (this.ioView.getUint16(0x128, true) >>> 12) & 3;
-        if (modeBits === 2) {
-          val = 0x0009; // SI=0, SD=0, SC=1, SO=1
-        } else {
-          val = 0x000B; // SI=0, SD=1, SC=1, SO=1
-        }
+        return val;
       }
-    } else if (off === 0x140) {
-      if (!isJoybus) {
-        val = 0; // JOYCNT is read-only 0 if not in Joybus mode
-      } else {
-        val = (val & 0x0046) | 0x4000;
-      }
-    } else if (off === 0x142) {
-      val = 0;
-    } else if (off === 0x150 || off === 0x152) {
-      if (!isJoybus) {
-        val = 0;
-      } else {
-        const curJoyStat = this.ioView.getUint16(0x158, true);
-        this.ioView.setUint16(0x158, curJoyStat & ~0x0008, true);
-      }
-    } else if (off === 0x154 || off === 0x156) {
-      if (!isJoybus) val = 0;
-    } else if (off === 0x15A) {
-      val = 0;
-    } else if (off === 0x158) {
-      if (!isJoybus) {
-        val = 0;
-      } else {
-        val |= 0x0012; // Default receive empty and transmit empty flags
-      }
+      if (sioMode === 2) return 0x0009; // SC=1, SO=1, SD=0, SI=0
+      if (sioMode === 0 || sioMode === 1) return 0x000B; // SC=1, SD=1, SO=1, SI=0
+      return 0x000F;
     }
-    if (isSio) {
-      const raw = this.ioView.getUint16(off, true);
-      console.log(`SIO Read: off=0x${off.toString(16)} val=0x${val.toString(16)} (raw=0x${raw.toString(16)} gp=${isGpMode} joy=${isJoybus} mode=${mode})`);
+    if (off === 0x140) {
+      if (isJoybus) return (this.ioView.getUint16(0x140, true) & 0x4046);
+      return 0;
     }
-    return val;
+    if (off === 0x142) return 0;
+    if (off === 0x150 || off === 0x152) {
+      if (isJoybus) return this.ioView.getUint16(off, true);
+      return 0;
+    }
+    if (off === 0x154 || off === 0x156) {
+      if (isJoybus) return this.ioView.getUint16(off, true);
+      return 0;
+    }
+    if (off === 0x158) {
+      if (isJoybus) return (this.ioView.getUint16(0x158, true) & 0x0037) | 0x0012;
+      return 0;
+    }
+    if (off === 0x15A) return 0;
+
+    return 0;
   }
 
   read8(addr: number): number {
     addr >>>= 0;
+    this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios8(addr);
     if (addr < 0x03000000) return this.ewram[addr & (EWRAM_SIZE - 1)];
     if (addr < 0x04000000) return this.iwram[addr & (IWRAM_SIZE - 1)];
@@ -507,12 +422,13 @@ export class Memory {
     if (addr < 0x07000000) return this.vram[this.vramOffset(addr)];
     if (addr < 0x08000000) return this.oam[addr & (OAM_SIZE - 1)];
     if (addr < 0x0e000000) {
-      // GamePak0/1/2 mirroring
+      // GamePak0/1/2 mirroring across 0x08000000-0x0DFFFFFF
       const o = (addr - 0x08000000) & 0x01FFFFFF;
-      if (o < this.cartActualSize) return this.cart[o & this.cartMask];
-      // Open bus: 16-bit read at aligned address, extract byte.
-      const v16 = this.cartOpenBus16(addr);
-      return (addr & 1) ? ((v16 >> 8) & 0xff) : (v16 & 0xff);
+      if (o >= this.cartActualSize) {
+        const v16 = this.getCartOpenBus16(addr);
+        return (addr & 1) ? ((v16 >> 8) & 0xff) : (v16 & 0xff);
+      }
+      return this.cart[o];
     }
     if (addr < 0x0f000000) {
       return this.sram[this.sramOffset(addr)];
@@ -522,6 +438,7 @@ export class Memory {
 
   read16(addr: number): number {
     addr >>>= 0;
+    this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios16(addr);
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~1; return this.ewram[o] | (this.ewram[o + 1] << 8); }
     if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~1; return this.iwram[o] | (this.iwram[o + 1] << 8); }
@@ -534,22 +451,22 @@ export class Memory {
     if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~1; return this.oam[o] | (this.oam[o + 1] << 8); }
     if (addr < 0x0e000000) {
       // GamePak0/1/2 mirroring
-      const o = (addr - 0x08000000) & 0x01FFFFFF;
-      if (o < this.cartActualSize) {
-        const m = this.cartMask;
-        return this.cart[o & m] | (this.cart[(o + 1) & m] << 8);
+      const o = ((addr - 0x08000000) & 0x01FFFFFF) & ~1;
+      if (o >= this.cartActualSize) {
+        return this.getCartOpenBus16(addr);
       }
-      return this.cartOpenBus16(addr);
+      return this.cart[o] | (this.cart[o + 1] << 8);
     }
     if (addr < 0x0f000000) {
       const b = this.sram[this.sramOffset(addr)];
-      return b | (b << 8);
+      return (b << 8) | b;
     }
     return this.getOpenBus16(addr);
   }
 
   read32(addr: number): number {
     addr >>>= 0;
+    this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios32(addr);
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~3; return (this.ewram[o] | (this.ewram[o+1]<<8) | (this.ewram[o+2]<<16) | (this.ewram[o+3]<<24)) >>> 0; }
     if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~3; return (this.iwram[o] | (this.iwram[o+1]<<8) | (this.iwram[o+2]<<16) | (this.iwram[o+3]<<24)) >>> 0; }
@@ -565,17 +482,15 @@ export class Memory {
     if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~3; return (this.oam[o] | (this.oam[o+1]<<8) | (this.oam[o+2]<<16) | (this.oam[o+3]<<24)) >>> 0; }
     if (addr < 0x0e000000) {
       // GamePak0/1/2 mirroring
-      const o = (addr - 0x08000000) & 0x01FFFFFF;
-      if (o < this.cartActualSize) {
-        const m = this.cartMask;
-        return (this.cart[o & m] | (this.cart[(o+1)&m]<<8) | (this.cart[(o+2)&m]<<16) | (this.cart[(o+3)&m]<<24)) >>> 0;
+      const o = ((addr - 0x08000000) & 0x01FFFFFF) & ~3;
+      if (o >= this.cartActualSize) {
+        return this.getCartOpenBus32(addr);
       }
-      const v = this.cartOpenBus16(addr);
-      return (v | (v << 16)) >>> 0;
+      return (this.cart[o] | (this.cart[o+1]<<8) | (this.cart[o+2]<<16) | (this.cart[o+3]<<24)) >>> 0;
     }
     if (addr < 0x0f000000) {
       const b = this.sram[this.sramOffset(addr)];
-      return (b | (b << 8) | (b << 16) | (b << 24)) >>> 0;
+      return ((b << 24) | (b << 16) | (b << 8) | b) >>> 0;
     }
     return this.getOpenBus32(addr);
   }
@@ -604,6 +519,7 @@ export class Memory {
 
   write8(addr: number, val: number) {
     addr >>>= 0; val &= 0xff;
+    this.checkWriteBreakpoint(addr, val);
     if (addr < 0x02000000) return; // BIOS readonly
     if (addr < 0x03000000) { this.ewram[addr & (EWRAM_SIZE - 1)] = val; return; }
     if (addr < 0x04000000) { this.iwram[addr & (IWRAM_SIZE - 1)] = val; return; }
@@ -637,6 +553,7 @@ export class Memory {
 
   write16(addr: number, val: number) {
     addr >>>= 0; val &= 0xffff;
+    this.checkWriteBreakpoint(addr, val);
     if (addr < 0x02000000) return;
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~1; this.ewram[o]=val&0xff; this.ewram[o+1]=(val>>8)&0xff; return; }
     if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~1; this.iwram[o]=val&0xff; this.iwram[o+1]=(val>>8)&0xff; return; }
@@ -658,6 +575,7 @@ export class Memory {
 
   write32(addr: number, val: number) {
     addr >>>= 0; val >>>= 0;
+    this.checkWriteBreakpoint(addr, val);
     if (addr < 0x02000000) return;
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~3; this.ewram[o]=val; this.ewram[o+1]=val>>8; this.ewram[o+2]=val>>16; this.ewram[o+3]=val>>24; return; }
     if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~3; this.iwram[o]=val; this.iwram[o+1]=val>>8; this.iwram[o+2]=val>>16; this.iwram[o+3]=val>>24; return; }
@@ -704,7 +622,6 @@ export class Memory {
     let isGpMode = false;
     let isJoybus = false;
     if (isSio) {
-      console.log(`SIO Write: off=0x${off.toString(16)} val=0x${val.toString(16)} size=${size}`);
       isGpMode = ((oldRcnt & 0x8000) !== 0) && ((oldRcnt & 0x4000) === 0);
       isJoybus = ((oldRcnt & 0x8000) !== 0) && ((oldRcnt & 0x4000) !== 0);
       mode = (isGpMode || isJoybus) ? 3 : (oldSiocnt >>> 12) & 3;
@@ -725,15 +642,13 @@ export class Memory {
         writable = true;
       } else if (off === 0x134) {
         writable = true; // RCNT is always writable
-      } else if (off === 0x140) {
+      } else if (off === 0x140 || off === 0x142) {
         writable = isJoybus;
-      } else if (off === 0x154 || off === 0x156) {
+      } else if (off >= 0x150 && off <= 0x15A) {
         writable = isJoybus;
       }
 
       if (!writable) return;
-
-      const oldJoycnt = this.ioView.getUint16(0x140, true);
 
       // Perform raw write to ioView first so we have the merged value
       if (size === 2) {
@@ -743,7 +658,7 @@ export class Memory {
       } // Size 1 already written by write8
 
       if (off <= 0x128 && off + size > 0x128) {
-        this.writeSiocnt(this.ioView.getUint16(0x128, true), oldSiocnt);
+        this.writeSiocnt(this.ioView.getUint16(0x128, true));
       }
       if (off <= 0x134 && off + size > 0x134) {
         this.writeRcnt(this.ioView.getUint16(0x134, true));
@@ -760,9 +675,6 @@ export class Memory {
       return;
     }
 
-    // KEYINPUT (0x130-0x131) is read-only on real hardware.
-    // Only block CPU writes (not emulator key input which writes directly to io[]).
-    if (this.blockKeyWrites && off >= 0x130 && off < 0x132) return;
     if (size === 1) {
       // Byte write
       if (off === IO.IF || off === IO.IF + 1) {
@@ -770,15 +682,18 @@ export class Memory {
         this.io[off] &= ~(val & 0xff);
         this.lastBiosPc = 0x0DC; // BIOS protected memory update on IF ack
         this.checkDmaEnable();
+        if (this.irqCallback) this.irqCallback();
         return;
       }
-      this.io[off] = val & 0xff;      // SIO registers: re-apply 16-bit register masks
+      const evenOff = off & ~1;
+      const dup16 = (val & 0xff) | ((val & 0xff) << 8);
+      this.ioView.setUint16(evenOff, dup16, true);
       if (off === 0x128 || off === 0x129) {
         let v = this.ioView.getUint16(0x128, true);
-        this.writeSiocnt(v, oldSiocnt);
+        this.writeSiocnt(v);
       } else if (off === 0x134 || off === 0x135) {
         let v = this.ioView.getUint16(0x134, true);
-        this.writeRcnt(v, oldRcnt);
+        this.writeRcnt(v);
       } else if (off === 0x140 || off === 0x141) {
         let v = this.ioView.getUint16(0x140, true);
         this.ioView.setUint16(0x140, v & 0x417B, true);
@@ -787,6 +702,10 @@ export class Memory {
       if (off === IO.HALTCNT) {
         if (val & 0x80) this.halted = true; // halt CPU until interrupt
       }
+      if (off === 0x200 || off === 0x201 || off === 0x202 || off === 0x203 || off === 0x208 || off === 0x209) {
+        if (this.irqCallback) this.irqCallback();
+      }
+      if (off >= 0x44 && off <= 0x47 && this.winVWriteCallback) this.winVWriteCallback(off);
       if (this.isDmaCntOff(off)) this.checkDmaEnable();
       // Timer data write: notify GBA to update internal counter
       const ti = this.timerIndexForOff(off);
@@ -802,39 +721,46 @@ export class Memory {
         this.ioView.setUint16(IO.IF, cur & ~(val & 0xffff) & 0xffff, true);
         this.lastBiosPc = 0x0DC;
         this.checkDmaEnable();
+        if (this.irqCallback) this.irqCallback();
         return;
       }
 
       if (off === 0x128) {
-        const oldVal = this.ioView.getUint16(0x128, true);
-        this.writeSiocnt(val, oldVal);
+        this.writeSiocnt(val);
         return;
       } else if (off === 0x12A) {
-        if (mode === 2 || mode === 0) {
+        const rcnt = this.ioView.getUint16(0x134, true);
+        const isNormalSio = (rcnt & 0x8000) === 0;
+        const siocnt = this.ioView.getUint16(0x128, true);
+        const mode = isNormalSio ? ((siocnt >>> 12) & 3) : 3;
+        if (isNormalSio && (mode === 0 || mode === 2)) {
+          const byteVal = val & 0x00FF;
+          this.ioView.setUint16(0x12A, byteVal, true);
           if (mode === 2) {
-            const playerId = (oldSiocnt >>> 4) & 3;
-            this.ioView.setUint16(0x120 + playerId * 2, val & 0xffff, true);
+            this.ioView.setUint16(0x120, byteVal, true);
           }
-          this.ioView.setUint16(0x12A, val & 0xffff, true);
         }
         return;
       } else if (off === 0x120 || off === 0x122 || off === 0x124 || off === 0x126) {
-        if (mode === 2) {
-          const playerId = (oldSiocnt >>> 4) & 3;
-          const regId = (off - 0x120) >>> 1;
-          if (regId === playerId) {
-            this.ioView.setUint16(0x12A, val & 0xffff, true);
-          }
-          this.ioView.setUint16(off, val & 0xffff, true);
-        } else if (mode === 1) {
-          if (off === 0x120 || off === 0x122) {
-            this.ioView.setUint16(off, val & 0xffff, true);
+        const rcnt = this.ioView.getUint16(0x134, true);
+        const isNormalSio = (rcnt & 0x8000) === 0;
+        const siocnt = this.ioView.getUint16(0x128, true);
+        const mode = isNormalSio ? ((siocnt >>> 12) & 3) : 3;
+        if (isNormalSio) {
+          if (mode === 1) {
+            if (off === 0x120 || off === 0x122) {
+              this.ioView.setUint16(off, val & 0xffff, true);
+            }
+          } else if (mode === 2) {
+            if (off === 0x120) {
+              this.ioView.setUint16(0x120, val & 0xffff, true);
+              this.ioView.setUint16(0x12A, val & 0x00ff, true);
+            }
           }
         }
         return;
       } else if (off === 0x134) {
-        const oldVal = this.ioView.getUint16(0x134, true);
-        this.writeRcnt(val, oldVal);
+        this.writeRcnt(val);
         return;
       } else if (off === 0x140) {
         this.writeJoycnt(val);
@@ -846,6 +772,9 @@ export class Memory {
       if (off === 0x300) {
         if ((val >> 8) & 0x80) this.halted = true;
       }
+      if (off === 0x200 || off === 0x202 || off === 0x208) {
+        if (this.irqCallback) this.irqCallback();
+      }
       if (this.isDmaCntOff(off)) this.checkDmaEnable();
       // Timer data write: notify GBA to update internal counter
       const ti = this.timerIndexForOff(off);
@@ -854,21 +783,15 @@ export class Memory {
       }
     } else {
       // 32-bit write
+      if (off >= 0x120 && off <= 0x15C) {
+        // Dispatch two 16-bit writes for SIO range to enforce register masks
+        const loOff = off & ~1;
+        const hiOff = loOff + 2;
+        this.writeIO(loOff, val & 0xffff, 2);
+        this.writeIO(hiOff, (val >>> 16) & 0xffff, 2);
+        return;
+      }
       this.ioView.setUint32(off, val >>> 0, true);
-
-      // SIO registers: re-apply 16-bit register masks if covered
-      if (off <= 0x128 && off + 4 > 0x128) {
-        let v = this.ioView.getUint16(0x128, true);
-        this.writeSiocnt(v, oldSiocnt);
-      }
-      if (off <= 0x134 && off + 4 > 0x134) {
-        let v = this.ioView.getUint16(0x134, true);
-        this.writeRcnt(v, oldRcnt);
-      }
-      if (off <= 0x140 && off + 4 > 0x140) {
-        let v = this.ioView.getUint16(0x140, true);
-        this.ioView.setUint16(0x140, v & 0x0047, true);
-      }
 
       // IF acknowledge (if write covers IF)
       if (off <= IO.IF && off + 4 > IO.IF) {
@@ -887,6 +810,9 @@ export class Memory {
       // DMA enable check (if write covers any DMA control register)
       for (let i = 0; i < 4; i++) {
         if (this.isDmaCntOff(off + i)) { this.checkDmaEnable(); break; }
+      }
+      if (off <= 0x208 && off + 4 > 0x200) {
+        if (this.irqCallback) this.irqCallback();
       }
       // Timer data write: notify GBA for each TMxD covered by this 32-bit write
       if (this.timerWriteCallback) {

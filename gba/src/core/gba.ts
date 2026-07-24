@@ -33,6 +33,10 @@ export class GBA {
   // Direct boot mode flag (linked to CPU)
   directBootMode = false;
 
+  // DMA Scheduler state
+  private isDmaRunning = false;
+  private dmaTriggerPending = [false, false, false, false];
+
   // Boot-animation assist: the real BIOS copies the Nintendo logo to VRAM, but
   // a remaining CPU-emulation bug in the IRQ path prevents the BIOS from enabling
   // the display and running its own scroll-animation loop. Once we detect the logo
@@ -53,7 +57,10 @@ export class GBA {
     this.mem = new Memory();
     this.cpu = new ARM7TDMI(this.mem);
     this.cpu.mem = this.mem;
+    this.mem.cpu = this.cpu;
+    this.mem.gba = this;
     this.ppu = new PPU(this.mem);
+    this.mem.winVWriteCallback = (off) => this.ppu.checkWinVWrite(off);
     // Link directBootMode to CPU
     this.cpu.directBootMode = this.directBootMode;
     // Set DMA enable callback — when a DMA channel is enabled via IO write,
@@ -66,6 +73,16 @@ export class GBA {
     this.mem.timerWriteCallback = (timer: number, value: number) => {
       this.tmData[timer] = value & 0xffff;
       this.tmReload[timer] = value & 0xffff;
+    };
+    // Set IRQ write callback — when IE, IF, or IME are written, check for pending IRQs.
+    this.mem.irqCallback = () => {
+      const ie = this.mem.readIO16(IO.IE);
+      const ime = this.mem.readIO16(IO.IME);
+      const iflags = this.mem.readIO16(IO.IF);
+      if (ime && (ie & iflags)) {
+        this.mem.halted = false; // wake from HALT
+        this.cpu.raiseIrq();
+      }
     };
   }
 
@@ -255,6 +272,7 @@ export class GBA {
 
     for (let line = 0; line < TOTAL_LINES; line++) {
       this.scanline = line;
+      this.ppu.updateScanline(line);
 
       // Clear HBlank flag at start of line
       {
@@ -410,13 +428,51 @@ export class GBA {
   // Process immediate (trigger 0) DMA channels only. DRQ=3 (special) is for
   // audio FIFO / cart and must NOT be processed here — it would overwrite IO.
   doImmediateDma() {
+    this.triggerDmaScheduler(0);
+  }
+
+  private doDma(trigger: number) {
+    this.triggerDmaScheduler(trigger);
+  }
+
+  private triggerDmaScheduler(trigger: number) {
+    // Mark which channels are triggered by this event
     for (let ch = 0; ch < 4; ch++) {
       const base = IO.DMA0SAD + ch * 12;
       const ctrl = this.mem.readIO16(base + 10);
-      if (!(ctrl & 0x8000)) continue; // not enabled
+      if (!(ctrl & 0x8000)) continue;
       const drq = (ctrl >>> 12) & 3;
-      if (drq !== 0) continue; // only immediate (DRQ=0)
-      this.runDmaChannel(ch);
+      if (drq === trigger) {
+        this.dmaTriggerPending[ch] = true;
+      }
+    }
+
+    if (this.isDmaRunning) return;
+    this.isDmaRunning = true;
+    try {
+      let ranAny = true;
+      while (ranAny) {
+        ranAny = false;
+        for (let ch = 0; ch < 4; ch++) {
+          if (!this.dmaTriggerPending[ch]) continue;
+          
+          // Re-check enable bit under priority
+          const base = IO.DMA0SAD + ch * 12;
+          const ctrl = this.mem.readIO16(base + 10);
+          if (!(ctrl & 0x8000)) {
+            this.dmaTriggerPending[ch] = false;
+            continue;
+          }
+
+          // Run the channel
+          this.dmaTriggerPending[ch] = false;
+          this.runDmaChannel(ch);
+          ranAny = true;
+          break; // Start over from highest priority channel (DMA0)
+        }
+      }
+    } finally {
+      this.isDmaRunning = false;
     }
   }
 
@@ -447,19 +503,11 @@ export class GBA {
     // which would strip the 0x08 from ROM addresses like 0x0803C438 → 0x003C438 → BIOS!)
     for (let i = 0; i < count; i++) {
       if (size16) {
-        const lo = this.mem.read8(s >>> 0);
-        const hi = this.mem.read8((s + 1) >>> 0);
-        this.mem.dmaWrite(d >>> 0, lo);
-        this.mem.dmaWrite((d + 1) >>> 0, hi);
+        const val16 = (ch === 0 && s >= 0x08000000 && s < 0x0f000000) ? (this.mem.lastOpenBus & 0xffff) : this.mem.read16(s >>> 0);
+        this.mem.write16(d >>> 0, val16);
       } else {
-        const b0 = this.mem.read8(s >>> 0);
-        const b1 = this.mem.read8((s + 1) >>> 0);
-        const b2 = this.mem.read8((s + 2) >>> 0);
-        const b3 = this.mem.read8((s + 3) >>> 0);
-        this.mem.dmaWrite(d >>> 0, b0);
-        this.mem.dmaWrite((d + 1) >>> 0, b1);
-        this.mem.dmaWrite((d + 2) >>> 0, b2);
-        this.mem.dmaWrite((d + 3) >>> 0, b3);
+        const val32 = (ch === 0 && s >= 0x08000000 && s < 0x0f000000) ? this.mem.lastOpenBus : this.mem.read32(s >>> 0);
+        this.mem.write32(d >>> 0, val32);
       }
       s += stepS; d += stepD;
     }
@@ -467,17 +515,6 @@ export class GBA {
       this.mem.writeIO16(base + 10, ctrl & ~0x8000); // disable
     }
     if (ctrl & 0x4000) this.requestIrq(IRQ_DMA0 << ch);
-  }
-
-  private doDma(trigger: number) {
-    for (let ch = 0; ch < 4; ch++) {
-      const base = IO.DMA0SAD + ch * 12;
-      const ctrl = this.mem.readIO16(base + 10);
-      if (!(ctrl & 0x8000)) continue;
-      const drq = (ctrl >>> 12) & 3;
-      if (drq !== trigger) continue;
-      this.runDmaChannel(ch);
-    }
   }
 
   // ---- Save/Load state ----

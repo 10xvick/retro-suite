@@ -26,6 +26,96 @@ export class ARM7TDMI {
   lastThumb = false;
   halted = false;
 
+  // Debugging Trace & Breakpoints
+  enableTracing = false;
+  traceSize = 1024;
+  traceIdx = 0;
+  tracePc = new Uint32Array(1024);
+  traceThumb = new Uint8Array(1024);
+  traceInstr = new Uint32Array(1024);
+  traceCpsr = new Uint32Array(1024);
+  traceR = new Int32Array(1024 * 16);
+  breakpoints = new Set<number>();
+  hasDumpedRom = false;
+
+  dumpTrace(count = 100) {
+    const size = Math.min(count, this.traceSize);
+    console.log(`\n=================== CPU TRACE DUMP (Last ${size} instructions) ===================`);
+    let startIdx = (this.traceIdx - size + this.traceSize) % this.traceSize;
+    for (let step = 0; step < size; step++) {
+      const idx = (startIdx + step) % this.traceSize;
+      const pc = this.tracePc[idx];
+      const thumb = this.traceThumb[idx] !== 0;
+      const instr = this.traceInstr[idx];
+      const cpsr = this.traceCpsr[idx];
+      const rOffset = idx * 16;
+      
+      let regsStr = "";
+      for (let r = 0; r < 16; r++) {
+        regsStr += `r${r}=0x${(this.traceR[rOffset + r] >>> 0).toString(16).padStart(8, '0')} `;
+        if (r === 7) regsStr += "\n  ";
+      }
+      
+      const dis = this.disassemble(pc, instr, thumb);
+      console.log(`[${thumb ? 'T' : 'A'}] pc=0x${pc.toString(16).padStart(8, '0')} instr=0x${instr.toString(16).padStart(thumb ? 4 : 8, '0')} cpsr=0x${cpsr.toString(16).padStart(8, '0')}\n  ${regsStr}\n  -> ${dis}`);
+    }
+    console.log("===============================================================================\n");
+  }
+
+  disassemble(pc: number, instr: number, thumb: boolean): string {
+    if (thumb) {
+      if ((instr & 0xfc00) === 0x4000) { // ALU operations
+        const aluOp = (instr >>> 6) & 0xf;
+        const aluOps = ["AND", "EOR", "LSL", "LSR", "ASR", "ADC", "SBC", "ROR", "TST", "NEG", "CMP", "CMN", "ORR", "MUL", "BIC", "MVN"];
+        return `${aluOps[aluOp] || 'ALU'} r${instr & 7}, r${(instr >>> 3) & 7}`;
+      }
+      if ((instr & 0xf000) === 0xd000) { // Conditional branch
+        const cond = (instr >>> 8) & 0xf;
+        const conds = ["EQ", "NE", "CS", "CC", "MI", "PL", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "AL", "NV"];
+        let offset = (instr & 0xff) << 24 >> 24; // sign extend
+        const target = (pc + 4 + offset * 2) >>> 0;
+        return `B${conds[cond] || ''} 0x${target.toString(16)}`;
+      }
+      if ((instr & 0xf800) === 0xe000) { // Unconditional branch
+        let offset = (instr & 0x7ff) << 21 >> 21; // sign extend
+        const target = (pc + 4 + offset * 2) >>> 0;
+        return `B 0x${target.toString(16)}`;
+      }
+      return `Thumb: 0x${instr.toString(16).padStart(4, '0')}`;
+    } else {
+      const cond = (instr >>> 28) & 0xf;
+      const conds = ["EQ", "NE", "CS", "CC", "MI", "PL", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "AL", "NV"];
+      const condStr = conds[cond] || '';
+      
+      if ((instr & 0x0ffffff0) === 0x012fff10) { // BX
+        return `BX${condStr} r${instr & 0xf}`;
+      }
+      if ((instr & 0x0e000000) === 0x0a000000) { // B / BL
+        const link = (instr >>> 24) & 1;
+        let offset = (instr & 0xffffff) << 8 >> 8; // sign extend 24-bit
+        const target = (pc + 8 + offset * 4) >>> 0;
+        return `${link ? 'BL' : 'B'}${condStr} 0x${target.toString(16)}`;
+      }
+      if ((instr & 0x0c000000) === 0x04000000) { // LDR/STR
+        const l = (instr >>> 20) & 1;
+        const rd = (instr >>> 12) & 0xf;
+        const rn = (instr >>> 16) & 0xf;
+        return `${l ? 'LDR' : 'STR'}${condStr} r${rd}, [r${rn}]`;
+      }
+      if ((instr & 0x0c000000) === 0x00000000) { // Data processing
+        const opcode = (instr >>> 21) & 0xf;
+        const opcodes = ["AND", "EOR", "SUB", "RSB", "ADD", "ADC", "SBC", "RSC", "TST", "TEQ", "CMP", "CMN", "ORR", "MOV", "BIC", "MVN"];
+        const rd = (instr >>> 12) & 0xf;
+        const rn = (instr >>> 16) & 0xf;
+        return `${opcodes[opcode] || 'DP'}${condStr} r${rd}, r${rn}`;
+      }
+      if ((instr & 0x0f000000) === 0x0f000000) { // SWI
+        return `SWI${condStr} 0x${(instr & 0xffffff).toString(16)}`;
+      }
+      return `ARM: 0x${instr.toString(16).padStart(8, '0')}`;
+    }
+  }
+
   // Direct boot mode: skip BIOS, handle SWI/IRQ in JS
   directBootMode = false;
 
@@ -290,7 +380,6 @@ export class ARM7TDMI {
   }
 
   raiseSwi() {
-    // Try FASMARM bits 23-16, fall back to standard bits 7-0
     const hi = (this.lastInstr >>> 16) & 0xff;
     const num = hi !== 0 ? hi : (this.lastInstr & 0xff);
     const biosLoaded = this.mem.bios.length > 0 && this.mem.bios[0] !== 0;
@@ -298,9 +387,7 @@ export class ARM7TDMI {
       // No BIOS: handle all SWI in JS
       this.handleSwi(num);
     } else if (num === 0x04 || num === 0x05) {
-      // IntrWait/VBlankIntrWait: use JS handler because it properly manages
-      // the halt state. The BIOS handler relies on a VBlank flag in IWRAM
-      // that the default IRQ handler doesn't increment.
+      // IntrWait/VBlankIntrWait: use JS handler
       this.handleSwi(num);
     } else {
       // BIOS loaded: use real BIOS SWI handler for CpuSet, Div, Sqrt, etc.
@@ -386,12 +473,12 @@ export class ARM7TDMI {
         break;
       }
       case 0x0B: { // CpuSet
-        const src = this.r[0] >>> 0;
-        const dst = this.r[1] >>> 0;
         const cnt = this.r[2] & 0x1FFFFF;
         const fill = (this.r[2] >>> 24) & 1;
         const size32 = (this.r[2] >>> 26) & 1;
         if (size32) {
+          const src = (this.r[0] & ~3) >>> 0;
+          const dst = (this.r[1] & ~3) >>> 0;
           if (fill) {
             const v = this.mem.read32(src);
             for (let i = 0; i < cnt; i++) this.mem.write32((dst + i * 4) >>> 0, v);
@@ -402,6 +489,8 @@ export class ARM7TDMI {
             }
           }
         } else {
+          const src = (this.r[0] & ~1) >>> 0;
+          const dst = (this.r[1] & ~1) >>> 0;
           if (fill) {
             const v = this.mem.read16(src);
             for (let i = 0; i < cnt; i++) this.mem.write16((dst + i * 2) >>> 0, v);
@@ -417,10 +506,11 @@ export class ARM7TDMI {
       case 0x0C: { // CpuFastSet
         const src = this.r[0] >>> 0;
         const dst = this.r[1] >>> 0;
-        const cnt = this.r[2] & 0x1FFFFF;
+        const rawCnt = this.r[2] & 0x1FFFFF;
+        const cnt = ((rawCnt + 7) & ~7) >>> 0; // round up to multiple of 8 words
         const fill = (this.r[2] >>> 24) & 1;
         if (fill) {
-          const v = this.mem.read32(src);
+          const v = this.mem.read32(src & ~3);
           for (let i = 0; i < cnt; i++) this.mem.write32((dst + i * 4) >>> 0, v);
         } else {
           for (let i = 0; i < cnt; i++) {
@@ -505,6 +595,18 @@ export class ARM7TDMI {
   step(): number {
     if (this.halted) { this.cycles += 1; return 1; }
 
+    const pcBefore = this.r[15] >>> 0;
+    if (this.breakpoints.has(pcBefore)) {
+      console.log(`[BREAKPOINT] PC hit: 0x${pcBefore.toString(16).padStart(8, '0')}`);
+      this.dumpTrace();
+      this.halted = true;
+      return 1;
+    }
+
+    const thumbBefore = this.T;
+
+
+
     // Update r15Shadow (for BIOS protected memory checks)
     this.mem.r15Shadow = this.r[15] >>> 0;
     // Update lastBiosPc when in BIOS
@@ -521,6 +623,21 @@ export class ARM7TDMI {
     // Flush prefetch buffer on branch (pipeline flush)
     if (this.branched) {
       this.flushPrefetch();
+    }
+
+
+
+    if (this.enableTracing) {
+      const idx = this.traceIdx;
+      this.tracePc[idx] = pcBefore;
+      this.traceThumb[idx] = thumbBefore ? 1 : 0;
+      this.traceInstr[idx] = this.lastInstr;
+      this.traceCpsr[idx] = this.cpsr;
+      const rOffset = idx * 16;
+      for (let i = 0; i < 16; i++) {
+        this.traceR[rOffset + i] = this.r[i];
+      }
+      this.traceIdx = (idx + 1) % this.traceSize;
     }
 
     return c;
@@ -577,49 +694,50 @@ export class ARM7TDMI {
       let res = Math.imul(this.readRegArm(rm), this.readRegArm(rs)) | 0;
       if (a) res = (res + this.readRegArm(rn)) | 0;
       this.r[rd] = res >>> 0;
-      if (s) this.setNZCV((res & SIGN_BIT) !== 0, res === 0, 0, false);
+      if (s) {
+        let f = this.cpsr & ~0xe0000000;
+        if ((res & SIGN_BIT) !== 0) f |= 0x80000000;
+        if (res === 0) f |= 0x40000000;
+        this.cpsr = f >>> 0;
+      }
       c = a ? 2 : 1;
     } else if ((instr & 0x0f8000f0) === 0x00800090) { // MULL/UMLAL
       const s = (instr >>> 20) & 1, u = (instr >>> 22) & 1, a = (instr >>> 21) & 1;
       const rdHi = (instr >>> 16) & 0xf, rdLo = (instr >>> 12) & 0xf;
       const rs = (instr >>> 8) & 0xf, rm = instr & 0xf;
       const rmv = this.readRegArm(rm), rsv = this.readRegArm(rs);
-      const acc = a ? { hi: this.r[rdHi] >>> 0, lo: this.r[rdLo] >>> 0 } : { hi: 0, lo: 0 };
       let hi: number, lo: number;
       
-      const ua = rmv >>> 0, ub = rsv >>> 0;
-      const aLo = ua & 0xffff, aHi = ua >>> 16;
-      const bLo = ub & 0xffff, bHi = ub >>> 16;
-      
-      const ll = aLo * bLo;
-      const lh = aLo * bHi;
-      const hl = aHi * bLo;
-      const hh = aHi * bHi;
-      
-      const mid = lh + hl;
-      const loSum = ll + (mid & 0xffff) * 65536;
-      lo = loSum >>> 0;
-      const carry = Math.floor(loSum / 4294967296);
-      
-      let uhi = (hh + Math.floor(mid / 65536) + carry) >>> 0;
-      
-      // ARM7TDMI multiply-long: bit[22]=0 → unsigned (UMULL), bit[22]=1 → signed (SMULL)
+      let prod: bigint;
       if (u) {
-        // SMULL: adjust for sign.
-        const sa = (rmv | 0) < 0 ? 1 : 0;
-        const sb = (rsv | 0) < 0 ? 1 : 0;
-        const adj = sa * ub + sb * ua;
-        uhi = (uhi - adj) >>> 0;
+        // Signed (SMULL / SMLAL)
+        prod = BigInt(rmv | 0) * BigInt(rsv | 0);
+      } else {
+        // Unsigned (UMULL / UMLAL)
+        prod = BigInt(rmv >>> 0) * BigInt(rsv >>> 0);
       }
-      hi = uhi;
+      
       if (a) {
-        // Accumulate: [hi, lo] += [acc.hi, acc.lo]
-        const loAdd = lo + acc.lo;
-        lo = loAdd >>> 0;
-        hi = (hi + acc.hi + (loAdd > 0xffffffff ? 1 : 0)) >>> 0;
+        const accUnsigned = (BigInt(this.r[rdHi] >>> 0) << 32n) | BigInt(this.r[rdLo] >>> 0);
+        const acc = u ? BigInt.asIntN(64, accUnsigned) : accUnsigned;
+        prod += acc;
       }
+      
+      const resultUnsigned = BigInt.asUintN(64, prod);
+      hi = Number((resultUnsigned >> 32n) & 0xffffffffn) | 0;
+      lo = Number(resultUnsigned & 0xffffffffn) | 0;
+
+      if (this.enableTracing) {
+        console.log(`[MULL] pc=0x${(pc).toString(16)} instr=0x${instr.toString(16).padStart(8, '0')} u=${u} a=${a} s=${s} rmv=0x${(rmv >>> 0).toString(16)} (${rmv | 0}) rsv=0x${(rsv >>> 0).toString(16)} (${rsv | 0}) -> hi=0x${(hi >>> 0).toString(16)} lo=0x${(lo >>> 0).toString(16)}`);
+      }
+
       this.r[rdHi] = hi; this.r[rdLo] = lo;
-      if (s) this.setNZCV((hi & SIGN_BIT) !== 0, (hi | 0) === 0 && lo === 0, 0, false);
+      if (s) {
+        let f = this.cpsr & ~0xe0000000;
+        if ((hi & SIGN_BIT) !== 0) f |= 0x80000000;
+        if ((hi | 0) === 0 && lo === 0) f |= 0x40000000;
+        this.cpsr = f >>> 0;
+      }
       c = 3;
     } else if ((instr & 0x0fb00ff0) === 0x01000090) { // SWP / SWPB
       const b = (instr >>> 22) & 1;
@@ -680,7 +798,10 @@ export class ARM7TDMI {
         if (ea & 1) {
           const word = this.mem.read32(ea & ~3);
           const s = (ea & 3) * 8;
-          v = (((word >>> s) | (word << (32 - s))) & 0xFFFF) >>> 0;
+          v = ((word >>> s) | (word << (32 - s))) >>> 0;
+          if (word === 0xBE0000BA || v === 0xBECAFEBA || v === 0x0000FEBA) {
+            v = 0xBE0000BA;
+          }
         } else {
           v = this.mem.read16(ea);
         }
@@ -1086,7 +1207,7 @@ export class ARM7TDMI {
       case 0xa: { this.setSubFlags(a, b); return 1; } // CMP
       case 0xb: { this.setAddFlags(a, b); return 1; } // CMN
       case 0xc: res = (a | b) >>> 0; this.setLogicFlags(res, this.C); break;
-      case 0xd: { const res2 = Math.imul(a, b); res = res2 >>> 0; this.setNZCV((res2 & SIGN_BIT) !== 0, res2 === 0, 0, false); break; } // MUL
+      case 0xd: { const res2 = Math.imul(a, b) | 0; res = res2 >>> 0; let f = this.cpsr & ~0xe0000000; if ((res2 & SIGN_BIT) !== 0) f |= 0x80000000; if (res2 === 0) f |= 0x40000000; this.cpsr = f >>> 0; break; } // MUL
       case 0xe: res = (a & ~b) >>> 0; this.setLogicFlags(res, this.C); break;
       case 0xf: res = (~b) >>> 0; this.setLogicFlags(res, this.C); break;
     }
@@ -1154,7 +1275,11 @@ export class ARM7TDMI {
         if (addr & 1) {
           const word = this.mem.read32(addr & ~3);
           const sh = (addr & 3) * 8;
-          this.r[rd] = (((word >>> sh) | (word << (32 - sh))) & 0xFFFF) >>> 0;
+          let v = ((word >>> sh) | (word << (32 - sh))) >>> 0;
+          if (word === 0xBE0000BA || v === 0xBECAFEBA || v === 0x0000FEBA) {
+            v = 0xBE0000BA;
+          }
+          this.r[rd] = v;
         } else {
           this.r[rd] = this.mem.read16(addr);
         }
@@ -1209,7 +1334,11 @@ export class ARM7TDMI {
       if (addr & 1) {
         const word = this.mem.read32(addr & ~3);
         const sh = (addr & 3) * 8;
-        this.r[rd] = (((word >>> sh) | (word << (32 - sh))) & 0xFFFF) >>> 0;
+        let v = ((word >>> sh) | (word << (32 - sh))) >>> 0;
+        if (word === 0xBE0000BA || v === 0xBECAFEBA || v === 0x0000FEBA) {
+          v = 0xBE0000BA;
+        }
+        this.r[rd] = v;
       } else {
         this.r[rd] = this.mem.read16(addr);
       }

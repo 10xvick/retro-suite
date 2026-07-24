@@ -7,10 +7,26 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run src/__tests__/rom_suite.test.ts",
+    "test:cat00": "vitest run src/__tests__/cat00_memory.test.ts",
+    "test:cat01": "vitest run src/__tests__/cat01_io_read.test.ts",
+    "test:cat02": "vitest run src/__tests__/cat02_timing.test.ts",
+    "test:cat03": "vitest run src/__tests__/cat03_timer_count_up.test.ts",
+    "test:cat04": "vitest run src/__tests__/cat04_timer_irq.test.ts",
+    "test:cat05": "vitest run src/__tests__/cat05_shifter.test.ts",
+    "test:cat06": "vitest run src/__tests__/cat06_carry.test.ts",
+    "test:cat07": "vitest run src/__tests__/cat07_multiply_long.test.ts",
+    "test:cat08": "vitest run src/__tests__/cat08_bios_math.test.ts",
+    "test:cat09": "vitest run src/__tests__/cat09_dma.test.ts",
+    "test:cat10": "vitest run src/__tests__/cat10_sio_register_rw.test.ts",
+    "test:cat11": "vitest run src/__tests__/cat11_sio_timing.test.ts"
   },
   "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
   }
 }

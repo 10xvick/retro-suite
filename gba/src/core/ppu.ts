@@ -21,6 +21,9 @@ export class PPU {
   // 0=BD(backdrop), 1=BG0, 2=BG1, 3=BG2, 4=BG3, 5=OBJ
   private objLayer: Uint8Array;
 
+  win0InY = false;
+  win1InY = false;
+
   constructor(mem: Memory) {
     this.mem = mem;
     this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
@@ -120,6 +123,40 @@ export class PPU {
     }
   }
 
+  // Update window Y flags on scanline start (ticked on all 228 lines including VBlank)
+  updateScanline(y: number) {
+    const win0v = this.mem.readIO16(0x44); // WIN0V
+    const win1v = this.mem.readIO16(0x46); // WIN1V
+    const win0_y1 = (win0v >>> 8) & 0xff;
+    const win0_y2 = win0v & 0xff;
+    const win1_y1 = (win1v >>> 8) & 0xff;
+    const win1_y2 = win1v & 0xff;
+
+    if (y === win0_y1) this.win0InY = true;
+    if (y === win0_y2) this.win0InY = false;
+    if (y === win1_y1) this.win1InY = true;
+    if (y === win1_y2) this.win1InY = false;
+  }
+
+  checkWinVWrite(off: number) {
+    const y = this.mem.gba ? this.mem.gba.scanline : 0;
+    const win0v = this.mem.readIO16(0x44); // WIN0V
+    const win1v = this.mem.readIO16(0x46); // WIN1V
+    const win0_y1 = (win0v >>> 8) & 0xff;
+    const win0_y2 = win0v & 0xff;
+    const win1_y1 = (win1v >>> 8) & 0xff;
+    const win1_y2 = win1v & 0xff;
+
+    if (off === 0x44 || off === 0x45) {
+      if (y === win0_y1) this.win0InY = true;
+      if (y === win0_y2) this.win0InY = false;
+    }
+    if (off === 0x46 || off === 0x47) {
+      if (y === win1_y1) this.win1InY = true;
+      if (y === win1_y2) this.win1InY = false;
+    }
+  }
+
   // Render a single scanline (per-scanline mode — latches HOFS/VOFS per line)
   renderScanline(y: number) {
     const cnt = this.dispcnt;
@@ -161,10 +198,46 @@ export class PPU {
       const t1Mask = bldcnt & 0x3f;
       const t2Mask = (bldcnt >> 8) & 0x3f;
       const effect = (bldcnt >> 6) & 3;
+      const win0Enable = (cnt >>> 13) & 1;
+      const win1Enable = (cnt >>> 14) & 1;
+      const objWinEnable = (cnt >>> 15) & 1;
+      const anyWinEnable = win0Enable || win1Enable || objWinEnable;
+
+      let win0h = 0, win1h = 0, winin = 0, winout = 0;
+      if (anyWinEnable) {
+        win0h = this.mem.readIO16(0x40);
+        win1h = this.mem.readIO16(0x42);
+        winin = this.mem.readIO16(0x48);
+        winout = this.mem.readIO16(0x4a);
+      }
+
       for (let x = 0; x < GBA_WIDTH; x++) {
-        let col = fb[yoff + x];
-        let topLayer = 3; // BG2 is the bitmap layer
-        const oc = this.objColor[x];
+        let winMask = 0x3f;
+        if (anyWinEnable) {
+          let winControl = winout & 0x3f;
+          if (win0Enable && this.win0InY) {
+            const win0_x1 = (win0h >>> 8) & 0xff;
+            const win0_x2 = win0h & 0xff;
+            const win0_in_x = (win0_x1 <= win0_x2) ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2);
+            if (win0_in_x) winControl = winin & 0x3f;
+            else if (win1Enable && this.win1InY) {
+              const win1_x1 = (win1h >>> 8) & 0xff;
+              const win1_x2 = win1h & 0xff;
+              const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
+              if (win1_in_x) winControl = (winin >> 8) & 0x3f;
+            }
+          } else if (win1Enable && this.win1InY) {
+            const win1_x1 = (win1h >>> 8) & 0xff;
+            const win1_x2 = win1h & 0xff;
+            const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
+            if (win1_in_x) winControl = (winin >> 8) & 0x3f;
+          }
+          winMask = winControl;
+        }
+
+        let col = (winMask & 0x04) ? fb[yoff + x] : backdrop;
+        let topLayer = (winMask & 0x04) ? 3 : 0; // BG2 is bitmap
+        const oc = (winMask & 0x10) ? this.objColor[x] : 0;
         if (oc !== 0) {
           const isSemi = this.objSemi[x] === 1;
           const bottomCol = col;
@@ -179,8 +252,9 @@ export class PPU {
             }
           }
         }
-        // Apply brightness effect
-        if (effect >= 2) {
+        // Apply brightness effect if allowed by window
+        const allowEffect = (winMask & 0x20) !== 0;
+        if (effect >= 2 && allowEffect) {
           const topBit = topLayer === 5 ? 0x10 : (topLayer === 3 ? 0x04 : 0);
           if (t1Mask & topBit) {
             if (effect === 2) col = PPU.brightUp32(col, evy);
@@ -227,6 +301,20 @@ export class PPU {
 
     if ((cnt >>> 12) & 1) this.renderObjLine(y, mode, cnt);
 
+    // Windowing checks
+    const win0Enable = (cnt >>> 13) & 1;
+    const win1Enable = (cnt >>> 14) & 1;
+    const objWinEnable = (cnt >>> 15) & 1;
+    const anyWinEnable = win0Enable || win1Enable || objWinEnable;
+
+    let win0h = 0, win1h = 0, winin = 0, winout = 0;
+    if (anyWinEnable) {
+      win0h = this.mem.readIO16(0x40); // WIN0H
+      win1h = this.mem.readIO16(0x42); // WIN1H
+      winin = this.mem.readIO16(0x48); // WININ
+      winout = this.mem.readIO16(0x4a); // WINOUT
+    }
+
     // Composite: backdrop + BGs (by priority) + OBJ, with alpha blending & brightness
     const bldcnt = this.mem.readIO16(IO.BLDCNT);
     const bldalpha = this.mem.readIO16(IO.BLDALPHA);
@@ -244,6 +332,29 @@ export class PPU {
     const layerBit = [0x20, 0x01, 0x02, 0x04, 0x08, 0x10];
 
     for (let x = 0; x < GBA_WIDTH; x++) {
+      let winMask = 0x3f;
+      if (anyWinEnable) {
+        let winControl = winout & 0x3f;
+        if (win0Enable && this.win0InY) {
+          const win0_x1 = (win0h >>> 8) & 0xff;
+          const win0_x2 = win0h & 0xff;
+          const win0_in_x = (win0_x1 <= win0_x2) ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2);
+          if (win0_in_x) winControl = winin & 0x3f;
+          else if (win1Enable && this.win1InY) {
+            const win1_x1 = (win1h >>> 8) & 0xff;
+            const win1_x2 = win1h & 0xff;
+            const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
+            if (win1_in_x) winControl = (winin >> 8) & 0x3f;
+          }
+        } else if (win1Enable && this.win1InY) {
+          const win1_x1 = (win1h >>> 8) & 0xff;
+          const win1_x2 = win1h & 0xff;
+          const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
+          if (win1_in_x) winControl = (winin >> 8) & 0x3f;
+        }
+        winMask = winControl;
+      }
+
       let col = backdrop;
       let curPrio = 5;
       let topLayer = 0; // 0 = backdrop
@@ -251,10 +362,10 @@ export class PPU {
       let bottomCol = backdrop;
       let isSemiTransparent = false;
       // Compare BG and OBJ priorities; lower number = higher priority (front)
-      const bc = this.bgColor[x];
-      const bp = this.bgPrio[x];
-      const oc = this.objColor[x];
-      const op = this.objPrio[x];
+      let bc = (this.bgColor[x] !== 0 && (winMask & (1 << (this.bgLayer[x] - 1)))) ? this.bgColor[x] : 0;
+      let bp = bc !== 0 ? this.bgPrio[x] : 4;
+      let oc = (this.objColor[x] !== 0 && (winMask & 0x10)) ? this.objColor[x] : 0;
+      let op = oc !== 0 ? this.objPrio[x] : 4;
       // BG vs OBJ: BG drawn first if bgPrio <= objPrio, else obj first (then other can overwrite if <=)
       // Simplify: pick the one with lower priority; if equal, OBJ wins.
       if (bp <= op) {
@@ -273,13 +384,15 @@ export class PPU {
         }
       }
       // Use second BG layer as bottom for blending if available
-      if (this.bgColor2[x] !== 0 && bottomLayer === 0) {
-        bottomCol = this.bgColor2[x];
+      const bc2 = (this.bgColor2[x] !== 0 && (winMask & (1 << (this.bgLayer2[x] - 1)))) ? this.bgColor2[x] : 0;
+      if (bc2 !== 0 && bottomLayer === 0) {
+        bottomCol = bc2;
         bottomLayer = this.bgLayer2[x];
       }
 
-      // Apply special effects (alpha blending / brightness) — use 32-bit direct
-      if (effect !== 0) {
+      // Apply special effects (alpha blending / brightness) — use 32-bit direct if allowed by window
+      const allowEffect = (winMask & 0x20) !== 0;
+      if (effect !== 0 && allowEffect) {
         const topBit = layerBit[topLayer];
         if (effect === 1) {
           // Alpha blending
