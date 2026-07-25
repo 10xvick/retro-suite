@@ -25,20 +25,19 @@ describe('GBA Hardware Test Category: 00 Memory tests', () => {
     gba.reset();
     gba.directBoot();
 
-    // Execute category routine
-    const catEntry = 0x080024f5;
-    gba.cpu.r[0] = 0;
+    const func = 0x80031ed;
+    const desc = 0x803d84c;
+    gba.cpu.r[0] = desc;
+    gba.cpu.r[1] = 0x03007b08;
     gba.cpu.r[14] = 0x08000100;
-    gba.cpu.cpsr = (gba.cpu.cpsr & ~0x20) | ((catEntry & 1) ? 0x20 : 0);
-    gba.cpu.r[15] = catEntry & ~1;
+    gba.cpu.cpsr = (gba.cpu.cpsr & ~0x20) | ((func & 1) ? 0x20 : 0);
+    gba.cpu.r[15] = func & ~1;
 
-    for (let frame = 0; frame < 60; frame++) {
-      for (let cycles = 0; cycles < 280896; cycles += 4) {
-        gba.cpu.step();
-      }
+    for (let f = 0; f < 300; f++) {
+      gba.cpu.step();
     }
 
-    const totalSubtests = 1552;
+    const totalSubtests = gba.mem.read32(desc + 12);
     let failures: string[] = [];
 
     for (let i = 0; i < totalSubtests; i++) {
@@ -69,6 +68,7 @@ describe('GBA Hardware Test Category: 00 Memory tests', () => {
           ` | Expected: 0x${expHex}` +
           ` | Actual: 0x${actHex}` +
           ` | Bit Diff (XOR): 0x${diffHex}` +
+          ` | Routine: 0x${func.toString(16)} (Desc: 0x${desc.toString(16)})` +
           ` | CPU: PC=0x${gba.cpu.r[15].toString(16)}, SP=0x${gba.cpu.r[13].toString(16)}, CPSR=0x${gba.cpu.cpsr.toString(16)}`
         );
       }
