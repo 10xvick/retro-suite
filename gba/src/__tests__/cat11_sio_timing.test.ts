@@ -65,12 +65,11 @@ describe('GBA Hardware Test Category: 11 SIO timing tests', () => {
         const expHex = expected.toString(16).padStart(8, '0');
 
         failures.push(
-          `\n  ❌ [FAIL] Category: "11 SIO timing tests" | Test: "${testName}"` +
-          `\n     • Expected:           0x${expHex}` +
-          `\n     • Actual:             0x${actHex}` +
-          `\n     • Bit Diff (XOR):     0x${diffHex}` +
-          `\n     • ROM Entry Routine:  0x80080ad (Desc: 0x80435a4)` +
-          `\n     • CPU Registers:      PC=0x${gba.cpu.r[15].toString(16)}, SP=0x${gba.cpu.r[13].toString(16)}, CPSR=0x${gba.cpu.cpsr.toString(16)}`
+          `  ❌ [FAIL] Subtest #${i + 1} ("${testName}")` +
+          ` | Expected: 0x${expHex}` +
+          ` | Actual: 0x${actHex}` +
+          ` | Bit Diff (XOR): 0x${diffHex}` +
+          ` | CPU: PC=0x${gba.cpu.r[15].toString(16)}, SP=0x${gba.cpu.r[13].toString(16)}, CPSR=0x${gba.cpu.cpsr.toString(16)}`
         );
       }
     }
@@ -84,9 +83,14 @@ describe('GBA Hardware Test Category: 11 SIO timing tests', () => {
     console.log(` TOTAL SUB-TESTS : ${totalSubtests.toLocaleString()}`);
     console.log(` PASSED          : ${passedCount.toLocaleString()} / ${totalSubtests.toLocaleString()} (${passPct}%)`);
     console.log(` FAILED          : ${failedCount.toLocaleString()} / ${totalSubtests.toLocaleString()}`);
-    console.log(`==========================================================================\n`);
+    console.log(`==========================================================================`);
 
-    expect(failures.length, `Failures detected in 11 SIO timing tests:
-${failures.join('\n')}`).toBe(0);
+    if (failures.length > 0) {
+      console.log(`\n--- FAILED SUB-TEST DIAGNOSTICS (${failures.length} failures) ---`);
+      failures.forEach(f => console.log(f));
+      console.log(`--------------------------------------------------------------------------\n`);
+    }
+
+    expect(failures.length, `${failures.length} sub-tests failed in 11 SIO timing tests`).toBe(0);
   });
 });
