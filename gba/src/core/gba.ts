@@ -318,6 +318,7 @@ export class GBA {
             continue;
           }
         }
+
         const c = this.cpu.step();
         this.cycles += c;
         this.tickTimers(c);

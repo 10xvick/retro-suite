@@ -10,7 +10,28 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=shell",
-    "build": "npm run build --workspace=shell"
+    "build": "npm run build --workspace=shell",
+    "test:mem-all": "npm run test:mem-all --workspace=gba",
+    "test:cat00": "npm run test:cat00 --workspace=gba",
+    "test:cat01": "npm run test:cat01 --workspace=gba",
+    "test:cat02": "npm run test:cat02 --workspace=gba",
+    "test:cat03": "npm run test:cat03 --workspace=gba",
+    "test:cat04": "npm run test:cat04 --workspace=gba",
+    "test:cat05": "npm run test:cat05 --workspace=gba",
+    "test:cat06": "npm run test:cat06 --workspace=gba",
+    "test:cat07": "npm run test:cat07 --workspace=gba",
+    "test:cat08": "npm run test:cat08 --workspace=gba",
+    "test:cat09": "npm run test:cat09 --workspace=gba",
+    "test:cat10": "npm run test:cat10 --workspace=gba",
+    "test:cat11": "npm run test:cat11 --workspace=gba",
+    "test:mem-rom": "npm run test:mem-rom --workspace=gba",
+    "test:mem-rom-oob": "npm run test:mem-rom-oob --workspace=gba",
+    "test:mem-iwram": "npm run test:mem-iwram --workspace=gba",
+    "test:mem-iwram-mirror": "npm run test:mem-iwram-mirror --workspace=gba",
+    "test:mem-ewram": "npm run test:mem-ewram --workspace=gba",
+    "test:mem-ewram-mirror": "npm run test:mem-ewram-mirror --workspace=gba",
+    "test:mem-palette": "npm run test:mem-palette --workspace=gba",
+    "test:mem-palette-mirror": "npm run test:mem-palette-mirror --workspace=gba"
   },
   "dependencies": {
     "create-vite": "^9.1.1"

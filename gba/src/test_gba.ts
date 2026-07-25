@@ -162,9 +162,9 @@ export async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
     for (let f = 0; f < 8; f++) gba.runFrame();
   }
 
-  // Press START key to run all tests in the selected category (active low, START is bit 3)
-  const keyStartPressed = 0x03FF & ~(1 << 3);
-  gba.mem.setKeyInput(keyStartPressed);
+  // Press A key to run all tests in the selected category (active low, A is bit 0)
+  const keyAPressed = 0x03FF & ~(1 << 0);
+  gba.mem.setKeyInput(keyAPressed);
   for (let f = 0; f < 10; f++) gba.runFrame();
   gba.mem.setKeyInput(keyReleased);
   for (let f = 0; f < 10; f++) gba.runFrame();
@@ -172,6 +172,8 @@ export async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
   // Wait for the test to complete (run until screen becomes static or max 2400 frames)
   const ranFrames = runUntilIdle(gba, 2400);
   console.log(`Test executed for ${ranFrames} frames before stabilizing.`);
+
+
 
   // Check framebuffer for failures (red pixels)
   const width = 240;
@@ -223,6 +225,8 @@ async function main() {
 
   const biosBytes = fs.readFileSync(biosPath);
   const romBytes = fs.readFileSync(romPath);
+
+
 
   const gba = new GBA();
   gba.loadBios(new Uint8Array(biosBytes));

@@ -20,7 +20,16 @@
     "test:cat08": "vitest run src/__tests__/cat08_bios_math.test.ts",
     "test:cat09": "vitest run src/__tests__/cat09_dma.test.ts",
     "test:cat10": "vitest run src/__tests__/cat10_sio_register_rw.test.ts",
-    "test:cat11": "vitest run src/__tests__/cat11_sio_timing.test.ts"
+    "test:cat11": "vitest run src/__tests__/cat11_sio_timing.test.ts",
+    "test:mem-all": "vitest run src/__tests__/cat00_memory.test.ts",
+    "test:mem-rom": "vitest run src/__tests__/cat00_mem_01_rom_load.test.ts",
+    "test:mem-rom-oob": "vitest run src/__tests__/cat00_mem_02_rom_oob_load.test.ts",
+    "test:mem-iwram": "vitest run src/__tests__/cat00_mem_03_iwram_load.test.ts",
+    "test:mem-iwram-mirror": "vitest run src/__tests__/cat00_mem_04_iwram_mirror_load.test.ts",
+    "test:mem-ewram": "vitest run src/__tests__/cat00_mem_05_ewram_load.test.ts",
+    "test:mem-ewram-mirror": "vitest run src/__tests__/cat00_mem_06_ewram_mirror_load.test.ts",
+    "test:mem-palette": "vitest run src/__tests__/cat00_mem_07_palette_load.test.ts",
+    "test:mem-palette-mirror": "vitest run src/__tests__/cat00_mem_08_palette_mirror_load.test.ts"
   },
   "devDependencies": {
     "@types/pngjs": "^6.0.5",
