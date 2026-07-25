@@ -248,29 +248,31 @@ export class Memory {
     return this.r15Shadow < 0x02000000;
   }
   private readBios8(addr: number): number {
+    if (!this.inBios()) {
+      const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
+      return this.bios[(pc + (addr & 3)) & (BIOS_SIZE - 1)];
+    }
     if (addr >= 0x00004000) return this.getOpenBus8(addr);
-    if (this.inBios()) return this.bios[addr & (BIOS_SIZE - 1)];
-    const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
-    return this.bios[(pc + (addr & 3)) & (BIOS_SIZE - 1)];
+    return this.bios[addr & (BIOS_SIZE - 1)];
   }
   private readBios16(addr: number): number {
-    if (addr >= 0x00004000) return this.getOpenBus16(addr);
-    if (this.inBios()) {
-      const o = (addr & (BIOS_SIZE - 1)) & ~1;
+    if (!this.inBios()) {
+      const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
+      const o = (pc + (addr & 2)) & (BIOS_SIZE - 1);
       return this.bios[o] | (this.bios[o + 1] << 8);
     }
-    const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
-    const o = (pc + (addr & 2)) & (BIOS_SIZE - 1);
+    if (addr >= 0x00004000) return this.getOpenBus16(addr);
+    const o = (addr & (BIOS_SIZE - 1)) & ~1;
     return this.bios[o] | (this.bios[o + 1] << 8);
   }
   private readBios32(addr: number): number {
-    if (addr >= 0x00004000) return this.getOpenBus32(addr);
-    if (this.inBios()) {
-      const o = (addr & (BIOS_SIZE - 1)) & ~3;
+    if (!this.inBios()) {
+      const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
+      const o = pc & (BIOS_SIZE - 1);
       return (this.bios[o] | (this.bios[o + 1] << 8) | (this.bios[o + 2] << 16) | (this.bios[o + 3] << 24)) >>> 0;
     }
-    const pc = (this.lastBiosPc + this.biosPrefetchOffset) & ~3;
-    const o = pc & (BIOS_SIZE - 1);
+    if (addr >= 0x00004000) return this.getOpenBus32(addr);
+    const o = (addr & (BIOS_SIZE - 1)) & ~3;
     return (this.bios[o] | (this.bios[o + 1] << 8) | (this.bios[o + 2] << 16) | (this.bios[o + 3] << 24)) >>> 0;
   }
 
@@ -466,6 +468,9 @@ export class Memory {
 
   read32(addr: number): number {
     addr >>>= 0;
+    if (addr >= 0x10000000) {
+      addr &= 0x0FFFFFFF;
+    }
     this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios32(addr);
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~3; return (this.ewram[o] | (this.ewram[o+1]<<8) | (this.ewram[o+2]<<16) | (this.ewram[o+3]<<24)) >>> 0; }
