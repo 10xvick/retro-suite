@@ -25,15 +25,20 @@ describe('GBA Hardware Test Category: 03 Timer count-up tests', () => {
     gba.reset();
     gba.directBoot();
 
-    gba.cpu.r[0] = 0x8043758;
-    gba.cpu.r[1] = 0x03007b08;
+    // Execute category routine
+    const catEntry = 0x080024f5;
+    gba.cpu.r[0] = 3;
     gba.cpu.r[14] = 0x08000100;
-    gba.cpu.cpsr = (gba.cpu.cpsr & ~0x20) | ((0x8008f85 & 1) ? 0x20 : 0);
-    gba.cpu.r[15] = 0x8008f85 & ~1;
+    gba.cpu.cpsr = (gba.cpu.cpsr & ~0x20) | ((catEntry & 1) ? 0x20 : 0);
+    gba.cpu.r[15] = catEntry & ~1;
 
-    for (let f = 0; f < 300; f++) gba.cpu.step();
+    for (let frame = 0; frame < 60; frame++) {
+      for (let cycles = 0; cycles < 280896; cycles += 4) {
+        gba.cpu.step();
+      }
+    }
 
-    const totalSubtests = gba.mem.read32(0x8043758 + 12);
+    const totalSubtests = 936;
     let failures: string[] = [];
 
     for (let i = 0; i < totalSubtests; i++) {
