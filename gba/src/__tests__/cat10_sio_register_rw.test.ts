@@ -33,10 +33,10 @@ describe('GBA Hardware Test Category: 10 SIO register R/W tests', () => {
 
     for (let f = 0; f < 300; f++) gba.cpu.step();
 
-    const count = gba.mem.read32(0x8042fe8 + 12);
+    const totalSubtests = gba.mem.read32(0x8042fe8 + 12);
     let failures: string[] = [];
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < totalSubtests; i++) {
       const resBase = 0x03007b08 + i * 16;
       const strAddr = gba.mem.read32(resBase);
       const actual = gba.mem.read32(resBase + 4);
@@ -51,25 +51,35 @@ describe('GBA Hardware Test Category: 10 SIO register R/W tests', () => {
           p++;
         }
       }
+      if (!testName) testName = `Subtest #${i + 1}`;
 
-      if (testName.length > 0) {
-        if (actual !== expected && status !== 0) {
-          const xorDiff = (actual ^ expected) >>> 0;
-          const diffHex = xorDiff.toString(16).padStart(8, '0');
-          const actHex = actual.toString(16).padStart(8, '0');
-          const expHex = expected.toString(16).padStart(8, '0');
+      if (actual !== expected && status !== 0) {
+        const xorDiff = (actual ^ expected) >>> 0;
+        const diffHex = xorDiff.toString(16).padStart(8, '0');
+        const actHex = actual.toString(16).padStart(8, '0');
+        const expHex = expected.toString(16).padStart(8, '0');
 
-          failures.push(
-            `\n  ❌ [FAIL] Category: "10 SIO register R/W tests" | Test: "${testName}"` +
-            `\n     • Expected:           0x${expHex}` +
-            `\n     • Actual:             0x${actHex}` +
-            `\n     • Bit Diff (XOR):     0x${diffHex}` +
-            `\n     • ROM Entry Routine:  0x8007e59 (Desc: 0x8042fe8)` +
-            `\n     • CPU Registers:      PC=0x${gba.cpu.r[15].toString(16)}, SP=0x${gba.cpu.r[13].toString(16)}, CPSR=0x${gba.cpu.cpsr.toString(16)}`
-          );
-        }
+        failures.push(
+          `\n  ❌ [FAIL] Category: "10 SIO register R/W tests" | Test: "${testName}"` +
+          `\n     • Expected:           0x${expHex}` +
+          `\n     • Actual:             0x${actHex}` +
+          `\n     • Bit Diff (XOR):     0x${diffHex}` +
+          `\n     • ROM Entry Routine:  0x8007e59 (Desc: 0x8042fe8)` +
+          `\n     • CPU Registers:      PC=0x${gba.cpu.r[15].toString(16)}, SP=0x${gba.cpu.r[13].toString(16)}, CPSR=0x${gba.cpu.cpsr.toString(16)}`
+        );
       }
     }
+
+    const failedCount = failures.length;
+    const passedCount = totalSubtests - failedCount;
+    const passPct = totalSubtests > 0 ? ((passedCount / totalSubtests) * 100).toFixed(2) : "0.00";
+
+    console.log(`\n==========================================================================`);
+    console.log(` CATEGORY: 10 SIO register R/W tests`);
+    console.log(` TOTAL SUB-TESTS : ${totalSubtests.toLocaleString()}`);
+    console.log(` PASSED          : ${passedCount.toLocaleString()} / ${totalSubtests.toLocaleString()} (${passPct}%)`);
+    console.log(` FAILED          : ${failedCount.toLocaleString()} / ${totalSubtests.toLocaleString()}`);
+    console.log(`==========================================================================\n`);
 
     expect(failures.length, `Failures detected in 10 SIO register R/W tests:
 ${failures.join('\n')}`).toBe(0);
