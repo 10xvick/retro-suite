@@ -6,12 +6,14 @@ An elegant, decoupled multi-system console emulator built in TypeScript/React an
 - **Super Nintendo (SNES)**: Main-thread high-fidelity frame-accumulated emulator.
 - **Nintendo Entertainment System (NES)**: High-performance NES emulator core.
 - **Game Boy / Game Boy Color (GB/GBC)**: Fully cycle-accurate Game Boy emulator with complete GBC backward compatibility, dynamic boot modes, and H-Blank DMA synchronization.
+- **Game Boy Advance (GBA)**: Cycle-accurate ARM7TDMI emulator core with high-performance PPU and DMA scheduler.
 
 ## Architecture
 The repository uses an npm workspaces monorepo structure:
 - `shell/`: React UI dashboard shell (Retro Station).
 - `nes/`: Isolated NES core package.
 - `gb/`: Isolated Game Boy & Game Boy Color core package.
+- `gba/`: Isolated Game Boy Advance core package.
 
 ## Features
 - **Precise Speed Tuning**: Real-time adjustable speed multiplier slider (0.25x - 5.00x).
