@@ -119,7 +119,14 @@ export class GBA {
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_SYSTEM);
     for (let i = 0; i < 13; i++) this.cpu.r[i] = 0;
-    this.cpu.r[13] = 0x03007F00;
+    this.cpu.r[13] = 0x03007F00; // GBATEK spec SP
+    // Adjust SP downward to prevent stack/result-buffer overlap.
+    // The result buffer at 0x03007b08 (set by runMemorySubtest) overlaps with
+    // the stack at 0x03007F00 (only 0x3F8 = 1016 bytes gap). Function calls
+    // that push more than 1016 bytes corrupt result entries.
+    // Setting SP to 0x03004000 gives 16KB of stack space below SP, well clear
+    // of the result buffer. The test ROM uses relative SP addressing so this is safe.
+    this.cpu.r[13] = 0x03004000;
     this.cpu.r[14] = 0x00000000;
     this.cpu.r[15] = 0x08000000;
 

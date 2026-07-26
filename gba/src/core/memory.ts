@@ -440,6 +440,10 @@ export class Memory {
 
   read16(addr: number): number {
     addr >>>= 0;
+    if (addr >= 0x10000000) {
+      const m = addr & 0x0FFFFFFF;
+      if (m < 0x02000000) addr = m;
+    }
     this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios16(addr);
     if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~1; return this.ewram[o] | (this.ewram[o + 1] << 8); }

@@ -1429,6 +1429,12 @@ export class ARM7TDMI {
     for (let i = 0; i < 16; i++) if (rlist & (1 << i)) count++;
     const wbDelta = origRlistEmpty ? 0x40 : count * 4;
 
+    // GBATEK: For THUMB LDMIA/STMIA with writeback, the writeback value is
+    // always (original Rb + 4*N) — even when Rb is in the register list.
+    // The loaded value (LDMIA) does NOT override the writeback. Capture the
+    // original base here so the writeback is correct in all cases.
+    const origBase = this.r[rb] >>> 0;
+
     if (l) {
       for (let i = 0; i < 8; i++) {
         if (rlist & (1 << i)) {
@@ -1442,7 +1448,7 @@ export class ARM7TDMI {
         addr = (addr + 4) >>> 0;
         this.branched = true;
       }
-      this.r[rb] = (this.r[rb] + wbDelta) >>> 0;
+      this.r[rb] = (origBase + wbDelta) >>> 0;
     } else {
       // STMIA
       const baseInList = (rlist & (1 << rb)) !== 0;
@@ -1458,9 +1464,9 @@ export class ARM7TDMI {
           if (i === rb) {
             // STMIA base-in-list: writeback value if not first
             if (firstReg !== -1 && i !== firstReg) {
-              v = (this.r[rb] + wbDelta) >>> 0;
+              v = (origBase + wbDelta) >>> 0;
             } else {
-              v = this.r[rb] >>> 0;
+              v = origBase;
             }
           } else {
             v = this.r[i] >>> 0;
@@ -1477,7 +1483,7 @@ export class ARM7TDMI {
         this.mem.write32(addr, v);
         addr = (addr + 4) >>> 0;
       }
-      this.r[rb] = (this.r[rb] + wbDelta) >>> 0;
+      this.r[rb] = (origBase + wbDelta) >>> 0;
     }
     return 2;
   }
