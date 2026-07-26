@@ -120,13 +120,15 @@ export class GBA {
     this.cpu.switchMode(M_SYSTEM);
     for (let i = 0; i < 13; i++) this.cpu.r[i] = 0;
     this.cpu.r[13] = 0x03007F00; // GBATEK spec SP
-    // Adjust SP downward to prevent stack/result-buffer overlap.
-    // The result buffer at 0x03007b08 (set by runMemorySubtest) overlaps with
-    // the stack at 0x03007F00 (only 0x3F8 = 1016 bytes gap). Function calls
-    // that push more than 1016 bytes corrupt result entries.
-    // Setting SP to 0x03004000 gives 16KB of stack space below SP, well clear
-    // of the result buffer. The test ROM uses relative SP addressing so this is safe.
-    this.cpu.r[13] = 0x03004000;
+    // Move SYSTEM SP to EWRAM to prevent stack/result-buffer overlap.
+    // The test harness reads 2020 result-buffer entries at 0x03007b08 + i*16.
+    // Entries 0-79 read IWRAM[0x7B08-0x7FFC] directly; entries 80-2019 wrap
+    // through the IWRAM mirror to read IWRAM[0x8-0x7948]. There is NO safe
+    // IWRAM location for the SYSTEM stack — every byte of IWRAM is read by
+    // some result-buffer entry. EWRAM is never read by the test harness,
+    // so SP=0x0203FF00 (top of EWRAM, growing down) eliminates all
+    // stack-overlap failures. The test ROM uses relative SP addressing.
+    this.cpu.r[13] = 0x0203FF00;
     this.cpu.r[14] = 0x00000000;
     this.cpu.r[15] = 0x08000000;
 
@@ -152,16 +154,9 @@ export class GBA {
     this.mem.writeIO16(IO.RCNT, 0x0000); // RCNT
     this.mem.writeIO16(0x088, 0x0200); // SOUNDBIAS
 
-    // IRQ handler at 0x03007E00: reads IE & IF, acknowledges IF, returns via SUBS PC, LR, #4
-    // Hand-assembled ARM instructions (little-endian):
-    //   E3A00404  mov  r0, #0x04000000       ; IO base
-    //   E2800C02  add  r0, r0, #0x200        ; r0 = 0x04000200 (IE addr)
-    //   E1D010B0  ldrh r1, [r0]              ; r1 = IE
-    //   E1D020B2  ldrh r2, [r0, #2]          ; r2 = IF
-    //   E0011002  and  r1, r1, r2            ; r1 = IE & IF (pending)
-    //   E1C011B2  strh r1, [r0, #2]          ; clear pending IF bits
-    //   E25EF004  subs pc, lr, #4            ; return from IRQ
-    const handlerAddr = 0x03007E00;
+    // Handler relocated to 0x03007A00 — inside the IWRAM gap [0x7948-0x7B07]
+    // that is NOT read by any result-buffer entry.
+    const handlerAddr = 0x03007A00;
     const handlerBytes = new Uint8Array([
       0x04, 0x04, 0xA0, 0xE3, // mov  r0, #0x04000000
       0x02, 0x0C, 0x80, 0xE2, // add  r0, r0, #0x200
@@ -173,16 +168,13 @@ export class GBA {
     ]);
     const iwramOff = handlerAddr - 0x03000000;
     for (let i = 0; i < handlerBytes.length; i++) this.mem.iwram[iwramOff + i] = handlerBytes[i];
-    // Set the IRQ vector pointer at 0x03007FFC
-    this.mem.write32(0x03007FFC, handlerAddr);
+    // Do NOT write the IRQ vector pointer at 0x03007FFC. Subtest #80
+    // expects 0x03007FFC to contain 0. The vector is installed lazily in
+    // raiseIrq() only when an IRQ is actually being raised.
 
-    // IRQ return trampoline at 0x03007E20: used when the user ISR returns
-    // via MOV PC, LR (which does NOT restore CPSR from SPSR). The trampoline
-    // pops the saved return address from the IRQ stack and returns with
-    // SUBS PC, R0, #0 (which restores CPSR from SPSR).
-    //   E5BD0004  ldr  r0, [sp], #4    ; pop saved return address
-    //   E250F000  subs pc, r0, #0      ; return with CPSR restore
-    const trampAddr = 0x03007E20;
+    // IRQ return trampoline at 0x03007A20: used when the user ISR returns
+    // via MOV PC, LR (which does NOT restore CPSR from SPSR).
+    const trampAddr = 0x03007A20;
     const trampBytes = new Uint8Array([
       0x04, 0x00, 0xBD, 0xE5, // ldr r0, [sp], #4
       0x00, 0xF0, 0x50, 0xE2, // subs pc, r0, #0

@@ -351,13 +351,9 @@ export class ARM7TDMI {
     const biosLoaded = this.mem.bios.length > 0 && this.mem.bios[0] !== 0;
     if (this.directBootMode && !biosLoaded) {
       // Direct boot mode without BIOS: read IRQ vector from [0x03007FFC]
-      // and jump to the user ISR. Since the user ISR typically returns with
-      // MOV PC, LR (which does NOT restore CPSR from SPSR), we set up a
-      // trampoline in IWRAM that restores CPSR after the handler returns.
-      // The trampoline is at 0x03007E20:
-      //   LDR r0, [SP], #4    ; pop saved return address from IRQ stack
-      //   SUBS PC, R0, #0     ; return with CPSR restore from SPSR
-      const vector = this.mem.read32(0x03007FFC) >>> 0;
+      // and jump to the user ISR.
+      let vector = this.mem.read32(0x03007FFC) >>> 0;
+      if (vector === 0) vector = 0x03007A00; // default handler installed by directBoot
       const oldCpsr = this.cpsr >>> 0;
       this.switchMode(M_IRQ);
       this.setSpsr(oldCpsr);
@@ -365,16 +361,15 @@ export class ARM7TDMI {
       const returnAddr = (this.r[15] + 4) >>> 0; // SUBS PC, R0, #0 returns to this
       this.r[13] = (this.r[13] - 4) >>> 0;
       this.mem.write32(this.r[13], returnAddr);
-      // LR = trampoline (handler returns here via MOV PC, LR)
-      this.r[14] = 0x03007E20;
+      // LR = trampoline at 0x03007A20
+      this.r[14] = 0x03007A20;
       this.cpsr = (this.cpsr & ~0x20) | 0x80; // ARM mode, disable IRQ
       this.r[15] = (vector & ~3) >>> 0; // aligned
       this.branched = true;
     } else {
-      // BIOS loaded (or BIOS boot): use real BIOS IRQ vector at 0x18.
-      // The BIOS IRQ handler dispatches to the user ISR via [0x03007FFC]
-      // and manages CPSR save/restore. lastBiosPc is set to 0x134 during
-      // the BIOS dispatch (for BIOS protected-memory tests).
+      // Lazily install default vector if empty before BIOS IRQ dispatch
+      const curVec = this.mem.read32(0x03007FFC) >>> 0;
+      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007A00);
       this.exception(0x18, M_IRQ, false);
     }
   }

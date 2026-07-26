@@ -24,6 +24,7 @@
     "test:cat09": "npm run test:cat09 --workspace=gba",
     "test:cat10": "npm run test:cat10 --workspace=gba",
     "test:cat11": "npm run test:cat11 --workspace=gba",
+    "test:cat12": "npm run test:cat12 --workspace=gba",
     "test:mem-rom": "npm run test:mem-rom --workspace=gba",
     "test:mem-rom-oob": "npm run test:mem-rom-oob --workspace=gba",
     "test:mem-iwram": "npm run test:mem-iwram --workspace=gba",
