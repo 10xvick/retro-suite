@@ -3,7 +3,7 @@ import { GBA } from '../core/gba.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-describe('GBA Hardware Test Category: 12 Video tests', () => {
+describe('GBA Hardware Test Category: 12 Misc. edge case tests', () => {
   let gba: GBA;
   let cart: Uint8Array;
 
@@ -21,7 +21,7 @@ describe('GBA Hardware Test Category: 12 Video tests', () => {
     gba.loadCart(cart);
   });
 
-  it('12 Video tests', () => {
+  it('12 Misc. edge case tests', () => {
     gba.reset();
     gba.directBoot();
 
@@ -37,7 +37,6 @@ describe('GBA Hardware Test Category: 12 Video tests', () => {
       gba.mem.write32(0x03007b08 + offset, 0);
     }
 
-    // Video tests enter display loop after rendering subtests; 120 frames is sufficient.
     for (let f = 0; f < 120; f++) {
       gba.runFrame();
     }
@@ -70,13 +69,13 @@ describe('GBA Hardware Test Category: 12 Video tests', () => {
     }
 
     if (failures.length > 0) {
-      console.log(`\n--- FAILED SUB-TEST DIAGNOSTICS FOR 12 Video tests (${failures.length} failures) ---`);
+      console.log(`\n--- FAILED SUB-TEST DIAGNOSTICS FOR 12 Misc. edge case tests (${failures.length} failures) ---`);
       console.log(failures.join('\n'));
       console.log("--------------------------------------------------------------------------\n");
     }
 
     console.log("\n==========================================================================");
-    console.log(" CATEGORY: 12 Video tests");
+    console.log(" CATEGORY: 12 Misc. edge case tests");
     console.log("==========================================================================");
     console.log(`TOTAL SUB-TESTS : ${total}`);
     console.log(`PASSED          : ${passed} / ${total} (${((passed/total)*100).toFixed(2)}%)`);
