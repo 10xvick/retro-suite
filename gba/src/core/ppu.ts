@@ -177,6 +177,7 @@ export class PPU {
   }
 
   private renderLine(y: number, mode: number, cnt: number) {
+    this.updateScanline(y);
     const fb = this.framebuffer;
     const yoff = y * GBA_WIDTH;
     // Default backdrop color = palette[0]
