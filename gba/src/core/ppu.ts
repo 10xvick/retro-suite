@@ -25,20 +25,24 @@ export class PPU {
   win0InY = false;
   win1InY = false;
 
+  ensureBuffers() {
+    if (!this.framebuffer || this.framebuffer.length !== GBA_WIDTH * GBA_HEIGHT) this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
+    if (!this.bgColor || this.bgColor.length !== GBA_WIDTH) this.bgColor = new Uint32Array(GBA_WIDTH);
+    if (!this.bgColor2 || this.bgColor2.length !== GBA_WIDTH) this.bgColor2 = new Uint32Array(GBA_WIDTH);
+    if (!this.bgPrio || this.bgPrio.length !== GBA_WIDTH) this.bgPrio = new Uint8Array(GBA_WIDTH);
+    if (!this.bgPrio2 || this.bgPrio2.length !== GBA_WIDTH) this.bgPrio2 = new Uint8Array(GBA_WIDTH);
+    if (!this.objColor || this.objColor.length !== GBA_WIDTH) this.objColor = new Uint32Array(GBA_WIDTH);
+    if (!this.objPrio || this.objPrio.length !== GBA_WIDTH) this.objPrio = new Uint8Array(GBA_WIDTH);
+    if (!this.objSemi || this.objSemi.length !== GBA_WIDTH) this.objSemi = new Uint8Array(GBA_WIDTH);
+    if (!this.bgLayer || this.bgLayer.length !== GBA_WIDTH) this.bgLayer = new Uint8Array(GBA_WIDTH);
+    if (!this.bgLayer2 || this.bgLayer2.length !== GBA_WIDTH) this.bgLayer2 = new Uint8Array(GBA_WIDTH);
+    if (!this.objLayer || this.objLayer.length !== GBA_WIDTH) this.objLayer = new Uint8Array(GBA_WIDTH);
+    if (!this.objWinMask || this.objWinMask.length !== GBA_WIDTH) this.objWinMask = new Uint8Array(GBA_WIDTH);
+  }
+
   constructor(mem: Memory) {
     this.mem = mem;
-    this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
-    this.bgColor = new Uint32Array(GBA_WIDTH);
-    this.bgColor2 = new Uint32Array(GBA_WIDTH);
-    this.bgPrio = new Uint8Array(GBA_WIDTH);
-    this.bgPrio2 = new Uint8Array(GBA_WIDTH);
-    this.objColor = new Uint32Array(GBA_WIDTH);
-    this.objPrio = new Uint8Array(GBA_WIDTH);
-    this.objSemi = new Uint8Array(GBA_WIDTH);
-    this.bgLayer = new Uint8Array(GBA_WIDTH);
-    this.bgLayer2 = new Uint8Array(GBA_WIDTH);
-    this.objLayer = new Uint8Array(GBA_WIDTH);
-    this.objWinMask = new Uint8Array(GBA_WIDTH);
+    this.ensureBuffers();
   }
 
   get dispcnt() { return this.mem.readIO16(IO.DISPCNT); }
@@ -159,6 +163,7 @@ export class PPU {
 
   // Render a single scanline (per-scanline mode — latches HOFS/VOFS per line)
   renderScanline(y: number) {
+    this.ensureBuffers();
     const cnt = this.dispcnt;
     const mode = cnt & 7;
     const forcedBlank = (cnt >>> 7) & 1;
