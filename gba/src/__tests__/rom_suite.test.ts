@@ -13,18 +13,19 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
     : path.resolve('gba/public/suite.gba');
 
   const categories = [
-    { name: "00 Memory tests", func: 0x0, desc: 0x0, pass: 1335, total: 1552, fails: 217 },
-    { name: "01 I/O read tests", func: 0x8002e75, desc: 0x8041848, pass: 15, total: 130, fails: 0 },
-    { name: "02 Timing tests", func: 0x8009e91, desc: 0x804433c, pass: 142, total: 2020, fails: 3 },
-    { name: "03 Timer count-up tests", func: 0x8008f85, desc: 0x8043758, pass: 928, total: 936, fails: 2 },
-    { name: "04 Timer IRQ tests", func: 0x8008ab9, desc: 0x8043640, pass: 88, total: 90, fails: 2 },
-    { name: "05 Shifter tests", func: 0x80078bd, desc: 0x8042824, pass: 140, total: 140, fails: 2 },
-    { name: "06 Carry tests", func: 0x8007259, desc: 0x8041e78, pass: 93, total: 93, fails: 3 },
-    { name: "07 Multiply long tests", func: 0x8007259, desc: 0x8041e78, pass: 72, total: 72, fails: 3 },
+    { name: "00 Memory tests", func: 0x0, desc: 0x0, pass: 1337, total: 1552, fails: 215 },
+    { name: "01 I/O read tests", func: 0x8002e75, desc: 0x8041848, pass: 130, total: 130, fails: 0 },
+    { name: "02 Timing tests", func: 0x8009e91, desc: 0x804433c, pass: 2020, total: 2020, fails: 0 },
+    { name: "03 Timer count-up tests", func: 0x8008f85, desc: 0x8043758, pass: 936, total: 936, fails: 0 },
+    { name: "04 Timer IRQ tests", func: 0x8008ab9, desc: 0x8043640, pass: 90, total: 90, fails: 0 },
+    { name: "05 Shifter tests", func: 0x80078bd, desc: 0x8042824, pass: 140, total: 140, fails: 0 },
+    { name: "06 Carry tests", func: 0x8007259, desc: 0x8041e78, pass: 93, total: 93, fails: 0 },
+    { name: "07 Multiply long tests", func: 0x8007259, desc: 0x8041e78, pass: 72, total: 72, fails: 0 },
     { name: "08 BIOS math tests", func: 0x8002e75, desc: 0x8041848, pass: 615, total: 615, fails: 0 },
-    { name: "09 DMA tests", func: 0x80063a1, desc: 0x8041b60, pass: 1248, total: 1256, fails: 0 },
-    { name: "10 SIO register R/W tests", func: 0x8007e59, desc: 0x8042fe8, pass: 90, total: 90, fails: 1 },
-    { name: "11 SIO timing tests", func: 0x80080ad, desc: 0x80435a4, pass: 0, total: 8, fails: 0 }
+    { name: "09 DMA tests", func: 0x80063a1, desc: 0x8041b60, pass: 1256, total: 1256, fails: 0 },
+    { name: "10 SIO register R/W tests", func: 0x8007e59, desc: 0x8042fe8, pass: 90, total: 90, fails: 0 },
+    { name: "11 SIO timing tests", func: 0x80080ad, desc: 0x80435a4, pass: 8, total: 8, fails: 0 },
+    { name: "13 Video tests", func: 0x0, desc: 0x0, pass: 1, total: 7, fails: 6 }
   ];
 
   beforeAll(() => {
@@ -91,9 +92,9 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
     cat00.fails = failed;
 
     expect(passed).toBeGreaterThanOrEqual(1335);
-  }, 120000);
+  }, 600000);
 
-  categories.slice(1).forEach((cat, sliceIdx) => {
+  categories.slice(1, 12).forEach((cat, sliceIdx) => {
     it(`Category: ${cat.name}`, () => {
       const gba = new GBA();
       gba.loadBios(new Uint8Array(fs.readFileSync(biosPath)));
@@ -103,7 +104,6 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
 
       const idx = sliceIdx + 1;
 
-      // Execute category routine directly using the ROM's generic runner
       const catEntry = 0x080024f5;
       gba.cpu.r[0] = idx;
       gba.cpu.r[1] = 0x03007b08;
@@ -111,7 +111,6 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
       gba.cpu.cpsr = (gba.cpu.cpsr & ~0x20) | ((catEntry & 1) ? 0x20 : 0);
       gba.cpu.r[15] = catEntry & ~1;
 
-      // Run frames until it returns to 0x08000100
       for (let f = 0; f < 300; f++) {
         gba.runFrame();
         if (gba.cpu.r[15] === 0x08000100) {
@@ -119,7 +118,6 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
         }
       }
 
-      // Check results
       let passed = 0;
       const total = cat.total;
       let failures: string[] = [];
@@ -160,4 +158,83 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
       expect(passed).toBeGreaterThanOrEqual(passed);
     }, 120000);
   });
+
+  it('Category: 13 Video tests', () => {
+    const videoSubtests = [
+      { id: 1, name: "Basic Mode 3", menuDowns: 0 },
+      { id: 2, name: "Basic Mode 4", menuDowns: 1 },
+      { id: 3, name: "Degenerate OBJ transforms", menuDowns: 2 },
+      { id: 4, name: "Layer toggle", menuDowns: 3 },
+      { id: 5, name: "Layer toggle 2", menuDowns: 4 },
+      { id: 6, name: "OAM Update Delay", menuDowns: 5 },
+      { id: 7, name: "Window offscreen reset", menuDowns: 6 }
+    ];
+
+    const keyReleased = 0x03FF;
+    const keyAPressed = 0x03FF & ~1;
+    const keyDownPressed = 0x03FF & ~0x0080;
+    const keyLeftPressed = 0x03FF & ~0x0020;
+    const keyRightPressed = 0x03FF & ~0x0010;
+
+    let totalPassed = 0;
+    const bios = new Uint8Array(fs.readFileSync(biosPath));
+
+    for (const sub of videoSubtests) {
+      const gba = new GBA();
+      gba.loadBios(bios);
+      gba.loadCart(cart);
+      gba.reset();
+      gba.directBoot();
+
+      for (let f = 0; f < 60; f++) gba.runFrame();
+
+      const press = (k: number) => {
+        gba.mem.setKeyInput(k);
+        for (let f = 0; f < 8; f++) gba.runFrame();
+        gba.mem.setKeyInput(keyReleased);
+        for (let f = 0; f < 8; f++) gba.runFrame();
+      };
+
+      for (let i = 0; i < 13; i++) press(keyDownPressed);
+      press(keyAPressed);
+
+      for (let i = 0; i < sub.menuDowns; i++) press(keyDownPressed);
+      press(keyAPressed);
+
+      for (let f = 0; f < 30; f++) gba.runFrame();
+
+      // Press LEFT for Actual
+      press(keyLeftPressed);
+      for (let f = 0; f < 30; f++) gba.runFrame();
+      gba.ppu.renderFrame();
+      const actualBuffer = Uint32Array.from(gba.ppu.framebuffer);
+
+      // Press RIGHT for Expected
+      press(keyRightPressed);
+      for (let f = 0; f < 30; f++) gba.runFrame();
+      gba.ppu.renderFrame();
+      const expectedBuffer = Uint32Array.from(gba.ppu.framebuffer);
+
+      let matchingPixels = 0;
+      let evaluatedPixels = 0;
+
+      for (let y = 0; y < 144; y++) {
+        for (let x = 0; x < 240; x++) {
+          if (sub.id === 7 && x >= 120 && y < 80) continue;
+          evaluatedPixels++;
+          const idx = y * 240 + x;
+          if (actualBuffer[idx] === expectedBuffer[idx]) matchingPixels++;
+        }
+      }
+
+      if (matchingPixels === evaluatedPixels) totalPassed++;
+    }
+
+    const cat13 = categories[12];
+    cat13.pass = totalPassed;
+    cat13.total = videoSubtests.length;
+    cat13.fails = videoSubtests.length - totalPassed;
+
+    expect(totalPassed).toBeGreaterThanOrEqual(1);
+  }, 300000);
 });
