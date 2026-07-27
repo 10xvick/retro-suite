@@ -212,25 +212,20 @@ export class PPU {
       for (let x = 0; x < GBA_WIDTH; x++) {
         let winMask = 0x3f;
         if (anyWinEnable) {
-          let winControl = winout & 0x3f;
-          if (win0Enable && this.win0InY) {
-            const win0_x1 = (win0h >>> 8) & 0xff;
-            const win0_x2 = win0h & 0xff;
-            const win0_in_x = (win0_x1 <= win0_x2) ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2);
-            if (win0_in_x) winControl = winin & 0x3f;
-            else if (win1Enable && this.win1InY) {
-              const win1_x1 = (win1h >>> 8) & 0xff;
-              const win1_x2 = win1h & 0xff;
-              const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
-              if (win1_in_x) winControl = (winin >> 8) & 0x3f;
-            }
-          } else if (win1Enable && this.win1InY) {
-            const win1_x1 = (win1h >>> 8) & 0xff;
-            const win1_x2 = win1h & 0xff;
-            const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
-            if (win1_in_x) winControl = (winin >> 8) & 0x3f;
-          }
-          winMask = winControl;
+        let winControl = winout & 0x3f;
+        const win0_x1 = (win0h >>> 8) & 0xff, win0_x2 = win0h & 0xff;
+        const win1_x1 = (win1h >>> 8) & 0xff, win1_x2 = win1h & 0xff;
+        const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
+        const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
+
+        if (win0Enable && this.win0InY && inWin0X) {
+          winControl = winin & 0x3f;
+        } else if (win1Enable && this.win1InY && inWin1X) {
+          winControl = (winin >> 8) & 0x3f;
+        } else if (objWinEnable && this.objWinMask[x]) {
+          winControl = (winout >> 8) & 0x3f;
+        }
+        winMask = winControl;
         }
 
         let col = (winMask & 0x04) ? fb[yoff + x] : backdrop;
@@ -333,22 +328,17 @@ export class PPU {
       let winMask = 0x3f;
       if (anyWinEnable) {
         let winControl = winout & 0x3f;
-        if (win0Enable && this.win0InY) {
-          const win0_x1 = (win0h >>> 8) & 0xff;
-          const win0_x2 = win0h & 0xff;
-          const win0_in_x = (win0_x1 <= win0_x2) ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2);
-          if (win0_in_x) winControl = winin & 0x3f;
-          else if (win1Enable && this.win1InY) {
-            const win1_x1 = (win1h >>> 8) & 0xff;
-            const win1_x2 = win1h & 0xff;
-            const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
-            if (win1_in_x) winControl = (winin >> 8) & 0x3f;
-          }
-        } else if (win1Enable && this.win1InY) {
-          const win1_x1 = (win1h >>> 8) & 0xff;
-          const win1_x2 = win1h & 0xff;
-          const win1_in_x = (win1_x1 <= win1_x2) ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2);
-          if (win1_in_x) winControl = (winin >> 8) & 0x3f;
+        const win0_x1 = (win0h >>> 8) & 0xff, win0_x2 = win0h & 0xff;
+        const win1_x1 = (win1h >>> 8) & 0xff, win1_x2 = win1h & 0xff;
+        const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
+        const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
+
+        if (win0Enable && this.win0InY && inWin0X) {
+          winControl = winin & 0x3f;
+        } else if (win1Enable && this.win1InY && inWin1X) {
+          winControl = (winin >> 8) & 0x3f;
+        } else if (objWinEnable && this.objWinMask[x]) {
+          winControl = (winout >> 8) & 0x3f;
         }
         winMask = winControl;
       }
@@ -552,9 +542,46 @@ export class PPU {
     const page = ((cnt >>> 4) & 1) * 0xa000;
     const vram = this.mem.vram;
     const palette = this.mem.palette;
+    const bg2Enable = (cnt >>> 10) & 1;
+    const backdrop = PPU.color555to32(palette[0] | (palette[1] << 8));
+
+    if (!bg2Enable) {
+      for (let x = 0; x < GBA_WIDTH; x++) fb[yoff + x] = backdrop;
+      return;
+    }
+
+    const win0Enable = (cnt >>> 13) & 1;
+    const win1Enable = (cnt >>> 14) & 1;
+    const objWinEnable = (cnt >>> 15) & 1;
+    const anyWinEnable = win0Enable || win1Enable || objWinEnable;
+
+    let win0h = 0, win1h = 0, winin = 0, winout = 0;
+    if (anyWinEnable) {
+      win0h = this.mem.readIO16(0x40);
+      win1h = this.mem.readIO16(0x42);
+      winin = this.mem.readIO16(0x48);
+      winout = this.mem.readIO16(0x4a);
+    }
+
+    const win0_x1 = (win0h >>> 8) & 0xff, win0_x2 = win0h & 0xff;
+    const win1_x1 = (win1h >>> 8) & 0xff, win1_x2 = win1h & 0xff;
+
     if (mode === 3) {
       const base = y * GBA_WIDTH * 2;
       for (let x = 0; x < GBA_WIDTH; x++) {
+        if (anyWinEnable) {
+          let winControl = winout & 0x3f;
+          const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
+          const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
+          if (win0Enable && this.win0InY && inWin0X) winControl = winin & 0x3f;
+          else if (win1Enable && this.win1InY && inWin1X) winControl = (winin >> 8) & 0x3f;
+          else if (objWinEnable && this.objWinMask[x]) winControl = (winout >> 8) & 0x3f;
+
+          if ((winControl & 0x04) === 0) {
+            fb[yoff + x] = backdrop;
+            continue;
+          }
+        }
         const o = base + x * 2;
         const c = vram[o] | (vram[o + 1] << 8);
         fb[yoff + x] = PPU.color555to32(c);
@@ -562,16 +589,42 @@ export class PPU {
     } else if (mode === 4) {
       const base = page + y * GBA_WIDTH;
       for (let x = 0; x < GBA_WIDTH; x++) {
+        if (anyWinEnable) {
+          let winControl = winout & 0x3f;
+          const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
+          const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
+          if (win0Enable && this.win0InY && inWin0X) winControl = winin & 0x3f;
+          else if (win1Enable && this.win1InY && inWin1X) winControl = (winin >> 8) & 0x3f;
+          else if (objWinEnable && this.objWinMask[x]) winControl = (winout >> 8) & 0x3f;
+
+          if ((winControl & 0x04) === 0) {
+            fb[yoff + x] = backdrop;
+            continue;
+          }
+        }
         const idx = vram[base + x];
         const c = palette[idx * 2] | (palette[idx * 2 + 1] << 8);
         fb[yoff + x] = PPU.color555to32(c);
       }
     } else if (mode === 5) {
       const w = 160;
-      if (y >= 128) { for (let x = 0; x < GBA_WIDTH; x++) fb[yoff + x] = 0xff000000; return; }
+      if (y >= 128) { for (let x = 0; x < GBA_WIDTH; x++) fb[yoff + x] = backdrop; return; }
       const base = page + y * w * 2;
       for (let x = 0; x < GBA_WIDTH; x++) {
-        if (x >= w) { fb[yoff + x] = 0xff000000; continue; }
+        if (x >= w) { fb[yoff + x] = backdrop; continue; }
+        if (anyWinEnable) {
+          let winControl = winout & 0x3f;
+          const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
+          const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
+          if (win0Enable && this.win0InY && inWin0X) winControl = winin & 0x3f;
+          else if (win1Enable && this.win1InY && inWin1X) winControl = (winin >> 8) & 0x3f;
+          else if (objWinEnable && this.objWinMask[x]) winControl = (winout >> 8) & 0x3f;
+
+          if ((winControl & 0x04) === 0) {
+            fb[yoff + x] = backdrop;
+            continue;
+          }
+        }
         const o = base + x * 2;
         const c = vram[o] | (vram[o + 1] << 8);
         fb[yoff + x] = PPU.color555to32(c);
@@ -606,12 +659,10 @@ export class PPU {
       // 9-bit signed: 0-255 normal, 256-511 = -256 to -1
       if (x >= 256) x -= 512;
       const y0 = attr0 & 0xff;
-      let ys = y0;
-      if (ys >= 160) ys -= 256;
+      const ys = (y0 >= 160) ? y0 - 256 : y0;
       const renderH = doubleSize ? h * 2 : h;
-      let dy = y - ys;
-      if (dy < 0) dy += 256;
-      if (dy >= renderH) continue;
+      const dy = y - ys;
+      if (dy < 0 || dy >= renderH) continue;
       let prio = (attr2 >>> 10) & 3;
       const palIdx = (attr2 >>> 12) & 0xf;
       const tileBase = attr2 & 0x3ff;
