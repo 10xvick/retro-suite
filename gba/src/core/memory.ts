@@ -219,6 +219,26 @@ export class Memory {
   setKeyInput(val: number) {
     this.io[IO.KEYINPUT] = val & 0xff;
     this.io[IO.KEYINPUT + 1] = (val >> 8) & 0xff;
+    this.checkKeypadIrq();
+  }
+
+  checkKeypadIrq() {
+    const keyinput = this.ioView.getUint16(IO.KEYINPUT, true);
+    const keycnt = this.ioView.getUint16(0x132, true);
+    if (keycnt & 0x4000) { // Key IRQ enable
+      const selectedKeys = keycnt & 0x03FF;
+      const isAndMode = (keycnt & 0x8000) !== 0;
+      const pressedKeys = ~keyinput & selectedKeys;
+      let match = false;
+      if (isAndMode) {
+        match = (pressedKeys === selectedKeys) && (selectedKeys !== 0);
+      } else {
+        match = pressedKeys !== 0;
+      }
+      if (match && this.gba) {
+        this.gba.requestIrq(0x1000); // IRQ_KEYPAD (bit 12)
+      }
+    }
   }
 
   // ---- VRAM mirroring helper ----
