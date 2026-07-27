@@ -23,6 +23,7 @@
     "test:cat11": "vitest run src/__tests__/cat11_sio_timing.test.ts",
     "test:cat12": "vitest run src/__tests__/cat12_misc.test.ts",
     "test:cat13": "vitest run src/__tests__/cat13_video.test.ts",
+    "test:cat13-visual": "vitest run src/__tests__/visual_screenshot_parity.test.ts",
     "test:mem-all": "vitest run src/__tests__/cat00_memory.test.ts",
     "test:mem-rom": "vitest run src/__tests__/cat00_mem_01_rom_load.test.ts",
     "test:mem-rom-oob": "vitest run src/__tests__/cat00_mem_02_rom_oob_load.test.ts",

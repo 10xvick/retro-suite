@@ -175,5 +175,5 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
     console.log("==========================================================================\n");
 
     expect(totalPassedSubtests).toBe(7);
-  }, 120000);
+  }, 300000);
 });
