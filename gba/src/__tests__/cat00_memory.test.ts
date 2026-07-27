@@ -4,12 +4,17 @@ import { runMemorySubtest, MEM_SUBTESTS } from './mem_test_helper';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const biosPath = fs.existsSync(path.resolve('public/roms/test/gba_bios.bin'))
-  ? path.resolve('public/roms/test/gba_bios.bin')
-  : path.resolve('public/gba_bios.bin');
-const romPath = fs.existsSync(path.resolve('public/roms/test/suite.gba'))
-  ? path.resolve('public/roms/test/suite.gba')
-  : path.resolve('public/suite.gba');
+const biosPath = [
+  path.resolve('gba/public/roms/test/gba_bios.bin'),
+  path.resolve('public/roms/test/gba_bios.bin'),
+  path.resolve('public/gba_bios.bin')
+].find(p => fs.existsSync(p)) || path.resolve('public/gba_bios.bin');
+
+const romPath = [
+  path.resolve('gba/public/roms/test/suite.gba'),
+  path.resolve('public/roms/test/suite.gba'),
+  path.resolve('public/suite.gba')
+].find(p => fs.existsSync(p)) || path.resolve('public/suite.gba');
 
 describe('GBA Hardware Test Category: 00 Memory tests (Full)', () => {
   let gba: GBA;

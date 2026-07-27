@@ -49,7 +49,7 @@ describe('GBA Hardware Test Suite (Headless CLI Coverage Table)', () => {
     console.log("==========================================================================\n");
   });
 
-  it('Category: 00 Memory tests', { timeout: 600000 }, () => {
+  it('Category: 00 Memory tests', () => {
     const gba = new GBA();
     gba.loadBios(new Uint8Array(fs.readFileSync(biosPath)));
     gba.loadCart(cart);

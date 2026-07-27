@@ -5,22 +5,22 @@ import { GBA_WIDTH, GBA_HEIGHT } from "./types";
 export class PPU {
   mem: Memory;
   // RGBA framebuffer (Uint32, ABGR for little-endian canvas)
-  framebuffer: Uint32Array;
+  framebuffer!: Uint32Array;
   // line buffer of color indices (priority + color) for blending
-  private bgColor: Uint32Array; // top BG color (0 = transparent)
-  private bgColor2: Uint32Array; // second BG color (below top, 0 = transparent)
-  private bgPrio: Uint8Array;
-  private bgPrio2: Uint8Array;
-  private bgLayer: Uint8Array;
-  private bgLayer2: Uint8Array;
-  private objColor: Uint32Array;
-  private objPrio: Uint8Array;
-  private objSemi: Uint8Array; // 1 = semi-transparent sprite
+  private bgColor!: Uint32Array; // top BG color (0 = transparent)
+  private bgColor2!: Uint32Array; // second BG color (below top, 0 = transparent)
+  private bgPrio!: Uint8Array;
+  private bgPrio2!: Uint8Array;
+  private bgLayer!: Uint8Array;
+  private bgLayer2!: Uint8Array;
+  private objColor!: Uint32Array;
+  private objPrio!: Uint8Array;
+  private objSemi!: Uint8Array; // 1 = semi-transparent sprite
 
   // Layer source IDs for blend targeting:
   // 0=BD(backdrop), 1=BG0, 2=BG1, 3=BG2, 4=BG3, 5=OBJ
-  private objLayer: Uint8Array;
-  private objWinMask: Uint8Array;
+  private objLayer!: Uint8Array;
+  private objWinMask!: Uint8Array;
 
   win0InY = false;
   win1InY = false;
