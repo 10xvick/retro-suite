@@ -164,6 +164,7 @@ export class PPU {
   // Render a single scanline (per-scanline mode — latches HOFS/VOFS per line)
   renderScanline(y: number) {
     this.ensureBuffers();
+    this.updateScanline(y);
     const cnt = this.dispcnt;
     const mode = cnt & 7;
     const forcedBlank = (cnt >>> 7) & 1;
@@ -663,6 +664,7 @@ export class PPU {
       const objMode = (attr0 >>> 10) & 3;
       if (objMode === 3) continue; // invalid
       const affine = ((attr0 >>> 8) & 1) === 1;
+      if (!affine && ((attr0 >>> 9) & 1) === 1) continue; // OBJ Disabled (bit 9 = 1 when affine = 0)
       const doubleSize = affine && ((attr0 >>> 9) & 1) === 1;
       let x = attr1 & 0x1ff;
       // 9-bit signed: 0-255 normal, 256-511 = -256 to -1
