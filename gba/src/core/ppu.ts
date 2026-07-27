@@ -20,6 +20,7 @@ export class PPU {
   // Layer source IDs for blend targeting:
   // 0=BD(backdrop), 1=BG0, 2=BG1, 3=BG2, 4=BG3, 5=OBJ
   private objLayer: Uint8Array;
+  private objWinMask: Uint8Array;
 
   win0InY = false;
   win1InY = false;
@@ -37,6 +38,7 @@ export class PPU {
     this.bgLayer = new Uint8Array(GBA_WIDTH);
     this.bgLayer2 = new Uint8Array(GBA_WIDTH);
     this.objLayer = new Uint8Array(GBA_WIDTH);
+    this.objWinMask = new Uint8Array(GBA_WIDTH);
   }
 
   get dispcnt() { return this.mem.readIO16(IO.DISPCNT); }
@@ -182,6 +184,7 @@ export class PPU {
         this.objPrio[x] = 4;
         this.objLayer[x] = 0;
         this.objSemi[x] = 0;
+        this.objWinMask[x] = 0;
       }
       this.renderBitmapLine(y, mode, cnt);
       // sprites can still overlay
@@ -273,6 +276,7 @@ export class PPU {
       this.objPrio[x] = 4;
       this.objLayer[x] = 0;
       this.objSemi[x] = 0;
+      this.objWinMask[x] = 0;
     }
 
     const bgEnable = [(cnt >>> 8) & 1, (cnt >>> 9) & 1, (cnt >>> 10) & 1, (cnt >>> 11) & 1];
@@ -652,7 +656,7 @@ export class PPU {
       const dims = this.objDims(shape, size);
       let w = dims.w, h = dims.h;
       const objMode = (attr0 >>> 10) & 3;
-      if (objMode === 2) continue; // disabled
+      if (objMode === 3) continue; // invalid
       const affine = ((attr0 >>> 8) & 1) === 1;
       const doubleSize = affine && ((attr0 >>> 9) & 1) === 1;
       let x = attr1 & 0x1ff;
@@ -743,6 +747,10 @@ export class PPU {
           colorIdx = (tx & 1) ? (byte >> 4) & 0xf : byte & 0xf;
         }
         if (colorIdx === 0) continue;
+        if (objMode === 2) {
+          this.objWinMask[sx] = 1;
+          continue;
+        }
         let color: number;
         if (bpp8) color = PPU.color555to32(palette[0x200 + colorIdx * 2] | (palette[0x200 + colorIdx * 2 + 1] << 8));
         else color = PPU.color555to32(palette[0x200 + palIdx * 32 + colorIdx * 2] | (palette[0x200 + palIdx * 32 + colorIdx * 2 + 1] << 8));
