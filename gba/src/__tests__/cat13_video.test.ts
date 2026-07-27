@@ -3,14 +3,15 @@ import { GBA } from '../core/gba.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Exact ROM Descriptor Table Order from 0x080472c8 in suite.gba
 export const VIDEO_SUBTESTS = [
-  { id: 1, name: "Window offscreen reset", setup: 0x0800bc05, render: 0x0800b949 },
-  { id: 2, name: "Basic Mode 3",            setup: 0x0800a5c9, render: 0x0800a659 },
-  { id: 3, name: "Basic Mode 4",            setup: 0x0800a5c9, render: 0x0800a965 },
-  { id: 4, name: "Degenerate OBJ transforms",setup: 0x0800aba5, render: 0x0800b4d9 },
-  { id: 5, name: "Layer toggle",             setup: 0x0800bb39, render: 0x0800b0bd },
-  { id: 6, name: "Layer toggle 2",           setup: 0x0800ba69, render: 0x0800bc05 },
-  { id: 7, name: "OAM Update Delay",        setup: 0x0800b949, render: 0x0800ae55 }
+  { id: 1, name: "Basic Mode 3",            setup: 0x0800a5c9, render: 0x0800a659 },
+  { id: 2, name: "Basic Mode 4",            setup: 0x0800a5c9, render: 0x0800a965 },
+  { id: 3, name: "Degenerate OBJ transforms",setup: 0x0800b639, render: 0x0800aba5 },
+  { id: 4, name: "Layer toggle",             setup: 0x0800b4d9, render: 0x0800bb39 },
+  { id: 5, name: "Layer toggle 2",           setup: 0x0800b0bd, render: 0x0800ba69 },
+  { id: 6, name: "OAM Update Delay",        setup: 0x0800bc05, render: 0x0800b949 },
+  { id: 7, name: "Window offscreen reset",   setup: 0x0800ae55, render: 0x0800adbd }
 ];
 
 describe('GBA Hardware Test Category: 13 Video tests', () => {
@@ -49,6 +50,7 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       gba.reset();
       gba.directBoot();
 
+      // Wait menu load
       for (let f = 0; f < 60; f++) gba.runFrame();
 
       const press = (k: number) => {
@@ -58,12 +60,15 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
         for (let f = 0; f < 8; f++) gba.runFrame();
       };
 
+      // Enter Category 13 (Video tests)
       for (let i = 0; i < 13; i++) press(keyDownPressed);
       press(keyAPressed);
+
+      // Navigate to subtest (sub.id - 1 presses of DOWN)
       for (let i = 0; i < sub.id - 1; i++) press(keyDownPressed);
       press(keyAPressed);
 
-      // Run until Forced Blank is cleared (or up to 60 frames)
+      // Run up to 60 frames until unblanked
       let liveDispcnt = gba.ppu.dispcnt;
       for (let f = 0; f < 60; f++) {
         gba.runFrame();
@@ -72,7 +77,7 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       }
       const liveBuffer = new Uint32Array(gba.ppu.framebuffer);
 
-      // Toggle to Golden Reference view
+      // Toggle to Golden Reference view (RIGHT button)
       press(keyRightPressed);
       for (let f = 0; f < 60; f++) {
         gba.runFrame();
@@ -80,7 +85,6 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       }
       const goldenBuffer = new Uint32Array(gba.ppu.framebuffer);
 
-      // Require that the screen was actually unblanked
       const isForcedBlank = (liveDispcnt & 0x80) !== 0;
 
       let matchingPixels = 0;
