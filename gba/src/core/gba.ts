@@ -325,6 +325,19 @@ export class GBA {
         this.tickTimers(c);
         budget -= c;
         guard++;
+
+        // Set HBlank flag when instruction execution reaches HBlank period (after 960 cycles)
+        if (line < VISIBLE_LINES && (CYCLES_PER_LINE - budget) >= 960) {
+          const ds = this.mem.readIO16(IO.DISPSTAT);
+          if (!(ds & 0x2)) {
+            this.mem.writeIO16(IO.DISPSTAT, ds | 0x2);
+            if (ds & 0x10) {
+              this.requestIrq(IRQ_HBLANK);
+              this.doDma(2);
+            }
+          }
+        }
+
         // check pending IRQ after each step (in case IF set by SWI/timer)
         this.checkPendingIrq();
       }
