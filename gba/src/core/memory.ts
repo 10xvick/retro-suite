@@ -546,9 +546,8 @@ export class Memory {
     if (addr < 0x07000000) {
       // Background VRAM byte writes duplicate to both halves, Sprite VRAM byte writes ignored
       const o = this.vramOffset(addr);
-      if (o < 0x10000) {
-        const aligned = o & ~1;
-        this.vram[aligned] = val; this.vram[aligned + 1] = val;
+      if (o < 0x18000) {
+        this.vram[o] = val;
       }
       return;
     }

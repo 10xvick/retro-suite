@@ -255,9 +255,11 @@ export class GBA {
     this.mem.io[IO.IF + 1] = (iflags >> 8) & 0xff;
     const ie = this.mem.readIO16(IO.IE);
     const ime = this.mem.readIO16(IO.IME);
-    if (ime && (ie & iflags)) {
-      this.mem.halted = false; // wake from HALT
-      this.cpu.raiseIrq();
+    if (ie & iflags) {
+      this.mem.halted = false; // wake from HALT whenever an enabled interrupt fires
+      if (ime) {
+        this.cpu.raiseIrq();
+      }
     }
   }
 
