@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "check-chrome": "npx tsx disasm_rom.js",
     "test-emulator": "node test_emulator.js",
-    "test": "node run_browser_test.js"
+    "test": "node run_browser_test.js",
+    "test:video-monitor": "npx tsx run_video_monitor.ts"
   },
   "dependencies": {
     "lucide-react": "^0.475.0",
