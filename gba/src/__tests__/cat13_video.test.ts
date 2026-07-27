@@ -26,13 +26,13 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       : path.resolve('public/suite.gba');
   });
 
-  it('13 Video tests (Live PPU vs Golden Reference Parity)', () => {
+  it('13 Video tests (True Unblanked PPU Pixel Parity)', () => {
     const bios = new Uint8Array(fs.readFileSync(biosPath));
     const cart = new Uint8Array(fs.readFileSync(romPath));
 
     const CANVAS_WIDTH = 240;
-    const CANVAS_HEIGHT = 144; // Exclude bottom 16 scanlines of UI text badge
-    const TOTAL_CANVAS_PIXELS = CANVAS_WIDTH * CANVAS_HEIGHT; // 34,560 pixels
+    const CANVAS_HEIGHT = 144;
+    const TOTAL_CANVAS_PIXELS = CANVAS_WIDTH * CANVAS_HEIGHT;
 
     let totalPassedSubtests = 0;
     const subtestReports: any[] = [];
@@ -43,7 +43,6 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
     const keyRightPressed = 0x03FF & ~0x0010;
 
     for (const sub of VIDEO_SUBTESTS) {
-      // 1. Capture Live Actual PPU Render
       const gba = new GBA();
       gba.loadBios(bios);
       gba.loadCart(cart);
@@ -64,43 +63,58 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       for (let i = 0; i < sub.id - 1; i++) press(keyDownPressed);
       press(keyAPressed);
 
-      for (let f = 0; f < 10; f++) gba.runFrame();
+      // Run until Forced Blank is cleared (or up to 60 frames)
+      let liveDispcnt = gba.ppu.dispcnt;
+      for (let f = 0; f < 60; f++) {
+        gba.runFrame();
+        liveDispcnt = gba.ppu.dispcnt;
+        if ((liveDispcnt & 0x80) === 0) break;
+      }
       const liveBuffer = new Uint32Array(gba.ppu.framebuffer);
 
-      // 2. Capture Expected Golden Reference Render (toggle view with RIGHT)
+      // Toggle to Golden Reference view
       press(keyRightPressed);
-      for (let f = 0; f < 10; f++) gba.runFrame();
+      for (let f = 0; f < 60; f++) {
+        gba.runFrame();
+        if ((gba.ppu.dispcnt & 0x80) === 0) break;
+      }
       const goldenBuffer = new Uint32Array(gba.ppu.framebuffer);
 
-      // 3. Compare Canvas Pixel Matrix (y: 0..143)
+      // Require that the screen was actually unblanked
+      const isForcedBlank = (liveDispcnt & 0x80) !== 0;
+
       let matchingPixels = 0;
       let firstMismatch: { x: number; y: number; actual: string; expected: string } | null = null;
 
-      for (let y = 0; y < CANVAS_HEIGHT; y++) {
-        for (let x = 0; x < CANVAS_WIDTH; x++) {
-          const idx = y * CANVAS_WIDTH + x;
-          const a = liveBuffer[idx];
-          const e = goldenBuffer[idx];
+      if (!isForcedBlank) {
+        for (let y = 0; y < CANVAS_HEIGHT; y++) {
+          for (let x = 0; x < CANVAS_WIDTH; x++) {
+            const idx = y * CANVAS_WIDTH + x;
+            const a = liveBuffer[idx];
+            const e = goldenBuffer[idx];
 
-          if (a === e) {
-            matchingPixels++;
-          } else if (!firstMismatch) {
-            firstMismatch = {
-              x, y,
-              actual: `0x${a.toString(16).padStart(8, '0')}`,
-              expected: `0x${e.toString(16).padStart(8, '0')}`
-            };
+            if (a === e) {
+              matchingPixels++;
+            } else if (!firstMismatch) {
+              firstMismatch = {
+                x, y,
+                actual: `0x${a.toString(16).padStart(8, '0')}`,
+                expected: `0x${e.toString(16).padStart(8, '0')}`
+              };
+            }
           }
         }
       }
 
-      const matchRate = (matchingPixels / TOTAL_CANVAS_PIXELS) * 100;
-      const isPass = matchingPixels === TOTAL_CANVAS_PIXELS;
+      const matchRate = isForcedBlank ? 0 : (matchingPixels / TOTAL_CANVAS_PIXELS) * 100;
+      const isPass = !isForcedBlank && matchingPixels === TOTAL_CANVAS_PIXELS;
       if (isPass) totalPassedSubtests++;
 
       subtestReports.push({
         id: sub.id,
         name: sub.name,
+        dispcnt: `0x${liveDispcnt.toString(16).padStart(4, '0')}`,
+        isForcedBlank,
         matchingPixels,
         totalPixels: TOTAL_CANVAS_PIXELS,
         matchRate,
@@ -110,11 +124,11 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
     }
 
     console.log("\n==========================================================================");
-    console.log(" CATEGORY: 13 Video tests (Live PPU vs Golden Reference Matrix)");
+    console.log(" CATEGORY: 13 Video tests (True Unblanked PPU Pixel Parity)");
     console.log("==========================================================================");
     subtestReports.forEach(r => {
       const mark = r.isPass ? "✅ [PASS]" : "❌ [FAIL]";
-      console.log(`${mark} Subtest #${r.id} ("${r.name}")`);
+      console.log(`${mark} Subtest #${r.id} ("${r.name}") | DISPCNT: ${r.dispcnt} ${r.isForcedBlank ? "[FORCED BLANK]" : ""}`);
       console.log(`   | Canvas Pixel Match: ${r.matchingPixels} / ${r.totalPixels} (${r.matchRate.toFixed(2)}%)`);
       if (!r.isPass && r.firstMismatch) {
         console.log(`   | First Mismatch at (x:${r.firstMismatch.x}, y:${r.firstMismatch.y}) -> Live PPU: ${r.firstMismatch.actual} vs Golden: ${r.firstMismatch.expected}`);
