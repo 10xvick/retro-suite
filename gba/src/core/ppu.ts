@@ -132,10 +132,8 @@ export class PPU {
     const win1_y1 = (win1v >>> 8) & 0xff;
     const win1_y2 = win1v & 0xff;
 
-    if (y === win0_y1) this.win0InY = true;
-    if (y === win0_y2) this.win0InY = false;
-    if (y === win1_y1) this.win1InY = true;
-    if (y === win1_y2) this.win1InY = false;
+    this.win0InY = (win0_y1 <= win0_y2) ? (y >= win0_y1 && y < win0_y2) : (y >= win0_y1 || y < win0_y2);
+    this.win1InY = (win1_y1 <= win1_y2) ? (y >= win1_y1 && y < win1_y2) : (y >= win1_y1 || y < win1_y2);
   }
 
   checkWinVWrite(off: number) {
