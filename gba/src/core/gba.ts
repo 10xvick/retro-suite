@@ -302,13 +302,13 @@ export class GBA {
       let guard = 0;
       while (budget > 0 && guard < 100000) {
         if (this.mem.halted) {
-          // halted: check if any IRQ is pending to wake up
+          // halted: check if any IRQ is pending to wake up (un-halt occurs even if IME is 0)
           const ie = this.mem.readIO16(IO.IE);
           const ifl = this.mem.readIO16(IO.IF);
           const ime = this.mem.readIO16(IO.IME);
-          if (ime && (ie & ifl)) {
+          if (ie & ifl) {
             this.mem.halted = false; // wake from HALT
-            this.cpu.raiseIrq(); // dispatch the IRQ
+            if (ime) this.cpu.raiseIrq(); // dispatch IRQ
           } else {
             // stay halted: consume cycles but don't execute
             const c = Math.min(budget, 64);
@@ -372,9 +372,9 @@ export class GBA {
     const ie = this.mem.readIO16(IO.IE);
     const ifl = this.mem.readIO16(IO.IF);
     const ime = this.mem.readIO16(IO.IME);
-    if (ime && (ie & ifl)) {
+    if (ie & ifl) {
       this.mem.halted = false;
-      this.cpu.raiseIrq();
+      if (ime) this.cpu.raiseIrq();
     }
   }
 
