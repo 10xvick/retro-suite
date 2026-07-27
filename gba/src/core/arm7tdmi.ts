@@ -416,6 +416,7 @@ export class ARM7TDMI {
         if (this.mem) {
           this.mem.writeIO16(0x208, 1); // IME = 1
           this.cpsr = (this.cpsr & ~0x80) >>> 0; // clear I flag
+          this.mem.write32(0x03007FF8, 0); // clear IntrWait RAM flag
           this.mem.halted = true;
         }
         break;
@@ -426,6 +427,7 @@ export class ARM7TDMI {
           this.mem.writeIO16(0x200, this.mem.readIO16(0x200) | 0x01); // enable VBlank IE
           this.mem.writeIO16(0x208, 1); // IME = 1
           this.cpsr = (this.cpsr & ~0x80) >>> 0; // clear I flag
+          this.mem.write32(0x03007FF8, 0); // clear IntrWait RAM flag
           this.mem.halted = true;
         }
         break;
