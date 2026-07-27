@@ -684,8 +684,6 @@ export class PPU {
         if (pb & 0x8000) pb -= 0x10000;
         if (pc & 0x8000) pc -= 0x10000;
         if (pd & 0x8000) pd -= 0x10000;
-        // Degenerate (zero-scale) affine sprites are invisible on real hardware
-        if (pa === 0 && pb === 0 && pc === 0 && pd === 0) continue;
       }
 
       const renderW = doubleSize ? w * 2 : w;
@@ -700,9 +698,9 @@ export class PPU {
           // Affine transform: map screen-space (dx,dy) to texture-space (tx,ty)
           const sdx = dx - cx;
           const sdy = dy - cy;
-          // GBATEK formula: add texture center (in 8.8 fixed point) before shifting
-          tx = (sdx * pa + sdy * pb + (w << 7)) >> 8;
-          ty = (sdx * pc + sdy * pd + (h << 7)) >> 8;
+          // GBATEK formula: (dx - cx) * PA + (dy - cy) * PB >> 8 + (W / 2)
+          tx = (((sdx * pa + sdy * pb) >> 8) + (w >> 1)) | 0;
+          ty = (((sdx * pc + sdy * pd) >> 8) + (h >> 1)) | 0;
           if (tx < 0 || tx >= w || ty < 0 || ty >= h) continue;
         } else {
           tx = dx;
