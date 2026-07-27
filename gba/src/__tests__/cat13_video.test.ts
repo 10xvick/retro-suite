@@ -4,13 +4,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export const VIDEO_SUBTESTS = [
-  { id: 1, name: "Window offscreen reset", setup: 0x0800bc05, render: 0x0800b949, forceDispcnt: 0x3d00 },
-  { id: 2, name: "Basic Mode 3",            setup: 0x0800a5c9, render: 0x0800a659, forceDispcnt: 0x0403 },
-  { id: 3, name: "Basic Mode 4",            setup: 0x0800a5c9, render: 0x0800a965, forceDispcnt: 0x0404 },
-  { id: 4, name: "Degenerate OBJ transforms",setup: 0x0800aba5, render: 0x0800b4d9, forceDispcnt: 0x1200 },
-  { id: 5, name: "Layer toggle",             setup: 0x0800bb39, render: 0x0800b0bd, forceDispcnt: 0x0f00 },
-  { id: 6, name: "Layer toggle 2",           setup: 0x0800ba69, render: 0x0800bc05, forceDispcnt: 0x0e00 },
-  { id: 7, name: "OAM Update Delay",        setup: 0x0800b949, render: 0x0800ae55, forceDispcnt: 0x1100 }
+  { id: 1, name: "Window offscreen reset", setup: 0x0800bc05, render: 0x0800b949 },
+  { id: 2, name: "Basic Mode 3",            setup: 0x0800a5c9, render: 0x0800a659 },
+  { id: 3, name: "Basic Mode 4",            setup: 0x0800a5c9, render: 0x0800a965 },
+  { id: 4, name: "Degenerate OBJ transforms",setup: 0x0800aba5, render: 0x0800b4d9 },
+  { id: 5, name: "Layer toggle",             setup: 0x0800bb39, render: 0x0800b0bd },
+  { id: 6, name: "Layer toggle 2",           setup: 0x0800ba69, render: 0x0800bc05 },
+  { id: 7, name: "OAM Update Delay",        setup: 0x0800b949, render: 0x0800ae55 }
 ];
 
 describe('GBA Hardware Test Category: 13 Video tests', () => {
@@ -26,7 +26,7 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       : path.resolve('public/suite.gba');
   });
 
-  it('13 Video tests (Pixel Data Matrix Parity)', () => {
+  it('13 Video tests (Live PPU vs Golden Reference Parity)', () => {
     const bios = new Uint8Array(fs.readFileSync(biosPath));
     const cart = new Uint8Array(fs.readFileSync(romPath));
 
@@ -37,56 +37,40 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
     let totalPassedSubtests = 0;
     const subtestReports: any[] = [];
 
+    const keyReleased = 0x03FF;
+    const keyAPressed = 0x03FF & ~1;
+    const keyDownPressed = 0x03FF & ~0x0080;
+    const keyRightPressed = 0x03FF & ~0x0010;
+
     for (const sub of VIDEO_SUBTESTS) {
-      // 1. Capture Actual Canvas Framebuffer (r[0] = 0)
-      const gbaActual = new GBA();
-      gbaActual.loadBios(bios);
-      gbaActual.loadCart(cart);
-      gbaActual.reset();
-      gbaActual.directBoot();
+      // 1. Capture Live Actual PPU Render
+      const gba = new GBA();
+      gba.loadBios(bios);
+      gba.loadCart(cart);
+      gba.reset();
+      gba.directBoot();
 
-      gbaActual.cpu.r[13] = 0x03007f00;
-      gbaActual.cpu.r[14] = 0x08000100;
-      gbaActual.cpu.cpsr = (gbaActual.cpu.cpsr & ~0x20) | ((sub.setup & 1) ? 0x20 : 0);
-      gbaActual.cpu.r[15] = sub.setup & ~1;
-      for (let f = 0; f < 5; f++) gbaActual.runFrame();
+      for (let f = 0; f < 60; f++) gba.runFrame();
 
-      if (sub.render !== sub.setup) {
-        gbaActual.cpu.r[0] = 0; // Actual view
-        gbaActual.cpu.r[13] = 0x03007f00;
-        gbaActual.cpu.r[14] = 0x08000100;
-        gbaActual.cpu.cpsr = (gbaActual.cpu.cpsr & ~0x20) | ((sub.render & 1) ? 0x20 : 0);
-        gbaActual.cpu.r[15] = sub.render & ~1;
-        for (let f = 0; f < 5; f++) gbaActual.runFrame();
-      }
-      if (sub.forceDispcnt) gbaActual.mem.write16(0x04000000, sub.forceDispcnt);
-      gbaActual.runFrame();
-      const actualBuffer = new Uint32Array(gbaActual.ppu.framebuffer);
+      const press = (k: number) => {
+        gba.mem.setKeyInput(k);
+        for (let f = 0; f < 8; f++) gba.runFrame();
+        gba.mem.setKeyInput(keyReleased);
+        for (let f = 0; f < 8; f++) gba.runFrame();
+      };
 
-      // 2. Capture Expected Reference Canvas Framebuffer (r[0] = 1)
-      const gbaExpected = new GBA();
-      gbaExpected.loadBios(bios);
-      gbaExpected.loadCart(cart);
-      gbaExpected.reset();
-      gbaExpected.directBoot();
+      for (let i = 0; i < 13; i++) press(keyDownPressed);
+      press(keyAPressed);
+      for (let i = 0; i < sub.id - 1; i++) press(keyDownPressed);
+      press(keyAPressed);
 
-      gbaExpected.cpu.r[13] = 0x03007f00;
-      gbaExpected.cpu.r[14] = 0x08000100;
-      gbaExpected.cpu.cpsr = (gbaExpected.cpu.cpsr & ~0x20) | ((sub.setup & 1) ? 0x20 : 0);
-      gbaExpected.cpu.r[15] = sub.setup & ~1;
-      for (let f = 0; f < 5; f++) gbaExpected.runFrame();
+      for (let f = 0; f < 10; f++) gba.runFrame();
+      const liveBuffer = new Uint32Array(gba.ppu.framebuffer);
 
-      if (sub.render !== sub.setup) {
-        gbaExpected.cpu.r[0] = 1; // Expected view
-        gbaExpected.cpu.r[13] = 0x03007f00;
-        gbaExpected.cpu.r[14] = 0x08000100;
-        gbaExpected.cpu.cpsr = (gbaExpected.cpu.cpsr & ~0x20) | ((sub.render & 1) ? 0x20 : 0);
-        gbaExpected.cpu.r[15] = sub.render & ~1;
-        for (let f = 0; f < 5; f++) gbaExpected.runFrame();
-      }
-      if (sub.forceDispcnt) gbaExpected.mem.write16(0x04000000, sub.forceDispcnt);
-      gbaExpected.runFrame();
-      const expectedBuffer = new Uint32Array(gbaExpected.ppu.framebuffer);
+      // 2. Capture Expected Golden Reference Render (toggle view with RIGHT)
+      press(keyRightPressed);
+      for (let f = 0; f < 10; f++) gba.runFrame();
+      const goldenBuffer = new Uint32Array(gba.ppu.framebuffer);
 
       // 3. Compare Canvas Pixel Matrix (y: 0..143)
       let matchingPixels = 0;
@@ -95,8 +79,8 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       for (let y = 0; y < CANVAS_HEIGHT; y++) {
         for (let x = 0; x < CANVAS_WIDTH; x++) {
           const idx = y * CANVAS_WIDTH + x;
-          const a = actualBuffer[idx];
-          const e = expectedBuffer[idx];
+          const a = liveBuffer[idx];
+          const e = goldenBuffer[idx];
 
           if (a === e) {
             matchingPixels++;
@@ -126,14 +110,14 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
     }
 
     console.log("\n==========================================================================");
-    console.log(" CATEGORY: 13 Video tests (Pixel Data Matrix Comparison)");
+    console.log(" CATEGORY: 13 Video tests (Live PPU vs Golden Reference Matrix)");
     console.log("==========================================================================");
     subtestReports.forEach(r => {
       const mark = r.isPass ? "✅ [PASS]" : "❌ [FAIL]";
       console.log(`${mark} Subtest #${r.id} ("${r.name}")`);
       console.log(`   | Canvas Pixel Match: ${r.matchingPixels} / ${r.totalPixels} (${r.matchRate.toFixed(2)}%)`);
       if (!r.isPass && r.firstMismatch) {
-        console.log(`   | First Mismatch at (x:${r.firstMismatch.x}, y:${r.firstMismatch.y}) -> Actual: ${r.firstMismatch.actual} vs Expected: ${r.firstMismatch.expected}`);
+        console.log(`   | First Mismatch at (x:${r.firstMismatch.x}, y:${r.firstMismatch.y}) -> Live PPU: ${r.firstMismatch.actual} vs Golden: ${r.firstMismatch.expected}`);
       }
       console.log("--------------------------------------------------------------------------");
     });
