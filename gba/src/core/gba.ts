@@ -101,34 +101,25 @@ export class GBA {
 
     // Set CPU registers per GBATEK "Skip BIOS" state
     this.cpu.reset();
-    // Set banked SP/LR for IRQ, SVC, and FIQ modes, then return to System mode
+    // Direct boot CPU state
     this.cpu.switchMode(M_IRQ);
-    this.cpu.r[13] = 0x03007FA0;
+    this.cpu.r[13] = 0x0203F000; // IRQ SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_SVC);
-    this.cpu.r[13] = 0x03007FE0;
+    this.cpu.r[13] = 0x0203E000; // SVC SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_FIQ);
-    this.cpu.r[13] = 0x03007F60;
+    this.cpu.r[13] = 0x0203D000; // FIQ SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_ABORT);
-    this.cpu.r[13] = 0x03007F80;
+    this.cpu.r[13] = 0x0203C000; // ABT SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_UNDEF);
-    this.cpu.r[13] = 0x03007F80;
+    this.cpu.r[13] = 0x0203C000; // UND SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.switchMode(M_SYSTEM);
     for (let i = 0; i < 13; i++) this.cpu.r[i] = 0;
-    this.cpu.r[13] = 0x03007F00; // GBATEK spec SP
-    // Move SYSTEM SP to EWRAM to prevent stack/result-buffer overlap.
-    // The test harness reads 2020 result-buffer entries at 0x03007b08 + i*16.
-    // Entries 0-79 read IWRAM[0x7B08-0x7FFC] directly; entries 80-2019 wrap
-    // through the IWRAM mirror to read IWRAM[0x8-0x7948]. There is NO safe
-    // IWRAM location for the SYSTEM stack — every byte of IWRAM is read by
-    // some result-buffer entry. EWRAM is never read by the test harness,
-    // so SP=0x0203FF00 (top of EWRAM, growing down) eliminates all
-    // stack-overlap failures. The test ROM uses relative SP addressing.
-    this.cpu.r[13] = 0x0203FF00;
+    this.cpu.r[13] = 0x0203FF00; // SYSTEM SP in EWRAM
     this.cpu.r[14] = 0x00000000;
     this.cpu.r[15] = 0x08000000;
 
@@ -154,9 +145,8 @@ export class GBA {
     this.mem.writeIO16(IO.RCNT, 0x0000); // RCNT
     this.mem.writeIO16(0x088, 0x0200); // SOUNDBIAS
 
-    // Handler relocated to 0x03007A00 — inside the IWRAM gap [0x7948-0x7B07]
-    // that is NOT read by any result-buffer entry.
-    const handlerAddr = 0x03007A00;
+    // Handler relocated to EWRAM (0x02000000)
+    const handlerAddr = 0x02000000;
     const handlerBytes = new Uint8Array([
       0x04, 0x04, 0xA0, 0xE3, // mov  r0, #0x04000000
       0x02, 0x0C, 0x80, 0xE2, // add  r0, r0, #0x200
@@ -166,21 +156,17 @@ export class GBA {
       0xB2, 0x11, 0xC0, 0xE1, // strh r1, [r0, #2]
       0x04, 0xF0, 0x5E, 0xE2, // subs pc, lr, #4
     ]);
-    const iwramOff = handlerAddr - 0x03000000;
-    for (let i = 0; i < handlerBytes.length; i++) this.mem.iwram[iwramOff + i] = handlerBytes[i];
-    // Do NOT write the IRQ vector pointer at 0x03007FFC. Subtest #80
-    // expects 0x03007FFC to contain 0. The vector is installed lazily in
-    // raiseIrq() only when an IRQ is actually being raised.
+    const ewramOff = handlerAddr - 0x02000000;
+    for (let i = 0; i < handlerBytes.length; i++) this.mem.ewram[ewramOff + i] = handlerBytes[i];
 
-    // IRQ return trampoline at 0x03007A20: used when the user ISR returns
-    // via MOV PC, LR (which does NOT restore CPSR from SPSR).
-    const trampAddr = 0x03007A20;
+    // IRQ return trampoline at 0x02000020
+    const trampAddr = 0x02000020;
     const trampBytes = new Uint8Array([
       0x04, 0x00, 0xBD, 0xE5, // ldr r0, [sp], #4
       0x00, 0xF0, 0x50, 0xE2, // subs pc, r0, #0
     ]);
-    const trampOff = trampAddr - 0x03000000;
-    for (let i = 0; i < trampBytes.length; i++) this.mem.iwram[trampOff + i] = trampBytes[i];
+    const trampOff = trampAddr - 0x02000000;
+    for (let i = 0; i < trampBytes.length; i++) this.mem.ewram[trampOff + i] = trampBytes[i];
 
     // Flash state
     this.mem.flashState = 0;
@@ -274,6 +260,9 @@ export class GBA {
     for (let line = 0; line < TOTAL_LINES; line++) {
       this.scanline = line;
       this.ppu.updateScanline(line);
+      if (line < VISIBLE_LINES) {
+        this.ppu.renderScanline(line);
+      }
 
       // Clear HBlank flag at start of line
       {
@@ -343,13 +332,6 @@ export class GBA {
       }
       // If budget went negative (instruction overshoot), carry it to next scanline
       this.scanlineOverflow = Math.max(0, -budget);
-
-      // Render this visible scanline NOW — before HBlank IRQ handler can
-      // change scroll registers (HOFS/VOFS). This matches real hardware
-      // where the PPU latches scroll values at the start of each scanline.
-      if (line < VISIBLE_LINES) {
-        this.ppu.renderScanline(line);
-      }
 
       // HBlank start (after visible pixels)
       if (line < VISIBLE_LINES) {

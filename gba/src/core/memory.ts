@@ -796,6 +796,17 @@ export class Memory {
         return;
       }
 
+      if (off === 0x004) {
+        const oldDisp = this.ioView.getUint16(0x004, true);
+        const roBits = oldDisp & 0x0003; // VBlank & HBlank flags
+        const vcount = this.ioView.getUint16(0x006, true);
+        const lyc = (val >>> 8) & 0xff;
+        const matchBit = (vcount === lyc) ? 0x0004 : 0;
+        const newDisp = (val & 0xfff8) | matchBit | roBits;
+        this.ioView.setUint16(0x004, newDisp, true);
+        return;
+      }
+
       this.ioView.setUint16(off, val & 0xffff, true);
       // HALTCNT (high byte of 0x300 write)
       if (off === 0x300) {

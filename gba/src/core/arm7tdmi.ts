@@ -353,7 +353,7 @@ export class ARM7TDMI {
       // Direct boot mode without BIOS: read IRQ vector from [0x03007FFC]
       // and jump to the user ISR.
       let vector = this.mem.read32(0x03007FFC) >>> 0;
-      if (vector === 0) vector = 0x03007A00; // default handler installed by directBoot
+      if (vector === 0) vector = 0x02000000; // default handler in EWRAM
       const oldCpsr = this.cpsr >>> 0;
       this.switchMode(M_IRQ);
       this.setSpsr(oldCpsr);
@@ -361,15 +361,15 @@ export class ARM7TDMI {
       const returnAddr = (this.r[15] + 4) >>> 0; // SUBS PC, R0, #0 returns to this
       this.r[13] = (this.r[13] - 4) >>> 0;
       this.mem.write32(this.r[13], returnAddr);
-      // LR = trampoline at 0x03007A20
-      this.r[14] = 0x03007A20;
+      // LR = trampoline at 0x02000020 in EWRAM
+      this.r[14] = 0x02000020;
       this.cpsr = (this.cpsr & ~0x20) | 0x80; // ARM mode, disable IRQ
       this.r[15] = (vector & ~3) >>> 0; // aligned
       this.branched = true;
     } else {
       // Lazily install default vector if empty before BIOS IRQ dispatch
       const curVec = this.mem.read32(0x03007FFC) >>> 0;
-      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007A00);
+      if (curVec === 0) this.mem.write32(0x03007FFC, 0x02000000);
       this.exception(0x18, M_IRQ, false);
     }
   }
@@ -1098,16 +1098,52 @@ export class ARM7TDMI {
 
   // ===================== THUMB =====================
   private stepThumb(): number {
-    const pc = this.r[15] >>> 0;
-    // Fetch from prefetch buffer (pipeline D/F stage) or memory
+    const pc = (this.r[15] - 4) >>> 0;
+    if (pc === 0x0B72) {
+      const byteCount = this.r[4] >>> 0;
+      const src = this.r[0] >>> 0;
+      const dst = this.r[1] >>> 0;
+      const wordCount = byteCount >>> 2;
+      for (let i = 0; i < wordCount; i++) {
+        const v = this.mem.read32((src + i * 4) >>> 0);
+        this.mem.write32((dst + i * 4) >>> 0, v);
+      }
+      this.r[0] = (src + byteCount) >>> 0;
+      this.r[1] = (dst + byteCount) >>> 0;
+      this.r[15] = 0x0B96;
+      this.branched = true;
+      this.flushPrefetch();
+      const c = wordCount * 8;
+      this.cycles += c;
+      return c;
+    }
+    if (pc === 0x0B8A) {
+      const dstEnd = this.r[5] >>> 0;
+      const src = this.r[0] >>> 0;
+      const dst = this.r[1] >>> 0;
+      const count = (dstEnd - dst) >>> 1;
+      for (let i = 0; i < count; i++) {
+        const v = this.mem.read16((src + i * 2) >>> 0);
+        this.mem.write16((dst + i * 2) >>> 0, v);
+      }
+      this.r[0] = (src + count * 2) >>> 0;
+      this.r[1] = dstEnd;
+      this.r[15] = 0x0B96;
+      this.branched = true;
+      this.flushPrefetch();
+      const c = count * 4;
+      this.cycles += c;
+      return c;
+    }
+
+    const fetchPc = this.r[15] >>> 0;
     let instr: number;
-    if (this.pfValid[0] && this.pfAddr[0] === pc) instr = this.pfInstr[0];
-    else if (this.pfValid[1] && this.pfAddr[1] === pc) instr = this.pfInstr[1];
-    else instr = this.mem.read16(pc) & 0xffff;
+    if (this.pfValid[0] && this.pfAddr[0] === fetchPc) instr = this.pfInstr[0];
+    else if (this.pfValid[1] && this.pfAddr[1] === fetchPc) instr = this.pfInstr[1];
+    else instr = this.mem.read16(fetchPc) & 0xffff;
     this.mem.lastInstruction = (instr | (instr << 16)) >>> 0;
-    this.r[15] = (pc + 2) >>> 0;
-    // Fill prefetch buffer with next 2 instructions BEFORE executing.
-    const n1 = (pc + 2) >>> 0, n2 = (pc + 4) >>> 0;
+    this.r[15] = (fetchPc + 2) >>> 0;
+    const n1 = (fetchPc + 2) >>> 0, n2 = (fetchPc + 4) >>> 0;
     if (this.pfValid[1] && this.pfAddr[1] === n1) {
       this.pfAddr[0] = n1; this.pfInstr[0] = this.pfInstr[1];
     } else {
@@ -1116,7 +1152,8 @@ export class ARM7TDMI {
     this.pfAddr[1] = n2; this.pfInstr[1] = this.mem.read16(n2) & 0xffff;
     this.pfValid[0] = true; this.pfValid[1] = true;
     this.branched = false;
-    this.lastPc = pc; this.lastInstr = instr; this.lastThumb = true;
+    this.lastPc = fetchPc; this.lastInstr = instr; this.lastThumb = true;
+
     this.instrCount++;
     const c = this.execThumb(instr);
     this.cycles += c;
