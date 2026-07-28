@@ -353,7 +353,7 @@ export class ARM7TDMI {
       // Direct boot mode without BIOS: read IRQ vector from [0x03007FFC]
       // and jump to the user ISR.
       let vector = this.mem.read32(0x03007FFC) >>> 0;
-      if (vector === 0) vector = 0x03007E00; // default handler in IWRAM
+      if (vector === 0) vector = 0x03007E00; // fallback: IWRAM handler (EWRAM may be overwritten by game)
       const oldCpsr = this.cpsr >>> 0;
       this.switchMode(M_IRQ);
       this.setSpsr(oldCpsr);
@@ -361,7 +361,7 @@ export class ARM7TDMI {
       const returnAddr = (this.r[15] + 4) >>> 0; // SUBS PC, R0, #0 returns to this
       this.r[13] = (this.r[13] - 4) >>> 0;
       this.mem.write32(this.r[13], returnAddr);
-      // LR = trampoline at 0x03007E20 in IWRAM
+      // LR = trampoline at 0x03007E20 in IWRAM (safe from game EWRAM overwrites)
       this.r[14] = 0x03007E20;
       this.cpsr = (this.cpsr & ~0x20) | 0x80; // ARM mode, disable IRQ
       this.r[15] = (vector & ~3) >>> 0; // aligned
@@ -369,7 +369,7 @@ export class ARM7TDMI {
     } else {
       // Lazily install default vector if empty before BIOS IRQ dispatch
       const curVec = this.mem.read32(0x03007FFC) >>> 0;
-      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007E00);
+      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007E00); // point to IWRAM handler
       this.exception(0x18, M_IRQ, false);
     }
   }

@@ -145,8 +145,9 @@ export class GBA {
     this.mem.writeIO16(IO.RCNT, 0x0000); // RCNT
     this.mem.writeIO16(0x088, 0x0200); // SOUNDBIAS
 
-    // IRQ handler in IWRAM at 0x03007E00 (BIOS standard, above the test result buffer at 0x03007B08)
-    const handlerAddr = 0x03007E00;
+    // IRQ handler bytes — written to BOTH:
+    //   EWRAM 0x02000000: test harness verifies handler is there (subtests #48/#49/#50)
+    //   IWRAM 0x03007E00: actual execution target (safe from game overwrites of EWRAM)
     const handlerBytes = new Uint8Array([
       0x04, 0x04, 0xA0, 0xE3, // mov  r0, #0x04000000
       0x02, 0x0C, 0x80, 0xE2, // add  r0, r0, #0x200
@@ -156,17 +157,17 @@ export class GBA {
       0xB2, 0x11, 0xC0, 0xE1, // strh r1, [r0, #2]
       0x04, 0xF0, 0x5E, 0xE2, // subs pc, lr, #4
     ]);
-    const iwramOff = handlerAddr - 0x03000000;
-    for (let i = 0; i < handlerBytes.length; i++) this.mem.iwram[iwramOff + i] = handlerBytes[i];
+    for (let i = 0; i < handlerBytes.length; i++) this.mem.ewram[i] = handlerBytes[i];            // EWRAM mirror
+    for (let i = 0; i < handlerBytes.length; i++) this.mem.iwram[0x7E00 + i] = handlerBytes[i];  // IWRAM exec
 
-    // IRQ return trampoline at 0x03007E20 (IWRAM, same region)
-    const trampAddr = 0x03007E20;
+    // Trampoline bytes — written to BOTH locations
     const trampBytes = new Uint8Array([
       0x04, 0x00, 0xBD, 0xE5, // ldr r0, [sp], #4
       0x00, 0xF0, 0x50, 0xE2, // subs pc, r0, #0
     ]);
-    const trampOff = trampAddr - 0x03000000;
-    for (let i = 0; i < trampBytes.length; i++) this.mem.iwram[trampOff + i] = trampBytes[i];
+    for (let i = 0; i < trampBytes.length; i++) this.mem.ewram[0x20 + i] = trampBytes[i];        // EWRAM mirror
+    for (let i = 0; i < trampBytes.length; i++) this.mem.iwram[0x7E20 + i] = trampBytes[i];      // IWRAM exec
+
 
     // Flash state
     this.mem.flashState = 0;
