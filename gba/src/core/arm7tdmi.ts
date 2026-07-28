@@ -1098,7 +1098,7 @@ export class ARM7TDMI {
 
   // ===================== THUMB =====================
   private stepThumb(): number {
-    const pc = (this.r[15] - 4) >>> 0;
+    const pc = this.r[15] >>> 0;   // r[15] at entry IS the fetch address (executing PC)
     if (pc === 0x0B72) {
       const byteCount = this.r[4] >>> 0;
       const src = this.r[0] >>> 0;
@@ -1110,10 +1110,11 @@ export class ARM7TDMI {
       }
       this.r[0] = (src + byteCount) >>> 0;
       this.r[1] = (dst + byteCount) >>> 0;
+      // resume at 0x0B96 (fetch address for next stepThumb call)
       this.r[15] = 0x0B96;
       this.branched = true;
       this.flushPrefetch();
-      const c = wordCount * 8;
+      const c = Math.max(1, wordCount) * 8;
       this.cycles += c;
       return c;
     }
@@ -1128,10 +1129,11 @@ export class ARM7TDMI {
       }
       this.r[0] = (src + count * 2) >>> 0;
       this.r[1] = dstEnd;
+      // resume at 0x0B96
       this.r[15] = 0x0B96;
       this.branched = true;
       this.flushPrefetch();
-      const c = count * 4;
+      const c = Math.max(1, count) * 4;
       this.cycles += c;
       return c;
     }
