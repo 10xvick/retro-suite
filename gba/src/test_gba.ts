@@ -211,8 +211,8 @@ export async function runGbaTest(idx: number, gba: GBA): Promise<boolean> {
 }
 
 async function main() {
-  const biosPath = path.resolve('public/gba_bios.bin');
-  const romPath = path.resolve('gba/public/suite.gba');
+  const biosPath = path.resolve('public/roms/test/gba_bios.bin');
+  const romPath = path.resolve('public/roms/test/suite.gba');
 
   if (!fs.existsSync(biosPath)) {
     console.error(`BIOS not found: ${biosPath}`);

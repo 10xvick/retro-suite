@@ -76,13 +76,11 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       // 1. Press LEFT to view Actual PPU output
       press(keyLeftPressed);
       for (let f = 0; f < 30; f++) gba.runFrame();
-      gba.ppu.renderFrame();
       const actualBuffer = Uint32Array.from(gba.ppu.framebuffer);
 
       // 2. Press RIGHT to view Expected Golden Reference output
       press(keyRightPressed);
       for (let f = 0; f < 30; f++) gba.runFrame();
-      gba.ppu.renderFrame();
       const expectedBuffer = Uint32Array.from(gba.ppu.framebuffer);
 
       let matchingPixels = 0;

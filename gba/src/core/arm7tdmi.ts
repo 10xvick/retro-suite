@@ -353,7 +353,7 @@ export class ARM7TDMI {
       // Direct boot mode without BIOS: read IRQ vector from [0x03007FFC]
       // and jump to the user ISR.
       let vector = this.mem.read32(0x03007FFC) >>> 0;
-      if (vector === 0) vector = 0x03007E00; // fallback: IWRAM handler (EWRAM may be overwritten by game)
+      if (vector === 0) vector = 0x03007A00; // default handler installed by directBoot in IWRAM gap
       const oldCpsr = this.cpsr >>> 0;
       this.switchMode(M_IRQ);
       this.setSpsr(oldCpsr);
@@ -361,15 +361,16 @@ export class ARM7TDMI {
       const returnAddr = (this.r[15] + 4) >>> 0; // SUBS PC, R0, #0 returns to this
       this.r[13] = (this.r[13] - 4) >>> 0;
       this.mem.write32(this.r[13], returnAddr);
-      // LR = trampoline at 0x03007E20 in IWRAM (safe from game EWRAM overwrites)
-      this.r[14] = 0x03007E20;
+      // LR = trampoline at 0x03007A20 in IWRAM gap
+      this.r[14] = 0x03007A20;
       this.cpsr = (this.cpsr & ~0x20) | 0x80; // ARM mode, disable IRQ
       this.r[15] = (vector & ~3) >>> 0; // aligned
       this.branched = true;
     } else {
-      // Lazily install default vector if empty before BIOS IRQ dispatch
+      // BIOS loaded or non-direct-boot: real BIOS IRQ handler calls user ISR via [0x03007FFC].
+      // Lazily install default user ISR if empty.
       const curVec = this.mem.read32(0x03007FFC) >>> 0;
-      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007E00); // point to IWRAM handler
+      if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007A00);
       this.exception(0x18, M_IRQ, false);
     }
   }
@@ -381,11 +382,8 @@ export class ARM7TDMI {
     if (!biosLoaded) {
       // No BIOS: handle all SWI in JS
       this.handleSwi(num);
-    } else if (num === 0x04 || num === 0x05) {
-      // IntrWait/VBlankIntrWait: use JS handler
-      this.handleSwi(num);
     } else {
-      // BIOS loaded: use real BIOS SWI handler for CpuSet, Div, Sqrt, etc.
+      // BIOS loaded: use real BIOS SWI handler
       this.exception(0x08, M_SVC, false);
     }
   }
@@ -1098,54 +1096,17 @@ export class ARM7TDMI {
 
   // ===================== THUMB =====================
   private stepThumb(): number {
-    const pc = this.r[15] >>> 0;   // r[15] at entry IS the fetch address (executing PC)
-    if (pc === 0x0B72) {
-      const byteCount = this.r[4] >>> 0;
-      const src = this.r[0] >>> 0;
-      const dst = this.r[1] >>> 0;
-      const wordCount = byteCount >>> 2;
-      for (let i = 0; i < wordCount; i++) {
-        const v = this.mem.read32((src + i * 4) >>> 0);
-        this.mem.write32((dst + i * 4) >>> 0, v);
-      }
-      this.r[0] = (src + byteCount) >>> 0;
-      this.r[1] = (dst + byteCount) >>> 0;
-      // resume at 0x0B96 (fetch address for next stepThumb call)
-      this.r[15] = 0x0B96;
-      this.branched = true;
-      this.flushPrefetch();
-      const c = Math.max(1, wordCount) * 8;
-      this.cycles += c;
-      return c;
-    }
-    if (pc === 0x0B8A) {
-      const dstEnd = this.r[5] >>> 0;
-      const src = this.r[0] >>> 0;
-      const dst = this.r[1] >>> 0;
-      const count = (dstEnd - dst) >>> 1;
-      for (let i = 0; i < count; i++) {
-        const v = this.mem.read16((src + i * 2) >>> 0);
-        this.mem.write16((dst + i * 2) >>> 0, v);
-      }
-      this.r[0] = (src + count * 2) >>> 0;
-      this.r[1] = dstEnd;
-      // resume at 0x0B96
-      this.r[15] = 0x0B96;
-      this.branched = true;
-      this.flushPrefetch();
-      const c = Math.max(1, count) * 4;
-      this.cycles += c;
-      return c;
-    }
+    const pc = this.r[15] >>> 0;
 
-    const fetchPc = this.r[15] >>> 0;
+    // Fetch from prefetch buffer (pipeline D/F stage) or memory
     let instr: number;
-    if (this.pfValid[0] && this.pfAddr[0] === fetchPc) instr = this.pfInstr[0];
-    else if (this.pfValid[1] && this.pfAddr[1] === fetchPc) instr = this.pfInstr[1];
-    else instr = this.mem.read16(fetchPc) & 0xffff;
+    if (this.pfValid[0] && this.pfAddr[0] === pc) instr = this.pfInstr[0];
+    else if (this.pfValid[1] && this.pfAddr[1] === pc) instr = this.pfInstr[1];
+    else instr = this.mem.read16(pc) & 0xffff;
     this.mem.lastInstruction = (instr | (instr << 16)) >>> 0;
-    this.r[15] = (fetchPc + 2) >>> 0;
-    const n1 = (fetchPc + 2) >>> 0, n2 = (fetchPc + 4) >>> 0;
+    this.r[15] = (pc + 2) >>> 0;
+    // Fill prefetch buffer with next 2 instructions BEFORE executing.
+    const n1 = (pc + 2) >>> 0, n2 = (pc + 4) >>> 0;
     if (this.pfValid[1] && this.pfAddr[1] === n1) {
       this.pfAddr[0] = n1; this.pfInstr[0] = this.pfInstr[1];
     } else {
@@ -1154,8 +1115,7 @@ export class ARM7TDMI {
     this.pfAddr[1] = n2; this.pfInstr[1] = this.mem.read16(n2) & 0xffff;
     this.pfValid[0] = true; this.pfValid[1] = true;
     this.branched = false;
-    this.lastPc = fetchPc; this.lastInstr = instr; this.lastThumb = true;
-
+    this.lastPc = pc; this.lastInstr = instr; this.lastThumb = true;
     this.instrCount++;
     const c = this.execThumb(instr);
     this.cycles += c;

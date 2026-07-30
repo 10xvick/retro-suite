@@ -72,6 +72,8 @@ export class Memory {
   timerWriteCallback: ((timer: number, value: number) => void) | null = null;
   winVWriteCallback: ((off: number) => void) | null = null;
   irqCallback: (() => void) | null = null;
+  /** Debug hook: called whenever DISPCNT (IO offset 0x000) is written by CPU/DMA. */
+  dispcntWriteCallback: ((val: number, vcount: number, dispstat: number) => void) | null = null;
 
   halted = false;
   blockKeyWrites = false;
@@ -330,6 +332,12 @@ export class Memory {
     } else {
       this.ioView.setUint16(0x140, 0, true);
     }
+  }
+
+  setDispstatBits(mask: number, set: boolean) {
+    const cur = this.ioView.getUint16(IO.DISPSTAT, true);
+    const updated = set ? (cur | mask) : (cur & ~mask);
+    this.ioView.setUint16(IO.DISPSTAT, updated, true);
   }
 
   // ---- IO register read/write ----
@@ -729,10 +737,17 @@ export class Memory {
       }
 
       if (off === IO.HALTCNT) {
-        if (val & 0x80) this.halted = true; // halt CPU until interrupt
+        this.halted = true; // writing anything halts the CPU
       }
       if (off === 0x200 || off === 0x201 || off === 0x202 || off === 0x203 || off === 0x208 || off === 0x209) {
         if (this.irqCallback) this.irqCallback();
+      }
+      // Fire debug hook when DISPCNT is written (byte path - off 0 or 1)
+      if ((off === 0x000 || off === 0x001) && this.dispcntWriteCallback) {
+        const fullDispcnt = this.ioView.getUint16(0x000, true);
+        const vcount      = this.ioView.getUint16(0x006, true);
+        const dispstat    = this.ioView.getUint16(0x004, true);
+        this.dispcntWriteCallback(fullDispcnt, vcount, dispstat);
       }
       if (off >= 0x44 && off <= 0x47 && this.winVWriteCallback) this.winVWriteCallback(off);
       if (this.isDmaCntOff(off)) this.checkDmaEnable();
@@ -742,6 +757,7 @@ export class Memory {
         const fullVal = this.ioView.getUint16(IO.TM0D + ti * 4, true);
         this.timerWriteCallback(ti, fullVal);
       }
+
     } else if (size === 2) {
       // 16-bit write
       if (off === IO.IF) {
@@ -808,9 +824,15 @@ export class Memory {
       }
 
       this.ioView.setUint16(off, val & 0xffff, true);
+      // Fire debug hook when DISPCNT is written
+      if (off === 0x000 && this.dispcntWriteCallback) {
+        const vcount   = this.ioView.getUint16(0x006, true);
+        const dispstat = this.ioView.getUint16(0x004, true);
+        this.dispcntWriteCallback(val & 0xffff, vcount, dispstat);
+      }
       // HALTCNT (high byte of 0x300 write)
       if (off === 0x300) {
-        if ((val >> 8) & 0x80) this.halted = true;
+        this.halted = true; // writing anything to HALTCNT halts CPU
       }
       if (off === 0x200 || off === 0x202 || off === 0x208) {
         if (this.irqCallback) this.irqCallback();
@@ -843,9 +865,7 @@ export class Memory {
       }
       // HALTCNT (if write covers HALTCNT)
       if (off <= IO.HALTCNT && off + 4 > IO.HALTCNT) {
-        const haltOff = IO.HALTCNT - off;
-        const haltVal = (val >>> (haltOff * 8)) & 0xff;
-        if (haltVal & 0x80) this.halted = true;
+        this.halted = true; // writing anything to HALTCNT halts CPU
       }
       // DMA enable check (if write covers any DMA control register)
       for (let i = 0; i < 4; i++) {

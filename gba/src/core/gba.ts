@@ -23,6 +23,8 @@ export class GBA {
 
   cycles = 0;
   scanline = 0;
+  /** Current remaining cycle budget for this scanline (debug use). */
+  scanlineBudget = 0;
   frameCount = 0;
   running = false;
   // debug
@@ -250,25 +252,30 @@ export class GBA {
     }
   }
 
+  // Write DISPSTAT bits directly, bypassing the writeIO handler which incorrectly
+  // treats bits 0-1 (VBlank, HBlank status flags) as read-only. gba.ts acts as
+  // the GBA hardware, so it must be able to set/clear these flags authoritatively.
+  private writeDispstat(val: number) {
+    this.mem.io[IO.DISPSTAT] = val & 0xff;
+    this.mem.io[IO.DISPSTAT + 1] = (val >>> 8) & 0xff;
+  }
+
   // Run one full frame
   runFrame() {
     // Clear VBlank flag at line 0 (start of new frame)
     {
       const ds = this.mem.readIO16(IO.DISPSTAT);
-      this.mem.writeIO16(IO.DISPSTAT, ds & ~0x1);
+      this.writeDispstat(ds & ~0x1);
     }
 
     for (let line = 0; line < TOTAL_LINES; line++) {
       this.scanline = line;
       this.ppu.updateScanline(line);
-      if (line < VISIBLE_LINES) {
-        this.ppu.renderScanline(line);
-      }
 
       // Clear HBlank flag at start of line
       {
         const ds = this.mem.readIO16(IO.DISPSTAT);
-        this.mem.writeIO16(IO.DISPSTAT, ds & ~0x2);
+        this.writeDispstat(ds & ~0x2);
       }
 
       // set VCOUNT
@@ -277,10 +284,10 @@ export class GBA {
       const dispstat = this.mem.readIO16(IO.DISPSTAT);
       const vct = (dispstat >>> 8) & 0xff;
       if (line === vct) {
-        this.mem.writeIO16(IO.DISPSTAT, dispstat | 0x4); // vcount match flag
+        this.writeDispstat(dispstat | 0x4); // vcount match flag
         if (dispstat & 0x20) this.requestIrq(IRQ_VCOUNT);
       } else {
-        this.mem.writeIO16(IO.DISPSTAT, dispstat & ~0x4);
+        this.writeDispstat(dispstat & ~0x4);
       }
 
       // run CPU for this scanline
@@ -300,6 +307,25 @@ export class GBA {
             this.mem.halted = false; // wake from HALT
             if (ime) this.cpu.raiseIrq(); // dispatch IRQ
           } else {
+            // Check HBlank threshold BEFORE consuming. Fire once (DISPSTAT.HBlank=1
+            // prevents re-entry). Consume 64 cycles AFTER firing so the ISR dispatches
+            // with budget=208 — same timing as hardware-verified behavior for all
+            // other subtests. The DISPSTAT fix ensures the guard works correctly now.
+            const elapsed = CYCLES_PER_LINE - budget;
+            if (line < VISIBLE_LINES && elapsed >= 960) {
+              const ds = this.mem.readIO16(IO.DISPSTAT);
+              if (!(ds & 0x2)) {
+                // Capture DISPCNT/OAM PRE-ISR (original 5/7 state for comparison)
+                this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
+                this.ppu.oamHistory[line].set(this.mem.oam);
+                this.writeDispstat(ds | 0x2); // set HBlank flag
+                if (ds & 0x10) {
+                  this.requestIrq(IRQ_HBLANK);
+                  this.doDma(2);
+                }
+              }
+            }
+
             // stay halted: consume cycles but don't execute
             const c = Math.min(budget, 64);
             this.cycles += c;
@@ -314,13 +340,17 @@ export class GBA {
         this.cycles += c;
         this.tickTimers(c);
         budget -= c;
+        this.scanlineBudget = budget;
         guard++;
 
         // Set HBlank flag when instruction execution reaches HBlank period (after 960 cycles)
         if (line < VISIBLE_LINES && (CYCLES_PER_LINE - budget) >= 960) {
           const ds = this.mem.readIO16(IO.DISPSTAT);
           if (!(ds & 0x2)) {
-            this.mem.writeIO16(IO.DISPSTAT, ds | 0x2);
+            // Capture DISPCNT/OAM PRE-ISR (original 5/7 state for comparison)
+            this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
+            this.ppu.oamHistory[line].set(this.mem.oam);
+            this.writeDispstat(ds | 0x2); // set HBlank flag
             if (ds & 0x10) {
               this.requestIrq(IRQ_HBLANK);
               this.doDma(2);
@@ -334,20 +364,27 @@ export class GBA {
       // If budget went negative (instruction overshoot), carry it to next scanline
       this.scanlineOverflow = Math.max(0, -budget);
 
-      // HBlank start (after visible pixels)
+      // HBlank safety net + scanline render (after CPU has run H-Draw + ISR)
       if (line < VISIBLE_LINES) {
         const ds = this.mem.readIO16(IO.DISPSTAT);
-        this.mem.writeIO16(IO.DISPSTAT, ds | 0x2);
-        if (ds & 0x10) {
-          this.requestIrq(IRQ_HBLANK);
-          this.doDma(2); // HBlank DMA
+        if (!(ds & 0x2)) {
+          // HBlank didn't fire in CPU loop — fire now and capture PRE-ISR.
+          this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
+          this.ppu.oamHistory[line].set(this.mem.oam);
+          this.writeDispstat(ds | 0x2);
+          if (ds & 0x10) {
+            this.requestIrq(IRQ_HBLANK);
+            this.doDma(2);
+          }
         }
+        // Render the scanline with the captured DISPCNT/OAM
+        this.ppu.renderScanline(line);
       }
 
       // VBlank start at line 160
       if (line === VISIBLE_LINES) {
         const ds = this.mem.readIO16(IO.DISPSTAT);
-        this.mem.writeIO16(IO.DISPSTAT, ds | 0x1);
+        this.writeDispstat(ds | 0x1); // set VBlank flag (bypasses read-only mask in writeIO)
         if (ds & 0x8) this.requestIrq(IRQ_VBLANK);
         this.doDma(1); // VBlank DMA
       }

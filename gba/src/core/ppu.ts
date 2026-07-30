@@ -25,6 +25,10 @@ export class PPU {
   win0InY = false;
   win1InY = false;
 
+  // Per-scanline history arrays (populated in updateScanline for mid-frame state capture)
+  dispcntHistory!: Uint16Array;  // DISPCNT value at the start of each scanline (size 230)
+  oamHistory!: Uint8Array[];     // OAM snapshot at the start of each scanline (size 230, each 1024 bytes)
+
   ensureBuffers() {
     if (!this.framebuffer || this.framebuffer.length !== GBA_WIDTH * GBA_HEIGHT) this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
     if (!this.bgColor || this.bgColor.length !== GBA_WIDTH) this.bgColor = new Uint32Array(GBA_WIDTH);
@@ -38,6 +42,12 @@ export class PPU {
     if (!this.bgLayer2 || this.bgLayer2.length !== GBA_WIDTH) this.bgLayer2 = new Uint8Array(GBA_WIDTH);
     if (!this.objLayer || this.objLayer.length !== GBA_WIDTH) this.objLayer = new Uint8Array(GBA_WIDTH);
     if (!this.objWinMask || this.objWinMask.length !== GBA_WIDTH) this.objWinMask = new Uint8Array(GBA_WIDTH);
+    // Per-scanline history: 230 entries (160 visible + VBlank), each capturing DISPCNT and OAM
+    if (!this.dispcntHistory || this.dispcntHistory.length !== 230) this.dispcntHistory = new Uint16Array(230);
+    if (!this.oamHistory || this.oamHistory.length !== 230) {
+      this.oamHistory = [];
+      for (let i = 0; i < 230; i++) this.oamHistory.push(new Uint8Array(0x400));
+    }
   }
 
   constructor(mem: Memory) {
@@ -130,6 +140,8 @@ export class PPU {
   }
 
   // Update window Y flags on scanline start (ticked on all 228 lines including VBlank)
+  // Note: dispcntHistory and oamHistory are captured by gba.ts at HBlank start (after H-Draw CPU
+  // runs) for correct mid-frame DISPCNT timing. Do NOT update them here.
   updateScanline(y: number) {
     const win0v = this.mem.readIO16(0x44); // WIN0V
     const win1v = this.mem.readIO16(0x46); // WIN1V
@@ -152,12 +164,10 @@ export class PPU {
     const win1_y2 = win1v & 0xff;
 
     if (off === 0x44 || off === 0x45) {
-      if (y === win0_y1) this.win0InY = true;
-      if (y === win0_y2) this.win0InY = false;
+      this.win0InY = (win0_y1 === win0_y2) ? false : (win0_y1 < win0_y2 ? (y >= win0_y1 && y < win0_y2) : (y >= win0_y1 || y < win0_y2));
     }
     if (off === 0x46 || off === 0x47) {
-      if (y === win1_y1) this.win1InY = true;
-      if (y === win1_y2) this.win1InY = false;
+      this.win1InY = (win1_y1 === win1_y2) ? false : (win1_y1 < win1_y2 ? (y >= win1_y1 && y < win1_y2) : (y >= win1_y1 || y < win1_y2));
     }
   }
 
@@ -167,19 +177,26 @@ export class PPU {
     this.updateScanline(y);
     const cnt = this.dispcnt;
     const mode = cnt & 7;
-    const forcedBlank = (cnt >>> 7) & 1;
-    if (forcedBlank) {
-      const yoff = y * GBA_WIDTH;
-      for (let x = 0; x < GBA_WIDTH; x++) this.framebuffer[yoff + x] = 0xffffffff;
-      return;
-    }
     this.renderLine(y, mode, cnt);
   }
 
   private renderLine(y: number, mode: number, cnt: number) {
-    this.updateScanline(y);
+    this.updateScanline(y); // window Y flags only (history already captured by gba.ts)
+
+    // Use the DISPCNT captured at HBlank start of this scanline (after H-Draw CPU ran).
+    // This correctly reflects mid-frame DISPCNT changes (e.g. Layer toggle 2 enables BG0
+    // during H-Draw at 0x0800af1c, then disables it during HBlank at 0x0800af46).
+    const cntNow = this.dispcntHistory[y];
+    cnt = cntNow;
+    mode = cnt & 7;
+
     const fb = this.framebuffer;
     const yoff = y * GBA_WIDTH;
+    const forcedBlank = (cnt >>> 7) & 1;
+    if (forcedBlank) {
+      for (let x = 0; x < GBA_WIDTH; x++) fb[yoff + x] = 0xffffffff;
+      return;
+    }
     // Default backdrop color = palette[0]
     const backdrop = PPU.color555to32(this.mem.palette[0] | (this.mem.palette[1] << 8));
 
@@ -240,8 +257,11 @@ export class PPU {
 
         let col = (winMask & 0x04) ? fb[yoff + x] : backdrop;
         let topLayer = (winMask & 0x04) ? 3 : 0; // BG2 is bitmap
+        const bg2cnt = this.mem.readIO16(IO.BG2CNT);
+        const bg2prio = bg2cnt & 3;
         const oc = (winMask & 0x10) ? this.objColor[x] : 0;
-        if (oc !== 0) {
+        const op = oc !== 0 ? this.objPrio[x] : 4;
+        if (oc !== 0 && op <= bg2prio) {
           const isSemi = this.objSemi[x] === 1;
           const bottomCol = col;
           col = oc;
@@ -286,24 +306,27 @@ export class PPU {
       this.objWinMask[x] = 0;
     }
 
-    const bgEnable = [(cnt >>> 8) & 1, (cnt >>> 9) & 1, (cnt >>> 10) & 1, (cnt >>> 11) & 1];
-    // Render BG3, BG2, BG1, BG0 (so higher priority overwrites via priority field)
+    // Render BG layers — ONLY enabled ones (checked via DISPCNT bits 8-11).
+    // Rendering disabled BGs would let them win priority slots and displace
+    // enabled BGs to the secondary layer where the composite masks them out.
     if (mode === 0) {
-      if (bgEnable[3]) this.renderTextBg(3, y);
-      if (bgEnable[2]) this.renderTextBg(2, y);
-      if (bgEnable[1]) this.renderTextBg(1, y);
-      if (bgEnable[0]) this.renderTextBg(0, y);
+      // Mode 0: BG0-3 all text
+      if ((cnt >>> 11) & 1) this.renderTextBg(3, y);
+      if ((cnt >>> 10) & 1) this.renderTextBg(2, y);
+      if ((cnt >>> 9)  & 1) this.renderTextBg(1, y);
+      if ((cnt >>> 8)  & 1) this.renderTextBg(0, y);
     } else if (mode === 1) {
-      if (bgEnable[3]) this.renderTextBg(3, y);
-      if (bgEnable[1]) this.renderTextBg(1, y);
-      if (bgEnable[0]) this.renderTextBg(0, y);
-      if (bgEnable[2]) this.renderAffineBg(2, y);
+      // Mode 1: BG0-1 text, BG2 affine (BG3 not used)
+      if ((cnt >>> 9)  & 1) this.renderTextBg(1, y);
+      if ((cnt >>> 8)  & 1) this.renderTextBg(0, y);
+      if ((cnt >>> 10) & 1) this.renderAffineBg(2, y);
     } else if (mode === 2) {
-      if (bgEnable[3]) this.renderAffineBg(3, y);
-      if (bgEnable[2]) this.renderAffineBg(2, y);
+      // Mode 2: BG2-3 affine
+      if ((cnt >>> 11) & 1) this.renderAffineBg(3, y);
+      if ((cnt >>> 10) & 1) this.renderAffineBg(2, y);
     }
 
-    if ((cnt >>> 12) & 1) this.renderObjLine(y, mode, cnt);
+    this.renderObjLine(y, mode, cnt);
 
     // Windowing checks
     const win0Enable = (cnt >>> 13) & 1;
@@ -361,13 +384,14 @@ export class PPU {
       let bottomCol = backdrop;
       let isSemiTransparent = false;
       // Compare BG and OBJ priorities; lower number = higher priority (front)
-      let bc = (this.bgColor[x] !== 0 && (winMask & (1 << (this.bgLayer[x] - 1)))) ? this.bgColor[x] : 0;
+      const bgEn = (this.bgLayer[x] > 0 && ((cnt >>> (8 + this.bgLayer[x] - 1)) & 1));
+      const objEn = (cnt >>> 12) & 1;
+      let bc = (this.bgColor[x] !== 0 && bgEn && (winMask & (1 << (this.bgLayer[x] - 1)))) ? this.bgColor[x] : 0;
       let bp = bc !== 0 ? this.bgPrio[x] : 4;
-      let oc = (this.objColor[x] !== 0 && (winMask & 0x10)) ? this.objColor[x] : 0;
+      let oc = (this.objColor[x] !== 0 && objEn && (winMask & 0x10)) ? this.objColor[x] : 0;
       let op = oc !== 0 ? this.objPrio[x] : 4;
-      // BG vs OBJ: BG drawn first if bgPrio <= objPrio, else obj first (then other can overwrite if <=)
-      // Simplify: pick the one with lower priority; if equal, OBJ wins.
-      if (bp <= op) {
+      // BG vs OBJ: BG drawn first if bgPrio < objPrio, else OBJ wins (when objPrio <= bgPrio, OBJ takes precedence).
+      if (bp < op) {
         if (bc !== 0) { col = bc; curPrio = bp; topLayer = this.bgLayer[x]; }
         if (oc !== 0 && op <= curPrio) {
           bottomCol = col; bottomLayer = topLayer;
@@ -383,7 +407,8 @@ export class PPU {
         }
       }
       // Use second BG layer as bottom for blending if available
-      const bc2 = (this.bgColor2[x] !== 0 && (winMask & (1 << (this.bgLayer2[x] - 1)))) ? this.bgColor2[x] : 0;
+      const bg2En = (this.bgLayer2[x] > 0 && ((cnt >>> (8 + this.bgLayer2[x] - 1)) & 1));
+      const bc2 = (this.bgColor2[x] !== 0 && bg2En && (winMask & (1 << (this.bgLayer2[x] - 1)))) ? this.bgColor2[x] : 0;
       if (bc2 !== 0 && bottomLayer === 0) {
         bottomCol = bc2;
         bottomLayer = this.bgLayer2[x];
@@ -451,7 +476,7 @@ export class PPU {
         else if (tileX < 32 && tileY >= 32) { sb += 0x1000; }
         else if (tileX >= 32 && tileY >= 32) { sb += 0x1800; tx -= 32; }
       }
-      const mapOff = (sb + ((tileY & 31) * 32 + (tx & 31)) * 2) & (vram.length - 1);
+      const mapOff = (sb + ((tileY & 31) * 32 + (tx & 31)) * 2) % vram.length;
       const entry = vram[mapOff] | (vram[mapOff + 1] << 8);
       const tileNum = entry & 0x3ff;
       const hflip = (entry >>> 10) & 1;
@@ -462,12 +487,12 @@ export class PPU {
       let colorIdx: number;
       let color: number;
       if (is256) {
-        const tileOff = (charBase + tileNum * 64 + fy * 8 + fx) & (vram.length - 1);
+        const tileOff = (charBase + tileNum * 64 + fy * 8 + fx) % vram.length;
         colorIdx = vram[tileOff];
         if (colorIdx === 0) continue; // transparent
         color = PPU.color555to32(palette[(colorIdx * 2)] | (palette[(colorIdx * 2) + 1] << 8));
       } else {
-        const tileOff = (charBase + tileNum * 32 + fy * 4 + (fx >> 1)) & (vram.length - 1);
+        const tileOff = (charBase + tileNum * 32 + fy * 4 + (fx >> 1)) % vram.length;
         const byte = vram[tileOff];
         colorIdx = (fx & 1) ? (byte >> 4) & 0xf : byte & 0xf;
         if (colorIdx === 0) continue;
@@ -531,9 +556,9 @@ export class PPU {
       const tileX = ix >> 3, tileY = iy >> 3;
       const inX = ix & 7, inY = iy & 7;
       // screen base: affine screen base is 1 byte per entry, tile number is 8-bit
-      const screenOff = (screenBase + tileY * (size >> 3) + tileX) & (vram.length - 1);
+      const screenOff = (screenBase + tileY * (size >> 3) + tileX) % vram.length;
       const tileNum = vram[screenOff];
-      const tileOff = (charBase + tileNum * 64 + inY * 8 + inX) & (vram.length - 1);
+      const tileOff = (charBase + tileNum * 64 + inY * 8 + inX) % vram.length;
       const colorIdx = vram[tileOff];
       if (colorIdx === 0) continue;
       const color = PPU.color555to32(palette[colorIdx * 2] | (palette[colorIdx * 2 + 1] << 8));
@@ -645,7 +670,11 @@ export class PPU {
 
   // ---- Sprites (OBJ) ----
   private renderObjLine(y: number, _mode: number, cnt: number) {
-    const oam = this.mem.oam;
+    // Apply pipeline delay to OAM (GBA hardware: OAM updates take effect 1 scanline later)
+    let oam = this.mem.oam;
+    if (y >= 1 && this.oamHistory[y - 1]) {
+      oam = this.oamHistory[y - 1];
+    }
     const palette = this.mem.palette;
     const vram = this.mem.vram;
     const oneD = (cnt >>> 6) & 1; // 1 = 1D mapping, 0 = 2D mapping
@@ -710,9 +739,9 @@ export class PPU {
           // Affine transform: map screen-space (dx,dy) to texture-space (tx,ty)
           const sdx = dx - cx;
           const sdy = dy - cy;
-          // GBATEK formula: (dx - cx) * PA + (dy - cy) * PB >> 8 + (W / 2)
-          tx = (((sdx * pa + sdy * pb) >> 8) + (w >> 1)) | 0;
-          ty = (((sdx * pc + sdy * pd) >> 8) + (h >> 1)) | 0;
+          // GBATEK formula: tx = ((w << 7) + (dx - cx) * PA + (dy - cy) * PB) >> 8
+          tx = (((w << 7) + sdx * pa + sdy * pb) >> 8) | 0;
+          ty = (((h << 7) + sdx * pc + sdy * pd) >> 8) | 0;
           if (tx < 0 || tx >= w || ty < 0 || ty >= h) continue;
         } else {
           tx = dx;
