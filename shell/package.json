@@ -21,7 +21,8 @@
     "snes-core": "*",
     "nes-core": "*",
     "gb-core": "*",
-    "gba-core": "*"
+    "gba-core": "*",
+    "atari-core": "*"
   },
   "devDependencies": {
     "@types/node": "^24.12.3",

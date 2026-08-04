@@ -158,17 +158,17 @@ const checkSnesResult = (vram: Uint16Array) => {
   for (let i = 0; i < vram.length - 4; i++) {
     if (
       (vram[i] & 0xFF) === 0x46 && // F
-      (vram[i+1] & 0xFF) === 0x41 && // A
-      (vram[i+2] & 0xFF) === 0x49 && // I
-      (vram[i+3] & 0xFF) === 0x4C    // L
+      (vram[i + 1] & 0xFF) === 0x41 && // A
+      (vram[i + 2] & 0xFF) === 0x49 && // I
+      (vram[i + 3] & 0xFF) === 0x4C    // L
     ) {
       hasFail = true;
     }
     if (
       (vram[i] & 0xFF) === 0x50 && // P
-      (vram[i+1] & 0xFF) === 0x41 && // A
-      (vram[i+2] & 0xFF) === 0x53 && // S
-      (vram[i+3] & 0xFF) === 0x53    // S
+      (vram[i + 1] & 0xFF) === 0x41 && // A
+      (vram[i + 2] & 0xFF) === 0x53 && // S
+      (vram[i + 3] & 0xFF) === 0x53    // S
     ) {
       hasPass = true;
     }
@@ -320,7 +320,7 @@ export default function App() {
 
       await targetCore.loadRom(buffer);
       await targetCore.reset();
-      
+
       if (emulatorState.audioEnabled) {
         await targetCore.enableAudio();
       } else {
@@ -350,7 +350,7 @@ export default function App() {
       isRunningTestRef.current = false;
       return;
     }
-    
+
     const activeTest = testSuite.find(t => t.id === runningLiveTestId);
     if (!activeTest) {
       isRunningTestRef.current = false;
@@ -501,7 +501,7 @@ export default function App() {
 
         while (Date.now() - startTime < maxTimeout) {
           await new Promise(r => setTimeout(r, 100));
-          
+
           const currentCore = emulatorInstance.current;
           if (!currentCore || currentCore.id !== test.coreId) continue;
 
@@ -633,7 +633,7 @@ export default function App() {
   const emulatorInstance = useRef<EmulatorCore | null>(null);
   const inputHandlerRef = useRef<any>(null);
   const lastFrameTime = useRef<number>(0);
-  
+
   // TAS / Input Automation States
   const automationStateRef = useRef<'idle' | 'recording' | 'playing'>('idle');
   const recordedInputsRef = useRef<Array<{ timestamp: number; input: number }>>([]);
@@ -690,7 +690,7 @@ export default function App() {
       aspect: { min: 0, max: 100, step: 1 }
     };
     saveSliderConfigs(defaults);
-    
+
     setEmulatorState(prev => ({
       ...prev,
       speedMultiplier: Math.max(defaults.speed.min, Math.min(defaults.speed.max, prev.speedMultiplier)),
@@ -737,7 +737,8 @@ export default function App() {
     emulatorManager.registerCore(EmulatorCoreFactory.createNesCore());
     emulatorManager.registerCore(EmulatorCoreFactory.createGbcCore());
     emulatorManager.registerCore(EmulatorCoreFactory.createGbaCore());
-    
+    emulatorManager.registerCore(EmulatorCoreFactory.createAtariCore());
+
     // Initialize input handler
     const handler = new InputHandler();
     handler.attach();
@@ -747,18 +748,18 @@ export default function App() {
     const db = new RetroStationDB();
     db.init().then(async () => {
       dbRef.current = db;
-      
+
       const lastCore = await db.getSetting('lastPlayedCore') || 'snes';
       const lastRom = await db.getRom(lastCore);
-      
+
       setActiveCoreId(lastCore);
-      
+
       if (lastRom) {
         const currentCore = emulatorManager.getCoreById(lastCore);
         if (currentCore) {
           emulatorInstance.current = currentCore;
           await currentCore.loadRom(lastRom.data);
-          
+
           const autosaveState = await db.getAutosave(lastCore);
           if (autosaveState) {
             try {
@@ -768,7 +769,7 @@ export default function App() {
               console.warn('Failed to restore autosave state', e);
             }
           }
-          
+
           setEmulatorState(prev => ({
             ...prev,
             romName: lastRom.name,
@@ -809,7 +810,7 @@ export default function App() {
       emulatorInstance.current = emulatorManager.getCoreById('snes');
       loadDefaultRom('snes');
     });
-    
+
     return () => {
       handler.detach();
       emulatorManager.destroyAll();
@@ -829,10 +830,10 @@ export default function App() {
     }
 
     if (!emulatorManager) return;
-    
+
     const newCore = emulatorManager.getCoreById(activeCoreId);
     if (!newCore) return;
-    
+
     // Auto-save previous core if running
     const prevCoreId = lastCoreIdRef.current;
     const prevCore = emulatorManager.getCoreById(prevCoreId);
@@ -842,22 +843,22 @@ export default function App() {
         console.log('Auto-saved previous core:', prevCoreId);
       }).catch(e => console.warn('Auto-save failed:', e));
     }
-    
+
     lastCoreIdRef.current = activeCoreId;
     dbRef.current?.setSetting('lastPlayedCore', activeCoreId);
-    
+
     // Check if audio was enabled before switching
     const wasAudioEnabled = emulatorState.audioEnabled;
-    
+
     // Stop current core
     if (emulatorInstance.current) {
       emulatorInstance.current.disableAudio();
       emulatorInstance.current.setSpeedMultiplier(1);
     }
-    
+
     // Set new core
     emulatorInstance.current = newCore;
-    
+
     // Reset UI state (preserve wasAudioEnabled!)
     setEmulatorState(prev => ({
       ...prev,
@@ -893,7 +894,7 @@ export default function App() {
       hexData: [],
       saveSlots: [null, null, null]
     }));
-    
+
     // Load last played ROM or default ROM for this core
     (async () => {
       if (!dbRef.current) return;
@@ -909,7 +910,7 @@ export default function App() {
             console.warn('Failed to restore autosave state', e);
           }
         }
-        
+
         setEmulatorState(prev => ({
           ...prev,
           romName: lastRom.name,
@@ -936,10 +937,10 @@ export default function App() {
         }
       }
       await loadSavedSlotsInfo(activeCoreId);
-      
+
       // If audio was enabled previously, resume it after ROM loads
       if (wasAudioEnabled) {
-        newCore.enableAudio().catch(() => {});
+        newCore.enableAudio().catch(() => { });
       }
     })();
   }, [activeCoreId]);
@@ -982,13 +983,13 @@ export default function App() {
         triggerAutosave();
       }
     };
-    
+
     const handleActive = () => {
       if (emulatorState.audioEnabled && emulatorInstance.current && emulatorState.isRunning) {
-        emulatorInstance.current.enableAudio().catch(() => {});
+        emulatorInstance.current.enableAudio().catch(() => { });
       }
     };
-    
+
     const handleVisibility = () => {
       if (document.hidden) {
         handleInactive();
@@ -996,11 +997,11 @@ export default function App() {
         handleActive();
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('blur', handleInactive);
     window.addEventListener('focus', handleActive);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleInactive);
@@ -1012,7 +1013,7 @@ export default function App() {
   useEffect(() => {
     const resumeAudio = () => {
       if (emulatorInstance.current && emulatorState.isRunning && emulatorState.audioEnabled) {
-        emulatorInstance.current.enableAudio().catch(() => {});
+        emulatorInstance.current.enableAudio().catch(() => { });
         document.removeEventListener('click', resumeAudio);
         document.removeEventListener('keydown', resumeAudio);
       }
@@ -1028,47 +1029,47 @@ export default function App() {
   // Main render loop
   useEffect(() => {
     if (!emulatorInstance.current || !emulatorManager) return;
-    
+
     if (!emulatorState.isRunning) return;
-    
+
     isRunningRef.current = true;
-    
+
     let lastTime = performance.now();
     let frameAccumulator = 0;
     let debugFrameCounter = 0;
-    
+
     const loop = async (timestamp: number) => {
       if (!isRunningRef.current) return;
       const emulator = emulatorInstance.current;
       if (!emulator) return;
       (window as any).emulator = emulator;
-      
+
       const now = performance.now();
       const delta = now - lastTime;
       lastTime = now;
-      
+
       // Limit delta to avoid spiral of death (e.g. background tab)
       const actualDelta = Math.min(delta, 100.0);
-      
+
       const targetFps = activeCoreId === 'gb' || activeCoreId === 'gbc' ? 59.7 : 60.098;
       const frameInterval = 1000 / targetFps;
-      
+
       try {
         const controllerState = inputHandlerRef.current.getController1State();
         let lastFrameResult = null;
-        
+
         // All cores run synchronously on the main thread (zero microtask yields)
         const speedMultiplier = speedMultiplierRef.current;
         frameAccumulator += actualDelta * speedMultiplier;
-        
+
         let framesRun = 0;
         const maxFramesRun = Math.max(4, Math.ceil(4 * speedMultiplier));
         while (frameAccumulator >= frameInterval && framesRun < maxFramesRun) {
           let activeInput = controllerState;
-          
+
           if (automationStateRef.current === 'playing') {
-            while (playbackInputIndexRef.current < recordedInputsRef.current.length && 
-                   recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
+            while (playbackInputIndexRef.current < recordedInputsRef.current.length &&
+              recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
               playbackInputIndexRef.current++;
             }
             const activeIndex = Math.max(0, playbackInputIndexRef.current - 1);
@@ -1091,7 +1092,7 @@ export default function App() {
           frameAccumulator -= frameInterval;
           framesRun++;
           debugFrameCounter++;
-          
+
           accumulatedGameTimeRef.current += frameInterval;
         }
 
@@ -1100,7 +1101,7 @@ export default function App() {
         } else if (automationStateRef.current === 'playing') {
           setPlaybackUIIndex(Math.min(playbackInputIndexRef.current, recordedInputsRef.current.length));
         }
-        
+
         if (lastFrameResult) {
           const { w, h } = getCoreDimensions(activeCoreId);
           if (mainCanvasRef.current) {
@@ -1112,14 +1113,14 @@ export default function App() {
             }
             ctx.putImageData(imgData, 0, 0);
           }
-          
+
           setIsScreenBlank(lastFrameResult.frameStartBlank);
-          
+
           // Update FPS state and debugger info occasionally (approx 30 frames)
           if (debugFrameCounter >= 30) {
             setEmulatorState(prev => ({ ...prev, fps: Math.round(1000 / Math.max(1, delta)) }));
             debugFrameCounter = 0;
-            
+
             const snapshot = await emulator.getDebugSnapshot();
             setEmulatorState(prev => ({
               ...prev,
@@ -1137,12 +1138,12 @@ export default function App() {
       } catch (err) {
         console.error('Emulation error:', err);
       }
-      
+
       requestAnimationFrame(loop);
     };
-    
+
     requestAnimationFrame(loop);
-    
+
     return () => {
       isRunningRef.current = false;
     };
@@ -1152,7 +1153,7 @@ export default function App() {
   const handleRomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     // Auto-save before loading a new ROM
     if (emulatorInstance.current && emulatorState.isRunning) {
       triggerAutosave();
@@ -1164,7 +1165,7 @@ export default function App() {
       try {
         await emulatorInstance.current?.loadRom(buffer);
         uploadedFileRef.current = file;
-        
+
         // Save ROM to IndexedDB!
         if (dbRef.current) {
           const romName = file.name;
@@ -1209,9 +1210,9 @@ export default function App() {
   const loadDefaultRom = async (coreId: string) => {
     const currentCore = emulatorManager.getCoreById(coreId);
     if (!currentCore) return;
-    
+
     if (emulatorInstance.current !== currentCore) return;
-    
+
     let path = '';
     let romName = '';
     let romSize = '';
@@ -1219,7 +1220,7 @@ export default function App() {
     let mapper = '';
     let version = '';
     let checksum = '';
-    
+
     if (coreId === 'snes') {
       path = '/emulator/retro-station/sample.sfc';
       romName = 'sample.sfc';
@@ -1253,15 +1254,15 @@ export default function App() {
       version = '1.0';
       checksum = 'N/A';
     }
-    
+
     try {
       const response = await fetch(path);
       if (!response.ok) throw new Error(`Failed to load ${romName}`);
       const buffer = await response.arrayBuffer();
-      
+
       if (emulatorInstance.current !== currentCore) return;
       await currentCore.loadRom(buffer);
-      
+
       if (emulatorInstance.current !== currentCore) return;
       setEmulatorState(prev => ({
         ...prev,
@@ -1276,7 +1277,7 @@ export default function App() {
 
   const togglePlay = () => {
     if (!emulatorInstance.current) return;
-    
+
     if (emulatorState.isRunning) {
       setEmulatorState(prev => ({ ...prev, isRunning: false }));
     } else {
@@ -1286,7 +1287,7 @@ export default function App() {
 
   const toggleAudio = async () => {
     if (!emulatorInstance.current) return;
-    
+
     if (emulatorState.audioEnabled) {
       emulatorInstance.current.disableAudio();
       setEmulatorState(prev => ({ ...prev, audioEnabled: false }));
@@ -1325,7 +1326,7 @@ export default function App() {
       cgramList: [],
       hexData: []
     }));
-    
+
     if (mainCanvasRef.current) {
       const ctx = mainCanvasRef.current.getContext('2d')!;
       ctx.fillStyle = '#000';
@@ -1351,16 +1352,16 @@ export default function App() {
 
   const stepInstruction = async () => {
     if (!emulatorInstance.current) return;
-    
+
     try {
       const controllerState = inputHandlerRef.current.getController1State();
       const targetFps = activeCoreId === 'gb' || activeCoreId === 'gbc' ? 59.7 : 60.098;
       const frameInterval = 1000 / targetFps;
       let activeInput = controllerState;
-      
+
       if (automationStateRef.current === 'playing') {
-        while (playbackInputIndexRef.current < recordedInputsRef.current.length && 
-               recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
+        while (playbackInputIndexRef.current < recordedInputsRef.current.length &&
+          recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
           playbackInputIndexRef.current++;
         }
         const activeIndex = Math.max(0, playbackInputIndexRef.current - 1);
@@ -1383,7 +1384,7 @@ export default function App() {
       accumulatedGameTimeRef.current += frameInterval;
 
       const frame = await emulatorInstance.current.runFrame(activeInput);
-      
+
       if (mainCanvasRef.current) {
         const ctx = mainCanvasRef.current.getContext('2d')!;
         const imgData = ctx.createImageData(256, 224);
@@ -1391,7 +1392,7 @@ export default function App() {
         pixelBuffer.set(frame.pixels);
         ctx.putImageData(imgData, 0, 0);
       }
-      
+
       const snapshot = await emulatorInstance.current.getDebugSnapshot();
       setEmulatorState(prev => ({
         ...prev,
@@ -1482,7 +1483,7 @@ export default function App() {
     };
     const filename = `${activeCoreId}-input-recording.json`;
     const content = JSON.stringify(payload, null, 2);
-    
+
     if (savePath) {
       try {
         const res = await fetch('/api/save-file', {
@@ -1545,14 +1546,14 @@ export default function App() {
 
   const captureScreenshotDuringRecording = async () => {
     if (!mainCanvasRef.current || automationStateRef.current !== 'recording') return;
-    
+
     const timestamp = accumulatedGameTimeRef.current;
     const uid = `snap_${Math.floor(timestamp)}_${Math.floor(Math.random() * 1000)}`;
     const dataUrl = mainCanvasRef.current.toDataURL('image/png');
     const filename = `${uid}.png`;
-    
+
     recordedScreenshotsRef.current.push({ timestamp, uid });
-    
+
     if (savePath) {
       try {
         const res = await fetch('/api/save-file', {
@@ -1595,19 +1596,19 @@ export default function App() {
         } else if (payload && Array.isArray(payload.inputs)) {
           inputs = payload.inputs;
         }
-        
+
         if (inputs.length > 0) {
           recordedInputsRef.current = inputs;
           setRecordedUIFrameCount(inputs.length);
           playbackInputIndexRef.current = 0;
           accumulatedGameTimeRef.current = 0;
           setPlaybackUIIndex(0);
-          
+
           await resetEmulator();
-          
+
           automationStateRef.current = 'playing';
           setAutomationUIState('playing');
-          
+
           setEmulatorState(prev => ({ ...prev, isRunning: true }));
         } else {
           alert('Invalid TAS recording file structure.');
@@ -1634,7 +1635,7 @@ export default function App() {
     const state = await dbRef.current.getSlot(activeCoreId, slotIdx);
     if (!state) return;
     await emulatorInstance.current.loadSaveState(state);
-    
+
     // Update UI state
     const snapshot = await emulatorInstance.current.getDebugSnapshot();
     setEmulatorState(prev => ({
@@ -1767,8 +1768,8 @@ export default function App() {
           <span className="retro-header-title">
             Retro-Suit<span> v0.3</span>
           </span>
-          <select 
-            value={activeCoreId} 
+          <select
+            value={activeCoreId}
             onChange={(e) => setActiveCoreId(e.target.value)}
             style={{
               background: 'var(--bg-panel)',
@@ -1834,8 +1835,8 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {automationUIState === 'idle' && (
-                  <button 
-                    onClick={startRecordingInputs} 
+                  <button
+                    onClick={startRecordingInputs}
                     style={{ flex: 1, fontSize: 9, padding: '4px 0', border: '1px solid #ff4444', borderRadius: 3, background: 'transparent', color: '#ff4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontFamily: 'inherit' }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff4444' }}></span>
@@ -1843,8 +1844,8 @@ export default function App() {
                   </button>
                 )}
                 {automationUIState !== 'idle' && (
-                  <button 
-                    onClick={stopRecordingInputs} 
+                  <button
+                    onClick={stopRecordingInputs}
                     style={{ flex: 1, fontSize: 9, padding: '4px 0', border: '1px solid var(--accent)', borderRadius: 3, background: 'transparent', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontFamily: 'inherit' }}
                   >
                     <span style={{ width: 6, height: 6, background: 'var(--accent)' }}></span>
@@ -1852,17 +1853,17 @@ export default function App() {
                   </button>
                 )}
                 {automationUIState === 'recording' && (
-                  <button 
-                    onClick={captureScreenshotDuringRecording} 
+                  <button
+                    onClick={captureScreenshotDuringRecording}
                     style={{ flex: 1, fontSize: 9, padding: '4px 0', border: '1px solid #44aacc', borderRadius: 3, background: 'transparent', color: '#44aacc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontFamily: 'inherit' }}
                   >
                     <ImageIcon size={10} style={{ color: '#44aacc' }} />
                     SNAP
                   </button>
                 )}
-                <button 
-                  onClick={triggerPlayInputs} 
-                  disabled={automationUIState !== 'idle'} 
+                <button
+                  onClick={triggerPlayInputs}
+                  disabled={automationUIState !== 'idle'}
                   style={{ flex: 1, fontSize: 9, padding: '4px 0', border: '1px solid #44cc44', borderRadius: 3, background: 'transparent', color: '#44cc44', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, opacity: automationUIState !== 'idle' ? 0.4 : 1, fontFamily: 'inherit' }}
                 >
                   <I.Play size={10} style={{ color: '#44cc44' }} />
@@ -1897,9 +1898,9 @@ export default function App() {
               }
             `}</style>
             <div className="retro-panel-title">DIAGNOSTICS & TESTS</div>
-            
-            <button 
-              onClick={runAllTests} 
+
+            <button
+              onClick={runAllTests}
               disabled={isRunningAllTests}
               style={{
                 width: '100%',
@@ -1943,60 +1944,60 @@ export default function App() {
                   return test.coreId === activeCoreId;
                 })
                 .map((test) => {
-                let statusIcon = <div style={{ width: 10, height: 10, borderRadius: '50%', border: '1px solid #4a4a6a', background: 'transparent' }} />;
-                
-                if (test.status === 'running') {
-                  statusIcon = <I.RefreshCw size={11} className="test-spinner" style={{ color: 'var(--accent-warning)' }} />;
-                } else if (test.status === 'passed') {
-                  statusIcon = <I.Check size={11} style={{ color: 'var(--accent-success)' }} />;
-                } else if (test.status === 'failed') {
-                  statusIcon = <I.AlertCircle size={11} style={{ color: 'var(--accent-error)' }} />;
-                }
+                  let statusIcon = <div style={{ width: 10, height: 10, borderRadius: '50%', border: '1px solid #4a4a6a', background: 'transparent' }} />;
 
-                const isInteractable = !isRunningAllTests && !runningLiveTestId;
+                  if (test.status === 'running') {
+                    statusIcon = <I.RefreshCw size={11} className="test-spinner" style={{ color: 'var(--accent-warning)' }} />;
+                  } else if (test.status === 'passed') {
+                    statusIcon = <I.Check size={11} style={{ color: 'var(--accent-success)' }} />;
+                  } else if (test.status === 'failed') {
+                    statusIcon = <I.AlertCircle size={11} style={{ color: 'var(--accent-error)' }} />;
+                  }
 
-                return (
-                  <div 
-                    key={test.id} 
-                    className={isInteractable ? "test-item-row" : ""}
-                    onClick={() => {
-                      if (isInteractable) {
-                        loadAndRunTestLive(test);
-                        setRunningLiveTestId(test.id);
-                      }
-                    }}
-                    title={isInteractable ? "Click to run this test ROM live on the screen" : "Test run in progress"}
-                    style={{
-                      padding: '4px 6px',
-                      background: 'rgba(10,10,30,0.6)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 4,
-                      cursor: isInteractable ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 9, color: '#e0e0f0', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {test.name}
-                      </span>
-                      <span style={{ fontSize: 7, color: '#606080', textTransform: 'uppercase', fontFamily: 'inherit' }}>
-                        Core: {test.coreId}
-                      </span>
-                      {test.message && (
-                        <span style={{ fontSize: 7, color: 'var(--accent-error)', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={test.message}>
-                          {test.message}
+                  const isInteractable = !isRunningAllTests && !runningLiveTestId;
+
+                  return (
+                    <div
+                      key={test.id}
+                      className={isInteractable ? "test-item-row" : ""}
+                      onClick={() => {
+                        if (isInteractable) {
+                          loadAndRunTestLive(test);
+                          setRunningLiveTestId(test.id);
+                        }
+                      }}
+                      title={isInteractable ? "Click to run this test ROM live on the screen" : "Test run in progress"}
+                      style={{
+                        padding: '4px 6px',
+                        background: 'rgba(10,10,30,0.6)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 4,
+                        cursor: isInteractable ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                        <span style={{ fontSize: 9, color: '#e0e0f0', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {test.name}
                         </span>
-                      )}
+                        <span style={{ fontSize: 7, color: '#606080', textTransform: 'uppercase', fontFamily: 'inherit' }}>
+                          Core: {test.coreId}
+                        </span>
+                        {test.message && (
+                          <span style={{ fontSize: 7, color: 'var(--accent-error)', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={test.message}>
+                            {test.message}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        {statusIcon}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      {statusIcon}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
 
@@ -2415,209 +2416,209 @@ export default function App() {
         )}
       </footer>}
 
-        {showSettings && (
-          <div style={{ borderTop: '1px solid var(--border-color)', padding: 16, background: 'var(--bg-panel)', maxHeight: 400, overflowY: 'auto', fontFamily: 'var(--font-ui)' }}>
-            <div className="settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 10, marginBottom: 15 }}>
-              <h3 className="settings-title" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <I.Settings size={14} />
-                STATION CONFIGURATION
-              </h3>
+      {showSettings && (
+        <div style={{ borderTop: '1px solid var(--border-color)', padding: 16, background: 'var(--bg-panel)', maxHeight: 400, overflowY: 'auto', fontFamily: 'var(--font-ui)' }}>
+          <div className="settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 10, marginBottom: 15 }}>
+            <h3 className="settings-title" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <I.Settings size={14} />
+              STATION CONFIGURATION
+            </h3>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>General Preferences</div>
+          <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Enable Audio by Default</label>
+              <input type="checkbox" checked={localStorage.getItem('retro_station_default_audio') !== 'false'}
+                onChange={(e) => {
+                  localStorage.setItem('retro_station_default_audio', String(e.target.checked));
+                  setSliderConfigs(prev => ({ ...prev }));
+                }}
+                style={{ cursor: 'pointer' }} />
             </div>
 
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>General Preferences</div>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Enable Audio by Default</label>
-                <input type="checkbox" checked={localStorage.getItem('retro_station_default_audio') !== 'false'}
-                  onChange={(e) => {
-                    localStorage.setItem('retro_station_default_audio', String(e.target.checked));
-                    setSliderConfigs(prev => ({ ...prev }));
-                  }} 
-                  style={{ cursor: 'pointer' }} />
-              </div>
-              
-              <div className="sidebar-drag-handle-left" style={{ display: 'none' }} />
-              
-              <div className="settings-row" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Enable Autosave Feature</label>
-                <input type="checkbox" checked={enableAutosave}
-                  onChange={(e) => {
-                    setEnableAutosave(e.target.checked);
-                    localStorage.setItem('retro_station_enable_autosave', String(e.target.checked));
-                  }} 
-                  style={{ cursor: 'pointer' }} />
-              </div>
+            <div className="sidebar-drag-handle-left" style={{ display: 'none' }} />
 
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Default Volume</label>
-                <input className="settings-input" type="number" min={0} max={1} step={0.05}
-                  value={parseFloat(localStorage.getItem('retro_station_default_volume') || '0.35')}
-                  onChange={(e) => {
-                    localStorage.setItem('retro_station_default_volume', e.target.value);
-                    setSliderConfigs(prev => ({ ...prev }));
-                  }} />
-              </div>
-
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Default Aspect (%)</label>
-                <input className="settings-input" type="number" min={0} max={100} step={5}
-                  value={parseInt(localStorage.getItem('retro_station_default_aspect') || '0')}
-                  onChange={(e) => {
-                    localStorage.setItem('retro_station_default_aspect', e.target.value);
-                    setSliderConfigs(prev => ({ ...prev }));
-                  }} />
-              </div>
+            <div className="settings-row" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Enable Autosave Feature</label>
+              <input type="checkbox" checked={enableAutosave}
+                onChange={(e) => {
+                  setEnableAutosave(e.target.checked);
+                  localStorage.setItem('retro_station_enable_autosave', String(e.target.checked));
+                }}
+                style={{ cursor: 'pointer' }} />
             </div>
 
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>UI Theme</div>
-            <div className="theme-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 16 }}>
-              {(Object.entries(THEMES) as [ThemeId, typeof THEMES['crt']][]).map(([id, t]) => (
-                <button key={id} className={`theme-option ${theme === id ? 'active' : ''}`} onClick={() => handleThemeChange(id)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', border: `2px solid ${theme === id ? 'var(--accent)' : 'var(--border-subtle)'}`, borderRadius: 6, background: 'var(--bg-panel)', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', color: 'var(--text-primary)' }}>
-                  <div className="theme-swatch" style={{ width: '100%', height: 36, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', border: '1px solid rgba(0,0,0,0.3)', background: `linear-gradient(135deg, ${t.swatch[0]} 0%, ${t.swatch[0]} 50%, ${t.swatch[1]} 100%)` }}>
-                    <span style={{ color: t.swatch[1] }}>{'◉'}</span>
-                  </div>
-                  <span className="theme-label" style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, textAlign: 'center', color: theme === id ? 'var(--accent)' : 'var(--text-dim)' }}>{t.name}</span>
-                </button>
-              ))}
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Default Volume</label>
+              <input className="settings-input" type="number" min={0} max={1} step={0.05}
+                value={parseFloat(localStorage.getItem('retro_station_default_volume') || '0.35')}
+                onChange={(e) => {
+                  localStorage.setItem('retro_station_default_volume', e.target.value);
+                  setSliderConfigs(prev => ({ ...prev }));
+                }} />
             </div>
 
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Display</div>
-            <div className="settings-row" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={pixelated} onChange={handlePixelatedChange} style={{ accentColor: a }} />
-                Pixelated Mode (low-res retro look)
-              </label>
-            </div>
-
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Speed Multiplier Limits</div>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Speed</label>
-                <input className="settings-input" type="number" step={0.05} value={sliderConfigs.speed.min}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    speed: { ...sliderConfigs.speed, min: parseFloat(e.target.value) || 0.05 }
-                  })} />
-              </div>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Speed</label>
-                <input className="settings-input" type="number" step={0.05} value={sliderConfigs.speed.max}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    speed: { ...sliderConfigs.speed, max: parseFloat(e.target.value) || 10.0 }
-                  })} />
-              </div>
-            </div>
-
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Volume Limits</div>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Volume</label>
-                <input className="settings-input" type="number" step={0.01} value={sliderConfigs.volume.min}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    volume: { ...sliderConfigs.volume, min: parseFloat(e.target.value) || 0.0 }
-                  })} />
-              </div>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Volume</label>
-                <input className="settings-input" type="number" step={0.01} value={sliderConfigs.volume.max}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    volume: { ...sliderConfigs.volume, max: parseFloat(e.target.value) || 1.0 }
-                  })} />
-              </div>
-            </div>
-
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tempo Limits</div>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Tempo</label>
-                <input className="settings-input" type="number" step={0.05} value={sliderConfigs.tempo.min}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    tempo: { ...sliderConfigs.tempo, min: parseFloat(e.target.value) || 0.05 }
-                  })} />
-              </div>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Tempo</label>
-                <input className="settings-input" type="number" step={0.05} value={sliderConfigs.tempo.max}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    tempo: { ...sliderConfigs.tempo, max: parseFloat(e.target.value) || 10.0 }
-                  })} />
-              </div>
-            </div>
-
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Aspect Stretch Limits</div>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Aspect</label>
-                <input className="settings-input" type="number" step={1} value={sliderConfigs.aspect.min}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    aspect: { ...sliderConfigs.aspect, min: parseInt(e.target.value) || 0 }
-                  })} />
-              </div>
-              <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Aspect</label>
-                <input className="settings-input" type="number" step={1} value={sliderConfigs.aspect.max}
-                  onChange={(e) => saveSliderConfigs({
-                    ...sliderConfigs,
-                    aspect: { ...sliderConfigs.aspect, max: parseInt(e.target.value) || 100 }
-                  })} />
-              </div>
-            </div>
-
-            <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Debug / Automation Settings</div>
-            <div className="settings-grid" style={{ gridTemplateColumns: '1fr', gap: 12, marginBottom: 16 }}>
-              <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
-                <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>Host Local Save Path</label>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <input 
-                    className="settings-input" 
-                    type="text" 
-                    placeholder="e.g. c:/Users/Priya singh/dev/ai-dev/emulators/snes/public/debug/" 
-                    value={savePath}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSavePath(val);
-                      localStorage.setItem('retro_station_save_path', val);
-                    }} 
-                    style={{ flex: 1, fontFamily: 'inherit', fontSize: 10 }}
-                  />
-                  <button 
-                    className="btn-secondary" 
-                    onClick={() => {
-                      const defaultPath = 'c:/Users/Priya singh/dev/ai-dev/emulators/snes/public/debug/';
-                      setSavePath(defaultPath);
-                      localStorage.setItem('retro_station_save_path', defaultPath);
-                    }}
-                    style={{ fontSize: 9, padding: '0 8px', height: 'auto' }}
-                  >
-                    Set Default
-                  </button>
-                </div>
-                <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>
-                  If set, screenshots, JSON inputs, and gameplay WebM videos will save directly to this path on your host filesystem. Leave empty to fallback to standard browser downloads.
-                </span>
-              </div>
-            </div>
-
-            <div className="settings-actions" style={{ flexWrap: 'wrap', gap: 6, display: 'flex' }}>
-              <button className="btn-secondary" style={{ borderColor: 'color-mix(in srgb, var(--accent-danger) 50%, transparent)', color: 'var(--accent-pink)' }} onClick={clearDatabaseHistory}>
-                CLEAR ALL DB DATA
-              </button>
-              <button className="btn-secondary" onClick={resetSliderConfigs}>
-                RESET LIMITS
-              </button>
-              <button className="btn-primary" onClick={() => setShowSettings(false)}>
-                CLOSE
-              </button>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Default Aspect (%)</label>
+              <input className="settings-input" type="number" min={0} max={100} step={5}
+                value={parseInt(localStorage.getItem('retro_station_default_aspect') || '0')}
+                onChange={(e) => {
+                  localStorage.setItem('retro_station_default_aspect', e.target.value);
+                  setSliderConfigs(prev => ({ ...prev }));
+                }} />
             </div>
           </div>
-        )}
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>UI Theme</div>
+          <div className="theme-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 16 }}>
+            {(Object.entries(THEMES) as [ThemeId, typeof THEMES['crt']][]).map(([id, t]) => (
+              <button key={id} className={`theme-option ${theme === id ? 'active' : ''}`} onClick={() => handleThemeChange(id)}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', border: `2px solid ${theme === id ? 'var(--accent)' : 'var(--border-subtle)'}`, borderRadius: 6, background: 'var(--bg-panel)', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', color: 'var(--text-primary)' }}>
+                <div className="theme-swatch" style={{ width: '100%', height: 36, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', border: '1px solid rgba(0,0,0,0.3)', background: `linear-gradient(135deg, ${t.swatch[0]} 0%, ${t.swatch[0]} 50%, ${t.swatch[1]} 100%)` }}>
+                  <span style={{ color: t.swatch[1] }}>{'◉'}</span>
+                </div>
+                <span className="theme-label" style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, textAlign: 'center', color: theme === id ? 'var(--accent)' : 'var(--text-dim)' }}>{t.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Display</div>
+          <div className="settings-row" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={pixelated} onChange={handlePixelatedChange} style={{ accentColor: a }} />
+              Pixelated Mode (low-res retro look)
+            </label>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Speed Multiplier Limits</div>
+          <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Speed</label>
+              <input className="settings-input" type="number" step={0.05} value={sliderConfigs.speed.min}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  speed: { ...sliderConfigs.speed, min: parseFloat(e.target.value) || 0.05 }
+                })} />
+            </div>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Speed</label>
+              <input className="settings-input" type="number" step={0.05} value={sliderConfigs.speed.max}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  speed: { ...sliderConfigs.speed, max: parseFloat(e.target.value) || 10.0 }
+                })} />
+            </div>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Volume Limits</div>
+          <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Volume</label>
+              <input className="settings-input" type="number" step={0.01} value={sliderConfigs.volume.min}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  volume: { ...sliderConfigs.volume, min: parseFloat(e.target.value) || 0.0 }
+                })} />
+            </div>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Volume</label>
+              <input className="settings-input" type="number" step={0.01} value={sliderConfigs.volume.max}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  volume: { ...sliderConfigs.volume, max: parseFloat(e.target.value) || 1.0 }
+                })} />
+            </div>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tempo Limits</div>
+          <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Tempo</label>
+              <input className="settings-input" type="number" step={0.05} value={sliderConfigs.tempo.min}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  tempo: { ...sliderConfigs.tempo, min: parseFloat(e.target.value) || 0.05 }
+                })} />
+            </div>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Tempo</label>
+              <input className="settings-input" type="number" step={0.05} value={sliderConfigs.tempo.max}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  tempo: { ...sliderConfigs.tempo, max: parseFloat(e.target.value) || 10.0 }
+                })} />
+            </div>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Aspect Stretch Limits</div>
+          <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Min Aspect</label>
+              <input className="settings-input" type="number" step={1} value={sliderConfigs.aspect.min}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  aspect: { ...sliderConfigs.aspect, min: parseInt(e.target.value) || 0 }
+                })} />
+            </div>
+            <div className="settings-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Max Aspect</label>
+              <input className="settings-input" type="number" step={1} value={sliderConfigs.aspect.max}
+                onChange={(e) => saveSliderConfigs({
+                  ...sliderConfigs,
+                  aspect: { ...sliderConfigs.aspect, max: parseInt(e.target.value) || 100 }
+                })} />
+            </div>
+          </div>
+
+          <div className="settings-section-title" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Debug / Automation Settings</div>
+          <div className="settings-grid" style={{ gridTemplateColumns: '1fr', gap: 12, marginBottom: 16 }}>
+            <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+              <label className="settings-label" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>Host Local Save Path</label>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  className="settings-input"
+                  type="text"
+                  placeholder="e.g. c:/Users/Priya singh/dev/ai-dev/emulators/snes/public/debug/"
+                  value={savePath}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSavePath(val);
+                    localStorage.setItem('retro_station_save_path', val);
+                  }}
+                  style={{ flex: 1, fontFamily: 'inherit', fontSize: 10 }}
+                />
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    const defaultPath = 'c:/Users/Priya singh/dev/ai-dev/emulators/snes/public/debug/';
+                    setSavePath(defaultPath);
+                    localStorage.setItem('retro_station_save_path', defaultPath);
+                  }}
+                  style={{ fontSize: 9, padding: '0 8px', height: 'auto' }}
+                >
+                  Set Default
+                </button>
+              </div>
+              <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>
+                If set, screenshots, JSON inputs, and gameplay WebM videos will save directly to this path on your host filesystem. Leave empty to fallback to standard browser downloads.
+              </span>
+            </div>
+          </div>
+
+          <div className="settings-actions" style={{ flexWrap: 'wrap', gap: 6, display: 'flex' }}>
+            <button className="btn-secondary" style={{ borderColor: 'color-mix(in srgb, var(--accent-danger) 50%, transparent)', color: 'var(--accent-pink)' }} onClick={clearDatabaseHistory}>
+              CLEAR ALL DB DATA
+            </button>
+            <button className="btn-secondary" onClick={resetSliderConfigs}>
+              RESET LIMITS
+            </button>
+            <button className="btn-primary" onClick={() => setShowSettings(false)}>
+              CLOSE
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

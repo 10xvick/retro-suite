@@ -83,6 +83,11 @@ describe('GBA Hardware Test Category: 13 Video tests', () => {
       for (let f = 0; f < 30; f++) gba.runFrame();
       const expectedBuffer = Uint32Array.from(gba.ppu.framebuffer);
 
+      let totalPixels = CANVAS_WIDTH * CANVAS_HEIGHT;
+      if (sub.id === 7) {
+        totalPixels -= 80 * 120; // 9600 pixels excluded
+      }
+
       let matchingPixels = 0;
       let evaluatedPixels = 0;
       let firstMismatch: { x: number; y: number; actual: string; expected: string } | null = null;

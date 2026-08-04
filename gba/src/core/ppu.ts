@@ -28,6 +28,7 @@ export class PPU {
   // Per-scanline history arrays (populated in updateScanline for mid-frame state capture)
   dispcntHistory!: Uint16Array;  // DISPCNT value at the start of each scanline (size 230)
   oamHistory!: Uint8Array[];     // OAM snapshot at the start of each scanline (size 230, each 1024 bytes)
+  midScanlineDispcnt: ({ x: number; val: number } | undefined)[] = new Array(230);
 
   ensureBuffers() {
     if (!this.framebuffer || this.framebuffer.length !== GBA_WIDTH * GBA_HEIGHT) this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
@@ -187,7 +188,12 @@ export class PPU {
     // This correctly reflects mid-frame DISPCNT changes (e.g. Layer toggle 2 enables BG0
     // during H-Draw at 0x0800af1c, then disables it during HBlank at 0x0800af46).
     const cntNow = this.dispcntHistory[y];
-    cnt = cntNow;
+    const cntPrev2 = y >= 2 ? this.dispcntHistory[y - 2] : this.dispcntHistory[0];
+    const midOverride = this.midScanlineDispcnt[y];
+    // Layer enable bits (0x1f00): Turning a layer OFF takes effect immediately (+1 line after HBlank),
+    // but turning a layer ON from OFF takes +3 lines (+2 lines after HBlank) due to PPU pre-fetch pipeline.
+    cnt = (cntNow & ~0x1f00) | (cntNow & cntPrev2 & 0x1f00);
+    const effMidVal = midOverride ? ((midOverride.val & ~0x1f00) | (midOverride.val & cntPrev2 & 0x1f00)) : 0;
     mode = cnt & 7;
 
     const fb = this.framebuffer;
@@ -237,6 +243,10 @@ export class PPU {
       }
 
       for (let x = 0; x < GBA_WIDTH; x++) {
+        let curCnt = cnt;
+        if (midOverride && x >= midOverride.x) {
+          curCnt = (curCnt & ~0x1f00) | (midOverride.val & 0x1f00);
+        }
         let winMask = 0x3f;
         if (anyWinEnable) {
         let winControl = winout & 0x3f;
@@ -309,21 +319,22 @@ export class PPU {
     // Render BG layers — ONLY enabled ones (checked via DISPCNT bits 8-11).
     // Rendering disabled BGs would let them win priority slots and displace
     // enabled BGs to the secondary layer where the composite masks them out.
+    const bgRenderCnt = cnt | effMidVal;
     if (mode === 0) {
       // Mode 0: BG0-3 all text
-      if ((cnt >>> 11) & 1) this.renderTextBg(3, y);
-      if ((cnt >>> 10) & 1) this.renderTextBg(2, y);
-      if ((cnt >>> 9)  & 1) this.renderTextBg(1, y);
-      if ((cnt >>> 8)  & 1) this.renderTextBg(0, y);
+      if ((bgRenderCnt >>> 11) & 1) this.renderTextBg(3, y);
+      if ((bgRenderCnt >>> 10) & 1) this.renderTextBg(2, y);
+      if ((bgRenderCnt >>> 9)  & 1) this.renderTextBg(1, y);
+      if ((bgRenderCnt >>> 8)  & 1) this.renderTextBg(0, y);
     } else if (mode === 1) {
       // Mode 1: BG0-1 text, BG2 affine (BG3 not used)
-      if ((cnt >>> 9)  & 1) this.renderTextBg(1, y);
-      if ((cnt >>> 8)  & 1) this.renderTextBg(0, y);
-      if ((cnt >>> 10) & 1) this.renderAffineBg(2, y);
+      if ((bgRenderCnt >>> 9)  & 1) this.renderTextBg(1, y);
+      if ((bgRenderCnt >>> 8)  & 1) this.renderTextBg(0, y);
+      if ((bgRenderCnt >>> 10) & 1) this.renderAffineBg(2, y);
     } else if (mode === 2) {
       // Mode 2: BG2-3 affine
-      if ((cnt >>> 11) & 1) this.renderAffineBg(3, y);
-      if ((cnt >>> 10) & 1) this.renderAffineBg(2, y);
+      if ((bgRenderCnt >>> 11) & 1) this.renderAffineBg(3, y);
+      if ((bgRenderCnt >>> 10) & 1) this.renderAffineBg(2, y);
     }
 
     this.renderObjLine(y, mode, cnt);
@@ -359,6 +370,10 @@ export class PPU {
     const layerBit = [0x20, 0x01, 0x02, 0x04, 0x08, 0x10];
 
     for (let x = 0; x < GBA_WIDTH; x++) {
+      let curCnt = cnt;
+      if (midOverride && x >= midOverride.x) {
+        curCnt = (curCnt & ~0x1f00) | (effMidVal & 0x1f00);
+      }
       let winMask = 0x3f;
       if (anyWinEnable) {
         let winControl = winout & 0x3f;
@@ -384,8 +399,8 @@ export class PPU {
       let bottomCol = backdrop;
       let isSemiTransparent = false;
       // Compare BG and OBJ priorities; lower number = higher priority (front)
-      const bgEn = (this.bgLayer[x] > 0 && ((cnt >>> (8 + this.bgLayer[x] - 1)) & 1));
-      const objEn = (cnt >>> 12) & 1;
+      const bgEn = (this.bgLayer[x] > 0 && ((curCnt >>> (8 + this.bgLayer[x] - 1)) & 1));
+      const objEn = (curCnt >>> 12) & 1;
       let bc = (this.bgColor[x] !== 0 && bgEn && (winMask & (1 << (this.bgLayer[x] - 1)))) ? this.bgColor[x] : 0;
       let bp = bc !== 0 ? this.bgPrio[x] : 4;
       let oc = (this.objColor[x] !== 0 && objEn && (winMask & 0x10)) ? this.objColor[x] : 0;
@@ -407,7 +422,7 @@ export class PPU {
         }
       }
       // Use second BG layer as bottom for blending if available
-      const bg2En = (this.bgLayer2[x] > 0 && ((cnt >>> (8 + this.bgLayer2[x] - 1)) & 1));
+      const bg2En = (this.bgLayer2[x] > 0 && ((curCnt >>> (8 + this.bgLayer2[x] - 1)) & 1));
       const bc2 = (this.bgColor2[x] !== 0 && bg2En && (winMask & (1 << (this.bgLayer2[x] - 1)))) ? this.bgColor2[x] : 0;
       if (bc2 !== 0 && bottomLayer === 0) {
         bottomCol = bc2;
@@ -459,12 +474,24 @@ export class PPU {
     const vram = this.mem.vram;
     const palette = this.mem.palette;
 
+    const midOverride = this.midScanlineDispcnt[y];
+    const cntNow = this.dispcntHistory[y];
+    const cntPrev2 = y >= 2 ? this.dispcntHistory[y - 2] : this.dispcntHistory[0];
+    const effMidVal = midOverride ? ((midOverride.val & ~0x1f00) | (midOverride.val & cntPrev2 & 0x1f00)) : 0;
+    const isMidEnable = midOverride &&
+      (((cntNow >>> (8 + bg)) & 1) === 0) &&
+      (((effMidVal >>> (8 + bg)) & 1) === 1);
+    const startX = midOverride ? midOverride.x : 0;
+
     for (let x = 0; x < GBA_WIDTH; x++) {
       const px = (x + hofs) % sizeW;
       const py = (y + vofs) % sizeH;
       const tileX = px >> 3;
       const tileY = py >> 3;
-      const inX = px & 7;
+      let inX = px & 7;
+      if (isMidEnable && (x >> 3) === (startX >> 3) && x >= startX) {
+        inX = (x - startX) & 7;
+      }
       const inY = py & 7;
       // screen base may differ for tileX >= 32
       let sb = screenBase;

@@ -6,7 +6,8 @@
     "snes",
     "nes",
     "gb",
-    "gba"
+    "gba",
+    "atari"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=shell",

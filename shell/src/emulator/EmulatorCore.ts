@@ -2,13 +2,14 @@ import { SnesEmulator } from 'snes-core';
 import { Bus as NesBus, CPU as NesCPU, PPU as NesPPU, Cartridge as NesCartridge } from 'nes-core';
 import { GameBoy } from 'gb-core';
 import { GBA } from '../../../gba/src';
+import { Bus as AtariBus, Cartridge as AtariCartridge, Controller as AtariController } from 'atari-core';
 
 export interface EmulatorCore {
   id: string;
   name: string;
-  type: 'snes' | 'nes' | 'gb' | 'gbc' | 'gba';
+  type: 'snes' | 'nes' | 'gb' | 'gbc' | 'gba' | 'atari';
   loadRom(data: ArrayBuffer): Promise<void>;
-  runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } | Promise<{ pixels: Uint32Array; frameStartBlank: boolean }>;  
+  runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } | Promise<{ pixels: Uint32Array; frameStartBlank: boolean }>;
   reset(): Promise<void>;
   enableAudio(): Promise<void>;
   disableAudio(): Promise<void> | void;
@@ -29,7 +30,7 @@ export class EmulatorManager {
   private cores: Map<string, EmulatorCore> = new Map();
   private activeCore: EmulatorCore | null = null;
 
-  constructor() {}
+  constructor() { }
 
   registerCore(core: EmulatorCore) {
     this.cores.set(core.id, core);
@@ -39,13 +40,13 @@ export class EmulatorManager {
     if (!this.cores.has(coreId)) {
       throw new Error(`Emulator core ${coreId} not registered`);
     }
-    
+
     // Stop current core if any
     if (this.activeCore) {
       this.activeCore.disableAudio();
       this.activeCore.setSpeedMultiplier(1);
     }
-    
+
     this.activeCore = this.cores.get(coreId) || null;
   }
 
@@ -85,6 +86,10 @@ export class EmulatorCoreFactory {
   static createGbaCore(): EmulatorCore {
     return new GbaEmulatorCore();
   }
+
+  static createAtariCore(): EmulatorCore {
+    return new AtariEmulatorCore();
+  }
 }
 
 // SNES-specific implementation running on the Main Thread
@@ -92,7 +97,7 @@ export class SnesEmulatorCore implements EmulatorCore {
   id = 'snes';
   name = 'Super Nintendo';
   type: 'snes' | 'nes' | 'gb' | 'gbc' | 'gba' = 'snes';
-  
+
   public emulator: SnesEmulator;
   private audioEnabled = false;
   private speedMultiplier = 1;
@@ -199,7 +204,7 @@ export class NesEmulatorCore implements EmulatorCore {
   public bus: NesBus;
   private ppu: NesPPU;
   private cpu: NesCPU;
-  
+
   private romLoaded = false;
   private status: 'ready' | 'running' | 'stopped' = 'stopped';
   private audioVolume = 0.35;
@@ -215,18 +220,18 @@ export class NesEmulatorCore implements EmulatorCore {
   async loadRom(data: ArrayBuffer): Promise<void> {
     const cart = new NesCartridge(data);
     this.bus.insertCartridge(cart);
-    
+
     this.cpu.reset();
     this.ppu.reset();
     this.bus.apu.reset();
-    
+
     this.romLoaded = true;
     this.status = 'ready';
   }
 
   runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } {
     if (!this.romLoaded) throw new Error('ROM not loaded');
-    
+
     // Map controller bits (NES expects A, B, Select, Start, Up, Down, Left, Right)
     let state = 0x00;
     if (controllerState & 0x0080) state |= 0x01; // A (SNES A)
@@ -238,7 +243,7 @@ export class NesEmulatorCore implements EmulatorCore {
     if (controllerState & 0x0400) state |= 0x20; // Down (SNES DOWN)
     if (controllerState & 0x0200) state |= 0x40; // Left (SNES LEFT)
     if (controllerState & 0x0100) state |= 0x80; // Right (SNES RIGHT)
-    
+
     this.bus.controllerState[0] = state;
 
     // Emulate one frame
@@ -301,12 +306,12 @@ export class NesEmulatorCore implements EmulatorCore {
     this.bus.apu.setVolume(volume);
   }
 
-  setAudioTempo(tempo: number): void {}
-  setSpeedMultiplier(multiplier: number): void {}
+  setAudioTempo(tempo: number): void { }
+  setSpeedMultiplier(multiplier: number): void { }
 
   async createSaveState(): Promise<any> {
     if (!this.romLoaded) return null;
-    
+
     // Save CPU
     const cpuState = {
       a: this.cpu.a,
@@ -356,7 +361,7 @@ export class NesEmulatorCore implements EmulatorCore {
     if (this.bus.cart) {
       const cart = this.bus.cart;
       const chrROM = Array.from(cart.chrROM);
-      
+
       if (cart.mapper && cart.mapper.constructor.name === 'Mapper4') {
         const m = cart.mapper as any;
         mapperState = {
@@ -417,7 +422,7 @@ export class NesEmulatorCore implements EmulatorCore {
 
   async loadSaveState(state: any): Promise<void> {
     if (!state || state.coreId !== 'nes' || !this.romLoaded) return;
-    
+
     // Restore CPU
     this.cpu.a = state.cpuState.a;
     this.cpu.x = state.cpuState.x;
@@ -462,12 +467,12 @@ export class NesEmulatorCore implements EmulatorCore {
     if (this.bus.cart && state.mapperState) {
       const cart = this.bus.cart;
       cart.chrROM.set(state.mapperState.chrROM);
-      
+
       // Restore nametable mirroring mode
       if (state.mapperState.mirror !== undefined) {
         cart.mirror = state.mapperState.mirror;
       }
-      
+
       if (state.mapperState.mapperId === 4 && cart.mapper && cart.mapper.constructor.name === 'Mapper4') {
         const m = cart.mapper as any;
         m.targetRegister = state.mapperState.targetRegister;
@@ -565,7 +570,7 @@ export class GbEmulatorCore implements EmulatorCore {
   id: string;
   name: string;
   type: 'snes' | 'nes' | 'gb' | 'gbc' | 'gba';
-  
+
   public gb: GameBoy;
   private audioCtx: AudioContext | null = null;
   private audioNode: ScriptProcessorNode | null = null;
@@ -603,13 +608,13 @@ export class GbEmulatorCore implements EmulatorCore {
     if (controllerState & 0x8000) buttons &= ~0x02; // B (SNES B)
     if (controllerState & 0x2000) buttons &= ~0x04; // Select (SNES SELECT)
     if (controllerState & 0x1000) buttons &= ~0x08; // Start (SNES START)
-    
+
     let dpad = 0x0F;
     if (controllerState & 0x0100) dpad &= ~0x01; // Right (SNES RIGHT)
     if (controllerState & 0x0200) dpad &= ~0x02; // Left (SNES LEFT)
     if (controllerState & 0x0800) dpad &= ~0x04; // Up (SNES UP)
     if (controllerState & 0x0400) dpad &= ~0x08; // Down (SNES DOWN)
-    
+
     this.gb.joypad.buttons = buttons;
     this.gb.joypad.dpad = dpad;
 
@@ -664,26 +669,26 @@ export class GbEmulatorCore implements EmulatorCore {
 
   async enableAudio(): Promise<void> {
     if (this.audioEnabled) return;
-    
+
     if (!this.audioCtx) {
       const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
       this.audioCtx = new AudioCtxClass();
-      
+
       this.gainNode = this.audioCtx.createGain();
       this.gainNode.gain.value = this.audioVolume;
-      
+
       const bufferSize = 2048;
       this.audioNode = this.audioCtx.createScriptProcessor(bufferSize, 0, 2);
-      
+
       const gb = this.gb;
       const audioTempBuf = new Float32Array(8192);
-      
+
       this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
         const output = e.outputBuffer;
         const leftData = output.getChannelData(0);
         const rightData = output.getChannelData(1);
         const samplesNeeded = output.length;
-        
+
         if (!this.audioEnabled || !gb) {
           leftData.fill(0);
           rightData.fill(0);
@@ -696,7 +701,7 @@ export class GbEmulatorCore implements EmulatorCore {
           const dummyBuf = new Float32Array(discardCount);
           gb.apu.readSamples(dummyBuf, discardCount);
         }
-        
+
         const available = gb.apu.readSamples(audioTempBuf, samplesNeeded * 2);
         const ratio = (samplesNeeded * 2) / Math.max(1, available);
         for (let i = 0; i < samplesNeeded; i++) {
@@ -713,11 +718,11 @@ export class GbEmulatorCore implements EmulatorCore {
           }
         }
       };
-      
+
       this.audioNode.connect(this.gainNode);
       this.gainNode.connect(this.audioCtx.destination);
     }
-    
+
     if (this.audioCtx.state === 'suspended') {
       await this.audioCtx.resume();
     }
@@ -735,12 +740,12 @@ export class GbEmulatorCore implements EmulatorCore {
     }
   }
 
-  setAudioTempo(tempo: number): void {}
-  setSpeedMultiplier(multiplier: number): void {}
+  setAudioTempo(tempo: number): void { }
+  setSpeedMultiplier(multiplier: number): void { }
   async createSaveState(): Promise<any> {
     if (!this.romLoaded) return null;
     const gb = this.gb;
-    
+
     // Save CPU
     const cpuState = {
       a: gb.cpu.a,
@@ -1018,7 +1023,7 @@ export class GbaEmulatorCore implements EmulatorCore {
 
   runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } {
     let gbaKeys = 0x3FF; // all released (active-low)
-    
+
     // SNES controller layout mapping:
     if (controllerState & 0x0080) gbaKeys &= ~0x0001; // A -> GBA A
     if (controllerState & 0x8000) gbaKeys &= ~0x0002; // B -> GBA B
@@ -1031,7 +1036,7 @@ export class GbaEmulatorCore implements EmulatorCore {
     if (controllerState & 0x0400) gbaKeys &= ~0x0080; // Down -> GBA Down
     if (controllerState & 0x0010) gbaKeys &= ~0x0100; // R -> GBA R
     if (controllerState & 0x0020) gbaKeys &= ~0x0200; // L -> GBA L
-    
+
     this.gba.mem.setKeyInput(gbaKeys);
 
     this.gba.runFrame();
@@ -1057,13 +1062,13 @@ export class GbaEmulatorCore implements EmulatorCore {
     // Audio is permanently detached for now
   }
 
-  disableAudio(): void {}
+  disableAudio(): void { }
 
   setAudioVolume(volume: number): void {
     this.audioVolume = volume;
   }
 
-  setAudioTempo(tempo: number): void {}
+  setAudioTempo(tempo: number): void { }
 
   setSpeedMultiplier(multiplier: number): void {
     this.speedMultiplier = multiplier;
@@ -1130,5 +1135,262 @@ export class GbaEmulatorCore implements EmulatorCore {
     };
   }
 
-  destroy(): void {}
+  destroy(): void { }
+}
+
+// Atari 2600 Implementation (Main Thread)
+export class AtariEmulatorCore implements EmulatorCore {
+  id = 'atari';
+  name = 'Atari 2600';
+  type: 'snes' | 'nes' | 'gb' | 'gbc' | 'gba' | 'atari' = 'atari';
+
+  public bus: AtariBus;
+  private controller: AtariController;
+  private romLoaded = false;
+  private speedMultiplier = 1;
+  private audioVolume = 0.35;
+  private status: 'ready' | 'running' | 'stopped' = 'stopped';
+  private audioCtx: AudioContext | null = null;
+  private audioNode: ScriptProcessorNode | null = null;
+  private gainNode: GainNode | null = null;
+  private audioEnabled = false;
+
+  constructor() {
+    this.bus = new AtariBus();
+    this.controller = new AtariController();
+  }
+
+  async loadRom(data: ArrayBuffer): Promise<void> {
+    const cart = new AtariCartridge(data);
+    this.bus.insertCartridge(cart);
+    this.bus.reset();
+    this.romLoaded = true;
+    this.status = 'ready';
+  }
+
+  runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } {
+    if (!this.romLoaded) throw new Error('ROM not loaded');
+
+    // Map controller state
+    this.controller.setControllerState(controllerState);
+    this.bus.pia.controllerState = this.controller.state;
+
+    // Run cycles until TIA signals a complete frame
+    // 262 scanlines × 228 color-clocks = 59736 color-clocks per frame
+    // CPU runs 1 cycle per 3 color-clocks → 19912 CPU cycles per frame
+    const maxCycles = 25000; // safety cap
+    this.bus.tia.frameComplete = false;
+    let ran = 0;
+    while (!this.bus.tia.frameComplete && ran < maxCycles) {
+      if (!this.bus.cpu.wsyncHalt) {
+        this.bus.cpu.clock();
+      }
+      this.bus.clock();
+      ran++;
+    }
+
+    // Return the TIA framebuffer (160×262 rows, only 192 are normally visible)
+    const pixels = new Uint32Array(160 * 192);
+    pixels.set(this.bus.tia.framebuffer.subarray(0, 160 * 192));
+
+    return {
+      pixels,
+      frameStartBlank: false
+    };
+  }
+
+  async reset(): Promise<void> {
+    this.bus.reset();
+  }
+
+  async enableAudio(): Promise<void> {
+    if (this.audioEnabled) return;
+
+    if (!this.audioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioCtx = new AudioCtxClass();
+
+      this.gainNode = this.audioCtx.createGain();
+      this.gainNode.gain.value = this.audioVolume;
+
+      const bufferSize = 2048;
+      this.audioNode = this.audioCtx.createScriptProcessor(bufferSize, 0, 2);
+
+      const tia = this.bus.tia;
+      const audioTempBuf = new Float32Array(8192);
+
+      this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
+        const output = e.outputBuffer;
+        const leftData = output.getChannelData(0);
+        const rightData = output.getChannelData(1);
+        const samplesNeeded = output.length;
+
+        if (!this.audioEnabled || !tia) {
+          leftData.fill(0);
+          rightData.fill(0);
+          return;
+        }
+
+        // TIA audio not yet implemented – output silence
+        leftData.fill(0);
+        rightData.fill(0);
+      };
+
+      this.audioNode.connect(this.gainNode);
+      this.gainNode.connect(this.audioCtx.destination);
+    }
+
+    if (this.audioCtx.state === 'suspended') {
+      await this.audioCtx.resume();
+    }
+    this.audioEnabled = true;
+  }
+
+  disableAudio(): void {
+    this.audioEnabled = false;
+  }
+
+  setAudioVolume(volume: number): void {
+    this.audioVolume = volume;
+    if (this.gainNode) {
+      this.gainNode.gain.value = volume;
+    }
+  }
+
+  setAudioTempo(tempo: number): void { }
+
+  setSpeedMultiplier(multiplier: number): void {
+    this.speedMultiplier = multiplier;
+  }
+
+  async createSaveState(): Promise<any> {
+    if (!this.romLoaded) return null;
+
+    return {
+      coreId: 'atari',
+      cpu: {
+        a: this.bus.cpu.a,
+        x: this.bus.cpu.x,
+        y: this.bus.cpu.y,
+        sp: this.bus.cpu.sp,
+        pc: this.bus.cpu.pc,
+        status: this.bus.cpu.status,
+        cycles: this.bus.cpu.cycles,
+        totalCycles: this.bus.cpu.totalCycles
+      },
+      piaRam: Array.from(this.bus.pia.ram),
+      tia: {
+        scanline: this.bus.tia.scanline,
+        cycles: this.bus.tia.cycles,
+        frame: this.bus.tia.frame,
+        colubk: this.bus.tia.colubk,
+        colupf: this.bus.tia.colupf,
+        colup0: this.bus.tia.colup0,
+        colup1: this.bus.tia.colup1,
+        pf0: this.bus.tia.pf0,
+        pf1: this.bus.tia.pf1,
+        pf2: this.bus.tia.pf2,
+        p0graphic: this.bus.tia.p0graphic,
+        p1graphic: this.bus.tia.p1graphic,
+        p0hpos: this.bus.tia.p0hpos,
+        p1hpos: this.bus.tia.p1hpos
+      },
+      cart: {
+        mapper: this.bus.cart?.mapper,
+        currentBank: this.bus.cart?.currentBank
+      }
+    };
+  }
+
+  async loadSaveState(state: any): Promise<void> {
+    if (!state || state.coreId !== 'atari' || !this.romLoaded) return;
+
+    // Restore CPU
+    this.bus.cpu.a = state.cpu.a;
+    this.bus.cpu.x = state.cpu.x;
+    this.bus.cpu.y = state.cpu.y;
+    this.bus.cpu.sp = state.cpu.sp;
+    this.bus.cpu.pc = state.cpu.pc;
+    this.bus.cpu.status = state.cpu.status;
+    this.bus.cpu.cycles = state.cpu.cycles;
+    this.bus.cpu.totalCycles = state.cpu.totalCycles;
+
+    // Restore PIA RAM
+    this.bus.pia.ram.set(state.piaRam);
+
+    // Restore TIA
+    this.bus.tia.scanline = state.tia.scanline;
+    this.bus.tia.cycles = state.tia.cycles;
+    this.bus.tia.frame = state.tia.frame;
+    this.bus.tia.colubk = state.tia.colubk;
+    this.bus.tia.colupf = state.tia.colupf;
+    this.bus.tia.colup0 = state.tia.colup0;
+    this.bus.tia.colup1 = state.tia.colup1;
+    this.bus.tia.pf0 = state.tia.pf0;
+    this.bus.tia.pf1 = state.tia.pf1;
+    this.bus.tia.pf2 = state.tia.pf2;
+    this.bus.tia.p0graphic = state.tia.p0graphic;
+    this.bus.tia.p1graphic = state.tia.p1graphic;
+    this.bus.tia.p0hpos = state.tia.p0hpos;
+    this.bus.tia.p1hpos = state.tia.p1hpos;
+
+    // Restore Cartridge
+    if (this.bus.cart && state.cart) {
+      this.bus.cart.mapper = state.cart.mapper;
+      this.bus.cart.currentBank = state.cart.currentBank;
+    }
+  }
+
+  async getDebugSnapshot(hexOffset: number = 0): Promise<any> {
+    return {
+      cpu: {
+        a: this.bus.cpu.a,
+        x: this.bus.cpu.x,
+        y: this.bus.cpu.y,
+        sp: this.bus.cpu.sp,
+        pc: this.bus.cpu.pc,
+        status: this.bus.cpu.status,
+        cycles: this.bus.cpu.totalCycles
+      },
+      isScreenBlank: false,
+      bgMode: 0,
+      screenDisplay: 0,
+      disassembly: [],
+      oam: [],
+      cgram: [],
+      hexData: []
+    };
+  }
+
+  getStatus(): 'ready' | 'running' | 'stopped' {
+    return this.romLoaded ? 'ready' : 'stopped';
+  }
+
+  getAudioContext(): AudioContext | null {
+    return this.audioCtx;
+  }
+
+  getAudioNode(): AudioNode | null {
+    return this.gainNode;
+  }
+
+  getRomHeader(): any {
+    if (!this.bus.cart) return null;
+    return {
+      title: 'Atari 2600',
+      mapper: this.bus.cart.mapper,
+      version: '1.0',
+      checksum: 'N/A'
+    };
+  }
+
+  destroy(): void {
+    this.disableAudio();
+    if (this.audioNode) {
+      this.audioNode.disconnect();
+    }
+    if (this.audioCtx) {
+      this.audioCtx.close();
+    }
+  }
 }

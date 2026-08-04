@@ -18,16 +18,16 @@ export default defineConfig({
                 body += chunk;
               }
               const { filename, dataUrl, content, savePath } = JSON.parse(body);
-              
+
               if (!savePath) {
                 throw new Error("No save path provided");
               }
-              
+
               const targetDir = path.resolve(savePath);
               if (!fs.existsSync(targetDir)) {
                 fs.mkdirSync(targetDir, { recursive: true });
               }
-              
+
               const targetFilePath = path.join(targetDir, filename);
 
               if (dataUrl) {
@@ -77,6 +77,7 @@ export default defineConfig({
       'nes-core': path.resolve(__dirname, '../nes/src/index.ts'),
       'gb-core': path.resolve(__dirname, '../gb/src/index.ts'),
       'gba-core': path.resolve(__dirname, '../gba/src/index.ts'),
+      'atari-core': path.resolve(__dirname, '../atari/src/index.ts'),
     }
   },
   build: {

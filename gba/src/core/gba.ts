@@ -63,6 +63,15 @@ export class GBA {
     this.mem.gba = this;
     this.ppu = new PPU(this.mem);
     this.mem.winVWriteCallback = (off) => this.ppu.checkWinVWrite(off);
+    this.mem.dispcntWriteCallback = (val) => {
+      if (this.scanline < VISIBLE_LINES && (CYCLES_PER_LINE - this.scanlineBudget) < 960) {
+        const cyc = CYCLES_PER_LINE - this.scanlineBudget;
+        const x = Math.max(0, cyc - 9);
+        if (x < 240) {
+          this.ppu.midScanlineDispcnt[this.scanline] = { x, val };
+        }
+      }
+    };
     // Link directBootMode to CPU
     this.cpu.directBootMode = this.directBootMode;
     // Set DMA enable callback — when a DMA channel is enabled via IO write,
@@ -270,7 +279,13 @@ export class GBA {
 
     for (let line = 0; line < TOTAL_LINES; line++) {
       this.scanline = line;
+      this.ppu.midScanlineDispcnt[line] = undefined;
       this.ppu.updateScanline(line);
+
+      if (line < VISIBLE_LINES) {
+        this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
+        this.ppu.oamHistory[line].set(this.mem.oam);
+      }
 
       // Clear HBlank flag at start of line
       {
@@ -315,9 +330,6 @@ export class GBA {
             if (line < VISIBLE_LINES && elapsed >= 960) {
               const ds = this.mem.readIO16(IO.DISPSTAT);
               if (!(ds & 0x2)) {
-                // Capture DISPCNT/OAM PRE-ISR (original 5/7 state for comparison)
-                this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
-                this.ppu.oamHistory[line].set(this.mem.oam);
                 this.writeDispstat(ds | 0x2); // set HBlank flag
                 if (ds & 0x10) {
                   this.requestIrq(IRQ_HBLANK);
@@ -347,9 +359,6 @@ export class GBA {
         if (line < VISIBLE_LINES && (CYCLES_PER_LINE - budget) >= 960) {
           const ds = this.mem.readIO16(IO.DISPSTAT);
           if (!(ds & 0x2)) {
-            // Capture DISPCNT/OAM PRE-ISR (original 5/7 state for comparison)
-            this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
-            this.ppu.oamHistory[line].set(this.mem.oam);
             this.writeDispstat(ds | 0x2); // set HBlank flag
             if (ds & 0x10) {
               this.requestIrq(IRQ_HBLANK);
@@ -368,9 +377,7 @@ export class GBA {
       if (line < VISIBLE_LINES) {
         const ds = this.mem.readIO16(IO.DISPSTAT);
         if (!(ds & 0x2)) {
-          // HBlank didn't fire in CPU loop — fire now and capture PRE-ISR.
-          this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
-          this.ppu.oamHistory[line].set(this.mem.oam);
+          // HBlank didn't fire in CPU loop — fire now.
           this.writeDispstat(ds | 0x2);
           if (ds & 0x10) {
             this.requestIrq(IRQ_HBLANK);

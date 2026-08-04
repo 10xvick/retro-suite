@@ -346,8 +346,8 @@ export class ARM7TDMI {
     void thumb;
   }
 
-  raiseIrq() {
-    if (this.cpsr & 0x80) return; // IRQ disabled
+  raiseIrq(): boolean {
+    if (this.cpsr & 0x80) return false; // IRQ disabled
     const biosLoaded = this.mem.bios.length > 0 && this.mem.bios[0] !== 0;
     if (this.directBootMode && !biosLoaded) {
       // Direct boot mode without BIOS: read IRQ vector from [0x03007FFC]
@@ -373,6 +373,7 @@ export class ARM7TDMI {
       if (curVec === 0) this.mem.write32(0x03007FFC, 0x03007A00);
       this.exception(0x18, M_IRQ, false);
     }
+    return true;
   }
 
   raiseSwi() {
