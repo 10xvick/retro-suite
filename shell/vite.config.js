@@ -73,6 +73,7 @@ export default defineConfig({
             'nes-core': path.resolve(__dirname, '../nes/src/index.ts'),
             'gb-core': path.resolve(__dirname, '../gb/src/index.ts'),
             'gba-core': path.resolve(__dirname, '../gba/src/index.ts'),
+            'atari-core': path.resolve(__dirname, '../atari/src/index.ts'),
         }
     },
     build: {

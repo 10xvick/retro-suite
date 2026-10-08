@@ -592,7 +592,7 @@ export class ARM7TDMI {
     if (this.halted) { this.cycles += 1; return 1; }
 
     const pcBefore = this.r[15] >>> 0;
-    if (this.breakpoints.has(pcBefore)) {
+    if (this.breakpoints.size > 0 && this.breakpoints.has(pcBefore)) {
       console.log(`[BREAKPOINT] PC hit: 0x${pcBefore.toString(16).padStart(8, '0')}`);
       this.dumpTrace();
       this.halted = true;

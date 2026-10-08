@@ -990,6 +990,15 @@ export class GbaEmulatorCore implements EmulatorCore {
   private status: 'ready' | 'running' | 'stopped' = 'stopped';
   private biosData: Uint8Array | null = null;
 
+  // Web Audio output
+  private audioCtx: AudioContext | null = null;
+  private audioNode: ScriptProcessorNode | null = null;
+  private gainNode: GainNode | null = null;
+  private audioEnabled = false;
+
+  private framePixels = new Uint32Array(240 * 160);
+  private frameResult = { pixels: this.framePixels, frameStartBlank: false };
+
   constructor() {
     this.gba = new GBA();
   }
@@ -1041,13 +1050,8 @@ export class GbaEmulatorCore implements EmulatorCore {
 
     this.gba.runFrame();
 
-    const pixels = new Uint32Array(240 * 160);
-    pixels.set(this.gba.ppu.framebuffer);
-
-    return {
-      pixels,
-      frameStartBlank: false
-    };
+    this.framePixels.set(this.gba.ppu.framebuffer);
+    return this.frameResult;
   }
 
   async reset(): Promise<void> {
@@ -1059,13 +1063,101 @@ export class GbaEmulatorCore implements EmulatorCore {
   }
 
   async enableAudio(): Promise<void> {
-    // Audio is permanently detached for now
+    if (this.audioEnabled) return;
+
+    if (!this.audioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtxClass) return;
+      this.audioCtx = new AudioCtxClass();
+
+      this.gainNode = this.audioCtx.createGain();
+      this.gainNode.gain.value = this.audioVolume;
+
+      const bufferSize = 2048;
+      this.audioNode = this.audioCtx.createScriptProcessor(bufferSize, 0, 2);
+
+      // The APU produces samples at the native GBA rate of 32768 Hz while the
+      // AudioContext usually runs at 44100/48000 Hz. We keep a running
+      // fractional position and linearly interpolate to resample.
+      const apu = this.gba.apu;
+      const apuSampleRate = 32768; // GBA native mixer rate (16.78MHz / 512)
+      const tempBuf = new Float32Array(8192);
+      let srcPos = 0; // fractional source-frame position
+      let carry = new Float32Array(2); // last carried stereo frame
+      let haveCarry = false;
+
+      this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
+        const output = e.outputBuffer;
+        const leftData = output.getChannelData(0);
+        const rightData = output.getChannelData(1);
+        const framesNeeded = output.length;
+
+        if (!this.audioEnabled) {
+          leftData.fill(0);
+          rightData.fill(0);
+          return;
+        }
+
+        // Drain excess backlog so latency doesn't grow unbounded when the
+        // emulator runs faster than realtime.
+        if (apu.bufferedFrames > framesNeeded * 4) {
+          let discardFrames = apu.bufferedFrames - framesNeeded * 2;
+          while (discardFrames > 0) {
+            const chunk = Math.min(discardFrames, tempBuf.length >> 1);
+            apu.readSamples(tempBuf, chunk * 2);
+            discardFrames -= chunk;
+          }
+          srcPos = 0;
+          haveCarry = false;
+        }
+
+        const ratio = apuSampleRate / this.audioCtx!.sampleRate;
+        for (let i = 0; i < framesNeeded; i++) {
+          srcPos += ratio;
+          // Fetch whole source frames as needed
+          while (srcPos >= 1) {
+            const got = apu.readSamples(tempBuf, 2);
+            if (got < 2) {
+              // Underrun: emit silence until more data arrives
+              leftData[i] = 0;
+              rightData[i] = 0;
+              srcPos -= ratio;
+              haveCarry = false;
+              break;
+            }
+            carry[0] = tempBuf[0];
+            carry[1] = tempBuf[1];
+            haveCarry = true;
+            srcPos -= 1;
+          }
+          if (!haveCarry && leftData[i] !== 0) continue;
+          leftData[i] = haveCarry ? carry[0] : 0;
+          rightData[i] = haveCarry ? carry[1] : 0;
+        }
+      };
+
+      this.audioNode.connect(this.gainNode);
+      this.gainNode.connect(this.audioCtx.destination);
+    }
+
+    if (this.audioCtx.state === 'suspended') {
+      await this.audioCtx.resume();
+    }
+    this.audioEnabled = true;
   }
 
-  disableAudio(): void { }
+  disableAudio(): void {
+    this.audioEnabled = false;
+    if (this.audioCtx && this.audioCtx.state === 'running') {
+      this.audioCtx.suspend().catch(() => {});
+    }
+  }
 
   setAudioVolume(volume: number): void {
     this.audioVolume = volume;
+    if (this.gainNode) {
+      this.gainNode.gain.value = volume;
+    }
   }
 
   setAudioTempo(tempo: number): void { }
@@ -1119,11 +1211,11 @@ export class GbaEmulatorCore implements EmulatorCore {
   }
 
   getAudioContext(): AudioContext | null {
-    return null;
+    return this.audioCtx;
   }
 
   getAudioNode(): AudioNode | null {
-    return null;
+    return this.gainNode;
   }
 
   getRomHeader(): any {
@@ -1135,7 +1227,15 @@ export class GbaEmulatorCore implements EmulatorCore {
     };
   }
 
-  destroy(): void { }
+  destroy(): void {
+    this.disableAudio();
+    try { this.audioNode?.disconnect(); } catch { /* ignore */ }
+    try { this.gainNode?.disconnect(); } catch { /* ignore */ }
+    try { this.audioCtx?.close(); } catch { /* ignore */ }
+    this.audioNode = null;
+    this.gainNode = null;
+    this.audioCtx = null;
+  }
 }
 
 // Atari 2600 Implementation (Main Thread)
@@ -1161,6 +1261,19 @@ export class AtariEmulatorCore implements EmulatorCore {
   }
 
   async loadRom(data: ArrayBuffer): Promise<void> {
+    const size = data.byteLength;
+    // Valid carts are 2K/4K/8K/16K/32K, optionally +128 bytes Superchip RAM.
+    // Anything else (e.g. an HTML 404 page saved as .a26) must be rejected.
+    const isPow2 = (n: number) => n >= 2048 && (n & (n - 1)) === 0;
+    const isSuperchip = size > 128 && isPow2(size - 128);
+    if (!isPow2(size) && !isSuperchip) {
+      throw new Error(`Invalid Atari ROM size: ${size} bytes`);
+    }
+    const head = new Uint8Array(data.slice(0, 16));
+    const sig = String.fromCharCode(...head).toLowerCase();
+    if (sig.includes('<!doctype') || sig.includes('<html')) {
+      throw new Error('Invalid Atari ROM: HTML/text payload detected');
+    }
     const cart = new AtariCartridge(data);
     this.bus.insertCartridge(cart);
     this.bus.reset();
@@ -1169,27 +1282,17 @@ export class AtariEmulatorCore implements EmulatorCore {
   }
 
   runFrame(controllerState: number): { pixels: Uint32Array; frameStartBlank: boolean } {
-    if (!this.romLoaded) throw new Error('ROM not loaded');
-
-    // Map controller state
-    this.controller.setControllerState(controllerState);
-    this.bus.pia.controllerState = this.controller.state;
-
-    // Run cycles until TIA signals a complete frame
-    // 262 scanlines × 228 color-clocks = 59736 color-clocks per frame
-    // CPU runs 1 cycle per 3 color-clocks → 19912 CPU cycles per frame
-    const maxCycles = 25000; // safety cap
-    this.bus.tia.frameComplete = false;
-    let ran = 0;
-    while (!this.bus.tia.frameComplete && ran < maxCycles) {
-      if (!this.bus.cpu.wsyncHalt) {
-        this.bus.cpu.clock();
-      }
-      this.bus.clock();
-      ran++;
+    if (!this.romLoaded) {
+      // Never throw in the render loop: the shell may swap this core in
+      // before its ROM finishes loading. Return a blank frame instead.
+      return { pixels: new Uint32Array(160 * 192), frameStartBlank: true };
     }
 
-    // Return the TIA framebuffer (160×262 rows, only 192 are normally visible)
+    // Latch shell input into the bus; it distributes to PIA/TIA.
+    this.bus.joystick = controllerState;
+    this.bus.runFrame();
+
+    // Return the TIA framebuffer (160x192, ABGR packed).
     const pixels = new Uint32Array(160 * 192);
     pixels.set(this.bus.tia.framebuffer.subarray(0, 160 * 192));
 
@@ -1216,14 +1319,20 @@ export class AtariEmulatorCore implements EmulatorCore {
       const bufferSize = 2048;
       this.audioNode = this.audioCtx.createScriptProcessor(bufferSize, 0, 2);
 
+      // TIA produces mono samples at ~31399 Hz (3.579545MHz color clock / 114).
+      // Resample to the AudioContext rate, duplicating into stereo.
       const tia = this.bus.tia;
-      const audioTempBuf = new Float32Array(8192);
+      const tiaSampleRate = 3579545 / 114;
+      const tempBuf = new Float32Array(8192);
+      let srcPos = 0;
+      let carry = 0;
+      let haveCarry = false;
 
       this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
         const output = e.outputBuffer;
         const leftData = output.getChannelData(0);
         const rightData = output.getChannelData(1);
-        const samplesNeeded = output.length;
+        const framesNeeded = output.length;
 
         if (!this.audioEnabled || !tia) {
           leftData.fill(0);
@@ -1231,9 +1340,27 @@ export class AtariEmulatorCore implements EmulatorCore {
           return;
         }
 
-        // TIA audio not yet implemented – output silence
-        leftData.fill(0);
-        rightData.fill(0);
+        // Drain excess backlog so latency doesn't grow unbounded when the
+        // emulator runs faster than realtime.
+        if (tia.audioSamplesAvailable > framesNeeded * 4) {
+          const discard = tia.audioSamplesAvailable - framesNeeded * 2;
+          tia.drainAudio(new Float32Array(discard));
+          srcPos = 0; haveCarry = false;
+        }
+
+        const ratio = tiaSampleRate / this.audioCtx!.sampleRate;
+        for (let i = 0; i < framesNeeded; i++) {
+          srcPos += ratio;
+          while (srcPos >= 1) {
+            const got = tia.drainAudio(tempBuf.subarray(0, 2));
+            if (got < 1) break;
+            carry = tempBuf[0];
+            haveCarry = true;
+            srcPos -= 1;
+          }
+          leftData[i] = haveCarry ? carry : 0;
+          rightData[i] = haveCarry ? carry : 0;
+        }
       };
 
       this.audioNode.connect(this.gainNode);
@@ -1266,78 +1393,48 @@ export class AtariEmulatorCore implements EmulatorCore {
   async createSaveState(): Promise<any> {
     if (!this.romLoaded) return null;
 
+    const cpu = this.bus.cpu;
     return {
       coreId: 'atari',
       cpu: {
-        a: this.bus.cpu.a,
-        x: this.bus.cpu.x,
-        y: this.bus.cpu.y,
-        sp: this.bus.cpu.sp,
-        pc: this.bus.cpu.pc,
-        status: this.bus.cpu.status,
-        cycles: this.bus.cpu.cycles,
-        totalCycles: this.bus.cpu.totalCycles
+        a: cpu.a, x: cpu.x, y: cpu.y, sp: cpu.sp, pc: cpu.pc,
+        status: cpu.status, cycles: cpu.cycles, totalCycles: cpu.totalCycles,
       },
       piaRam: Array.from(this.bus.pia.ram),
-      tia: {
-        scanline: this.bus.tia.scanline,
-        cycles: this.bus.tia.cycles,
-        frame: this.bus.tia.frame,
-        colubk: this.bus.tia.colubk,
-        colupf: this.bus.tia.colupf,
-        colup0: this.bus.tia.colup0,
-        colup1: this.bus.tia.colup1,
-        pf0: this.bus.tia.pf0,
-        pf1: this.bus.tia.pf1,
-        pf2: this.bus.tia.pf2,
-        p0graphic: this.bus.tia.p0graphic,
-        p1graphic: this.bus.tia.p1graphic,
-        p0hpos: this.bus.tia.p0hpos,
-        p1hpos: this.bus.tia.p1hpos
-      },
-      cart: {
-        mapper: this.bus.cart?.mapper,
-        currentBank: this.bus.cart?.currentBank
-      }
+      piaControllerState: this.bus.pia.controllerState,
+      tia: this.bus.tia.saveState(),
+      cart: this.bus.cart?.saveState() ?? null,
     };
   }
 
   async loadSaveState(state: any): Promise<void> {
     if (!state || state.coreId !== 'atari' || !this.romLoaded) return;
 
+    // Reject corrupt/stale states BEFORE mutating anything: a healthy 6502
+    // always executes from cartridge space (any address with bit 12 set:
+    // $1000-$1FFF and mirrors like $F000-$FFFF). Restoring a state with PC
+    // in RAM/zero-page makes the core execute garbage (gray/magenta screen).
+    const pc = state.cpu?.pc;
+    if (typeof pc !== 'number' || (pc & 0x1000) === 0 || !state.piaRam || !state.tia) {
+      throw new Error('Corrupt Atari autosave: PC outside ROM space');
+    }
+
     // Restore CPU
-    this.bus.cpu.a = state.cpu.a;
-    this.bus.cpu.x = state.cpu.x;
-    this.bus.cpu.y = state.cpu.y;
-    this.bus.cpu.sp = state.cpu.sp;
-    this.bus.cpu.pc = state.cpu.pc;
-    this.bus.cpu.status = state.cpu.status;
-    this.bus.cpu.cycles = state.cpu.cycles;
-    this.bus.cpu.totalCycles = state.cpu.totalCycles;
+    const cpu = this.bus.cpu;
+    cpu.a = state.cpu.a; cpu.x = state.cpu.x; cpu.y = state.cpu.y;
+    cpu.sp = state.cpu.sp; cpu.pc = state.cpu.pc;
+    cpu.status = state.cpu.status; cpu.cycles = state.cpu.cycles;
+    cpu.totalCycles = state.cpu.totalCycles;
+    this.bus.cpu.wsyncHalt = false;   // WSYNC halt is transient — never restore mid-frame
 
-    // Restore PIA RAM
+    // Restore PIA
     this.bus.pia.ram.set(state.piaRam);
+    this.bus.pia.controllerState = state.piaControllerState ?? 0xff;
 
-    // Restore TIA
-    this.bus.tia.scanline = state.tia.scanline;
-    this.bus.tia.cycles = state.tia.cycles;
-    this.bus.tia.frame = state.tia.frame;
-    this.bus.tia.colubk = state.tia.colubk;
-    this.bus.tia.colupf = state.tia.colupf;
-    this.bus.tia.colup0 = state.tia.colup0;
-    this.bus.tia.colup1 = state.tia.colup1;
-    this.bus.tia.pf0 = state.tia.pf0;
-    this.bus.tia.pf1 = state.tia.pf1;
-    this.bus.tia.pf2 = state.tia.pf2;
-    this.bus.tia.p0graphic = state.tia.p0graphic;
-    this.bus.tia.p1graphic = state.tia.p1graphic;
-    this.bus.tia.p0hpos = state.tia.p0hpos;
-    this.bus.tia.p1hpos = state.tia.p1hpos;
-
-    // Restore Cartridge
+    // Restore TIA + cartridge (mapper/bank)
+    this.bus.tia.loadState(state.tia);
     if (this.bus.cart && state.cart) {
-      this.bus.cart.mapper = state.cart.mapper;
-      this.bus.cart.currentBank = state.cart.currentBank;
+      this.bus.cart.loadState(state.cart);
     }
   }
 

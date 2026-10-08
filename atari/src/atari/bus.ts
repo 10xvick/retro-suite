@@ -33,23 +33,13 @@ export class Bus {
             return this.tia.read(addr);
         }
 
-        // PIA RAM: $0080-$00FF
-        if (addr < 0x0100) {
+        // PIA RAM: $0080-$00FF, mirrored into the stack page $0180-$01FF
+        if (addr < 0x0100 || (addr >= 0x0180 && addr < 0x0200)) {
             return this.pia.read(addr);
         }
 
-        // PIA registers: $0100-$01FF
-        if (addr < 0x0200) {
-            return this.pia.read(addr);
-        }
-
-        // PIA RAM mirror: $0200-$02FF
-        if (addr < 0x0300) {
-            return this.pia.read(addr);
-        }
-
-        // PIA registers mirror: $0300-$03FF
-        if (addr < 0x0400) {
+        // PIA registers/timer: $0280-$02FF (PIA decodes page 5 internally)
+        if (addr >= 0x0280 && addr < 0x0300) {
             return this.pia.read(addr);
         }
 
@@ -79,26 +69,14 @@ export class Bus {
             return;
         }
 
-        // PIA RAM: $0080-$00FF
-        if (addr < 0x0100) {
+        // PIA RAM: $0080-$00FF, mirrored into the stack page $0180-$01FF
+        if (addr < 0x0100 || (addr >= 0x0180 && addr < 0x0200)) {
             this.pia.write(addr, data);
             return;
         }
 
-        // PIA registers: $0100-$01FF
-        if (addr < 0x0200) {
-            this.pia.write(addr, data);
-            return;
-        }
-
-        // PIA RAM mirror: $0200-$02FF
-        if (addr < 0x0300) {
-            this.pia.write(addr, data);
-            return;
-        }
-
-        // PIA registers mirror: $0300-$03FF
-        if (addr < 0x0400) {
+        // PIA registers/timer: $0280-$02FF (PIA decodes page 5 internally)
+        if (addr >= 0x0280 && addr < 0x0300) {
             this.pia.write(addr, data);
             return;
         }
@@ -116,6 +94,29 @@ export class Bus {
         // Release WSYNC halt when TIA reaches end of scanline
         if (this.cpu.wsyncHalt && !this.tia.wsyncRequested) {
             this.cpu.wsyncHalt = false;
+        }
+    }
+
+    // Latch shell controller state (active-high bits from the shell InputHandler:
+    // bit11=Up bit10=Down bit9=Left bit8=Right bit7=A(fire) bit15=B(fire)).
+    // PIA.controllerState is active-low on SWCHA bits 0-4.
+    public set joystick(state: number) {
+        let swcha = 0xFF;
+        if (state & 0x0800) swcha &= ~0x10; // Up
+        if (state & 0x0400) swcha &= ~0x20; // Down
+        if (state & 0x0200) swcha &= ~0x40; // Left
+        if (state & 0x0100) swcha &= ~0x80; // Right
+        if (state & 0x0080) swcha &= ~0x01; // Fire (A)
+        else if (state & 0x8000) swcha &= ~0x01; // Fire (B)
+        this.pia.controllerState = swcha;
+    }
+
+    // Run one full video frame: 262 scanlines x 228 color clocks / 3 = 19912 CPU cycles.
+    public runFrame(): void {
+        this.tia.frameComplete = false;
+        while (!this.tia.frameComplete) {
+            this.cpu.clock();
+            this.clock();
         }
     }
 

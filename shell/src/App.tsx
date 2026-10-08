@@ -49,6 +49,7 @@ const getCoreDimensions = (coreId: string) => {
   if (coreId === 'nes') return { w: 256, h: 240 };
   if (coreId === 'gb' || coreId === 'gbc') return { w: 160, h: 144 };
   if (coreId === 'gba') return { w: 240, h: 160 };
+  if (coreId === 'atari') return { w: 160, h: 192 };
   return { w: 256, h: 224 };
 };
 
@@ -630,6 +631,8 @@ export default function App() {
   const [isScreenBlank, setIsScreenBlank] = useState<boolean>(false);
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const vramCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cachedImageDataRef = useRef<ImageData | null>(null);
+  const cachedPixelBufferRef = useRef<Uint32Array | null>(null);
   const emulatorInstance = useRef<EmulatorCore | null>(null);
   const inputHandlerRef = useRef<any>(null);
   const lastFrameTime = useRef<number>(0);
@@ -758,31 +761,45 @@ export default function App() {
         const currentCore = emulatorManager.getCoreById(lastCore);
         if (currentCore) {
           emulatorInstance.current = currentCore;
-          await currentCore.loadRom(lastRom.data);
-
-          const autosaveState = await db.getAutosave(lastCore);
-          if (autosaveState) {
-            try {
-              await currentCore.loadSaveState(autosaveState);
-              console.log('Restored from autosave state');
-            } catch (e) {
-              console.warn('Failed to restore autosave state', e);
-            }
+          let romOk = false;
+          try {
+            await currentCore.loadRom(lastRom.data);
+            romOk = true;
+          } catch (e) {
+            console.warn('Stored ROM failed to load, falling back to default', e);
+            db.clearAutosave(lastCore)?.catch(() => { });
+            db.deleteRom(lastCore)?.catch(() => { });
           }
+          if (romOk) {
+            const autosaveState = await db.getAutosave(lastCore);
+            if (autosaveState) {
+              try {
+                await currentCore.loadSaveState(autosaveState);
+                console.log('Restored from autosave state');
+              } catch (e) {
+                console.warn('Failed to restore autosave state', e);
+                db.clearAutosave(lastCore)?.catch(() => { });
+              }
+            }
 
-          setEmulatorState(prev => ({
-            ...prev,
-            romName: lastRom.name,
-            romSize: lastRom.size,
-            romInfo: {
-              title: lastRom.title,
-              mapper: lastRom.mapper,
-              version: lastRom.version,
-              checksum: lastRom.checksum
-            },
-            isRunning: true
-          }));
-          await loadSavedSlotsInfo(lastCore);
+            setEmulatorState(prev => ({
+              ...prev,
+              romName: lastRom.name,
+              romSize: lastRom.size,
+              romInfo: {
+                title: lastRom.title,
+                mapper: lastRom.mapper,
+                version: lastRom.version,
+                checksum: lastRom.checksum
+              },
+              isRunning: true
+            }));
+            await loadSavedSlotsInfo(lastCore);
+          } else {
+            await loadDefaultRom(lastCore);
+            setEmulatorState(prev => ({ ...prev, isRunning: true }));
+            await loadSavedSlotsInfo(lastCore);
+          }
         }
       } else {
         // Fallback to default ROM
@@ -795,11 +812,13 @@ export default function App() {
             try {
               await currentCore.loadSaveState(autosaveState);
               console.log('Restored (default ROM) from autosave state');
-              setEmulatorState(prev => ({ ...prev, isRunning: true }));
             } catch (e) {
               console.warn('Failed to restore autosave state', e);
+              db.clearAutosave(lastCore)?.catch(() => { });
             }
           }
+          // Always start emulation on boot — even with no autosave.
+          setEmulatorState(prev => ({ ...prev, isRunning: true }));
         }
         await loadSavedSlotsInfo(lastCore);
       }
@@ -898,9 +917,21 @@ export default function App() {
     // Load last played ROM or default ROM for this core
     (async () => {
       if (!dbRef.current) return;
+      let romOk = false;
       const lastRom = await dbRef.current.getRom(activeCoreId);
       if (lastRom) {
-        await newCore.loadRom(lastRom.data);
+        try {
+          await newCore.loadRom(lastRom.data);
+          romOk = true;
+        } catch (e) {
+          // Stored ROM is corrupt (e.g. saved from a bad fetch) — purge it and
+          // its autosave, then fall back to the bundled default ROM.
+          console.warn('Stored ROM failed to load, falling back to default', e);
+          dbRef.current?.clearAutosave(activeCoreId)?.catch(() => { });
+          dbRef.current?.deleteRom(activeCoreId)?.catch(() => { });
+        }
+      }
+      if (romOk && lastRom) {
         const autosaveState = await dbRef.current.getAutosave(activeCoreId);
         if (autosaveState) {
           try {
@@ -908,6 +939,7 @@ export default function App() {
             console.log('Restored new core from autosave state');
           } catch (e) {
             console.warn('Failed to restore autosave state', e);
+            dbRef.current?.clearAutosave(activeCoreId)?.catch(() => { });
           }
         }
 
@@ -930,11 +962,14 @@ export default function App() {
           try {
             await newCore.loadSaveState(autosaveState);
             console.log('Restored new core (default ROM) from autosave state');
-            setEmulatorState(prev => ({ ...prev, isRunning: true }));
           } catch (e) {
             console.warn('Failed to restore autosave state', e);
+            dbRef.current?.clearAutosave(activeCoreId)?.catch(() => { });
           }
         }
+        // Always start emulation after a core switch — even with no autosave,
+        // otherwise the newly selected core stays paused and appears broken.
+        setEmulatorState(prev => ({ ...prev, isRunning: true }));
       }
       await loadSavedSlotsInfo(activeCoreId);
 
@@ -1038,7 +1073,11 @@ export default function App() {
     let frameAccumulator = 0;
     let debugFrameCounter = 0;
 
+    let rafId = 0;
     const loop = async (timestamp: number) => {
+      // NOTE: do NOT reschedule here — the tail of this function schedules the
+      // next iteration exactly once. A second schedule point would fork a new
+      // rAF chain every frame (2^n growth) and saturate the main thread.
       if (!isRunningRef.current) return;
       const emulator = emulatorInstance.current;
       if (!emulator) return;
@@ -1062,8 +1101,13 @@ export default function App() {
         const speedMultiplier = speedMultiplierRef.current;
         frameAccumulator += actualDelta * speedMultiplier;
 
+        // Cap accumulator to avoid spiral of death when frames take longer than interval
+        if (frameAccumulator > frameInterval * 2) {
+          frameAccumulator = frameInterval * 2;
+        }
+
         let framesRun = 0;
-        const maxFramesRun = Math.max(4, Math.ceil(4 * speedMultiplier));
+        const maxFramesRun = Math.max(2, Math.ceil(2 * speedMultiplier));
         while (frameAccumulator >= frameInterval && framesRun < maxFramesRun) {
           let activeInput = controllerState;
 
@@ -1096,6 +1140,11 @@ export default function App() {
           accumulatedGameTimeRef.current += frameInterval;
         }
 
+        // Drop residual debt if the core took too long so browser doesn't choke
+        if (frameAccumulator > frameInterval) {
+          frameAccumulator = 0;
+        }
+
         if (automationStateRef.current === 'recording') {
           setRecordedUIFrameCount(recordedInputsRef.current.length);
         } else if (automationStateRef.current === 'playing') {
@@ -1106,12 +1155,15 @@ export default function App() {
           const { w, h } = getCoreDimensions(activeCoreId);
           if (mainCanvasRef.current) {
             const ctx = mainCanvasRef.current.getContext('2d')!;
-            const imgData = ctx.createImageData(w, h);
-            const pixelBuffer = new Uint32Array(imgData.data.buffer);
-            if (pixelBuffer.length === lastFrameResult.pixels.length) {
-              pixelBuffer.set(lastFrameResult.pixels);
+            if (!cachedImageDataRef.current || cachedImageDataRef.current.width !== w || cachedImageDataRef.current.height !== h) {
+              cachedImageDataRef.current = ctx.createImageData(w, h);
+              cachedPixelBufferRef.current = new Uint32Array(cachedImageDataRef.current.data.buffer);
             }
-            ctx.putImageData(imgData, 0, 0);
+            const pixelBuffer = cachedPixelBufferRef.current;
+            if (pixelBuffer && pixelBuffer.length === lastFrameResult.pixels.length) {
+              pixelBuffer.set(lastFrameResult.pixels);
+              ctx.putImageData(cachedImageDataRef.current, 0, 0);
+            }
           }
 
           setIsScreenBlank(lastFrameResult.frameStartBlank);
@@ -1139,13 +1191,17 @@ export default function App() {
         console.error('Emulation error:', err);
       }
 
-      requestAnimationFrame(loop);
+      // Single schedule point: keep the loop alive exactly once per frame.
+      if (isRunningRef.current) {
+        rafId = requestAnimationFrame(loop);
+      }
     };
 
     requestAnimationFrame(loop);
 
     return () => {
       isRunningRef.current = false;
+      cancelAnimationFrame(rafId); // cancels only the pending frame, not the whole core-switch cleanup
     };
   }, [emulatorState.isRunning, activeCoreId]);
 
@@ -1251,6 +1307,14 @@ export default function App() {
       romSize = '524 KB';
       title = 'GBA TEST SUITE';
       mapper = 'GBA';
+      version = '1.0';
+      checksum = 'N/A';
+    } else if (coreId === 'atari') {
+      path = '/emulator/retro-station/Pac-Man.a26';
+      romName = 'Pac-Man.a26';
+      romSize = '4 KB';
+      title = 'PAC-MAN';
+      mapper = '4K';
       version = '1.0';
       checksum = 'N/A';
     }
@@ -1786,6 +1850,7 @@ export default function App() {
             <option value="nes">NES (Nintendo)</option>
             <option value="gbc">GB / GBC (Game Boy / Color)</option>
             <option value="gba">GBA (Game Boy Advance)</option>
+            <option value="atari">Atari 2600</option>
           </select>
           <span className={`retro-led ${emulatorState.isRunning && !emulatorState.isScreenBlank ? 'green' : emulatorState.isRunning ? 'amber' : 'off'}`} />
         </div>

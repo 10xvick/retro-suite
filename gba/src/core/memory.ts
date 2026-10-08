@@ -78,6 +78,9 @@ export class Memory {
   halted = false;
   blockKeyWrites = false;
 
+  /** Sound IO sink (APU). Set by GBA during construction. */
+  apu: { writeRegister(off: number, val: number, size: 1 | 2 | 4): void; pushFifoByte(off: number, byte: number): void; } | null = null;
+
   // Debugging support
   cpu: any = null;
   gba: any = null;
@@ -85,7 +88,7 @@ export class Memory {
   writeBreakpoints = new Set<number>();
 
   checkReadBreakpoint(addr: number) {
-    if (this.readBreakpoints.has(addr)) {
+    if (this.readBreakpoints.size > 0 && this.readBreakpoints.has(addr)) {
       console.log(`[BREAKPOINT] Memory READ from 0x${addr.toString(16).padStart(8, '0')}`);
       if (this.cpu) {
         this.cpu.dumpTrace();
@@ -95,7 +98,7 @@ export class Memory {
   }
 
   checkWriteBreakpoint(addr: number, val: number) {
-    if (this.writeBreakpoints.has(addr)) {
+    if (this.writeBreakpoints.size > 0 && this.writeBreakpoints.has(addr)) {
       console.log(`[BREAKPOINT] Memory WRITE to 0x${addr.toString(16).padStart(8, '0')} val=0x${val.toString(16)}`);
       if (this.cpu) {
         this.cpu.dumpTrace();
@@ -360,9 +363,29 @@ export class Memory {
       return this.io[0x300];
     }
 
+    // Timer data registers (TM0D..TM3D): return live counter if GBA is linked
+    if (off === 0x100 || off === 0x104 || off === 0x108 || off === 0x10C) {
+      if (this.gba) {
+        return this.gba.tmData[(off - 0x100) >> 2];
+      }
+    }
+
     // BG control registers: mask out unused bits 4-5
     if (off === 0x008 || off === 0x00A || off === 0x00C || off === 0x00E) {
       return this.ioView.getUint16(off, true) & 0xFFCF;
+    }
+
+    // SOUNDCNT_X: low nibble is PSG channel status (live hardware state).
+    // Bit 7 = PSG master enable (writable!) must be preserved through reads —
+    // masking with 0xFF70 here made games polling master-enable see it OFF.
+    if (off === 0x084 && this.gba?.apu) {
+      const a = this.gba.apu as any;
+      let status = 0;
+      if (a.sq1?.active) status |= 1;
+      if (a.sq2?.active) status |= 2;
+      if (a.waveActive) status |= 4;
+      if (a.noiseActive) status |= 8;
+      return (this.ioView.getUint16(0x084, true) & 0xfff0) | status;
     }
 
     // DISPSTAT: mask out unused bits 6-7
@@ -641,6 +664,12 @@ export class Memory {
     return false;
   }
 
+  // True when a byte offset belongs to the SIO registers (0x120..0x15F)
+  // excluding KEYINPUT (0x130/0x132).
+  private isSioOffStatic(off: number): boolean {
+    return off >= 0x120 && off <= 0x15F && off !== 0x130 && off !== 0x132;
+  }
+
   // Get timer index for a TMxD offset, or -1 if not a timer data register
   private timerIndexForOff(off: number): number {
     for (let t = 0; t < 4; t++) {
@@ -652,6 +681,20 @@ export class Memory {
 
   // IO write with side effects (IF ack, HALTCNT, DMA enable check)
   private writeIO(off: number, val: number, size: 1 | 2 | 4) {
+    // Sound register range (0x060..0x0AF) — forward to the APU first.
+    // The APU keeps its own mirrors; the raw IO bytes below remain for
+    // open-bus style reads and save-state fidelity.
+    if (this.apu && off >= 0x060 && off <= 0x0AF && !this.isSioOffStatic(off)) {
+      if (off >= 0x0a0 && off <= 0x0a7) {
+        // FIFO A/B data registers
+        for (let i = 0; i < size; i++) {
+          this.apu.pushFifoByte(off + i, (val >> (i * 8)) & 0xff);
+        }
+      } else {
+        this.apu.writeRegister(off, val, size);
+      }
+    }
+
     const oldSiocnt = this.ioView.getUint16(0x128, true);
     const oldRcnt = this.ioView.getUint16(0x134, true);
     const isSio = (off >= 0x120 && off <= 0x15F) && (off !== 0x130) && (off !== 0x132);

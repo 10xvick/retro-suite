@@ -64,6 +64,11 @@ export class CPU {
     }
 
     public clock() {
+        // WSYNC: CPU is halted until the bus clears wsyncHalt at end of scanline.
+        if (this.wsyncHalt) {
+            this.totalCycles++;
+            return;
+        }
         if (this.cycles === 0) {
             this.opcode = this.read(this.pc);
             this.pc = (this.pc + 1) & 0xFFFF;
@@ -183,7 +188,7 @@ export class CPU {
         this.setFlag(CPU.V, (~(a ^ m) & (a ^ result) & 0x80) !== 0);
         this.setFlag(CPU.N, (result & 0x80) !== 0);
         this.a = result & 0xFF;
-        return 1;
+        return 0;
     }
 
     private AND(): number {
@@ -191,7 +196,7 @@ export class CPU {
         this.a &= this.fetched;
         this.setFlag(CPU.Z, this.a === 0);
         this.setFlag(CPU.N, (this.a & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private ASL(): number {
@@ -210,30 +215,33 @@ export class CPU {
 
     private BCC(): number {
         if (!this.getFlag(CPU.C)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
 
     private BCS(): number {
         if (this.getFlag(CPU.C)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
 
     private BEQ(): number {
         if (this.getFlag(CPU.Z)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
@@ -249,30 +257,33 @@ export class CPU {
 
     private BMI(): number {
         if (this.getFlag(CPU.N)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
 
     private BNE(): number {
         if (!this.getFlag(CPU.Z)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
 
     private BPL(): number {
         if (!this.getFlag(CPU.N)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
@@ -294,20 +305,22 @@ export class CPU {
 
     private BVC(): number {
         if (!this.getFlag(CPU.V)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
 
     private BVS(): number {
         if (this.getFlag(CPU.V)) {
-            this.cycles++;
+            let extra = 1;
             this.addrAbs = (this.pc + this.addrRel) & 0xFFFF;
-            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) this.cycles++;
+            if ((this.addrAbs & 0xFF00) !== (this.pc & 0xFF00)) extra++;
             this.pc = this.addrAbs;
+            return extra;
         }
         return 0;
     }
@@ -323,7 +336,7 @@ export class CPU {
         this.setFlag(CPU.C, this.a >= this.fetched);
         this.setFlag(CPU.Z, (result & 0xFF) === 0);
         this.setFlag(CPU.N, (result & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private CPX(): number {
@@ -372,7 +385,7 @@ export class CPU {
         this.a ^= this.fetched;
         this.setFlag(CPU.Z, this.a === 0);
         this.setFlag(CPU.N, (this.a & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private INC(): number {
@@ -418,7 +431,7 @@ export class CPU {
         this.a = this.fetched;
         this.setFlag(CPU.Z, this.a === 0);
         this.setFlag(CPU.N, (this.a & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private LDX(): number {
@@ -426,7 +439,7 @@ export class CPU {
         this.x = this.fetched;
         this.setFlag(CPU.Z, this.x === 0);
         this.setFlag(CPU.N, (this.x & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private LDY(): number {
@@ -434,7 +447,7 @@ export class CPU {
         this.y = this.fetched;
         this.setFlag(CPU.Z, this.y === 0);
         this.setFlag(CPU.N, (this.y & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private LSR(): number {
@@ -458,7 +471,7 @@ export class CPU {
         this.a |= this.fetched;
         this.setFlag(CPU.Z, this.a === 0);
         this.setFlag(CPU.N, (this.a & 0x80) !== 0);
-        return 1;
+        return 0;
     }
 
     private PHA(): number {
@@ -551,7 +564,7 @@ export class CPU {
         this.setFlag(CPU.V, ((a ^ m) & (a ^ result) & 0x80) !== 0);
         this.setFlag(CPU.N, (result & 0x80) !== 0);
         this.a = result & 0xFF;
-        return 1;
+        return 0;
     }
 
     private SEC(): number { this.setFlag(CPU.C, true); return 0; }
@@ -646,14 +659,14 @@ export class CPU {
             case 0x1E: this.abx(); this.ASL(); break;
 
             // Branches
-            case 0x90: this.rel(); this.BCC(); break;
-            case 0xB0: this.rel(); this.BCS(); break;
-            case 0xF0: this.rel(); this.BEQ(); break;
-            case 0x30: this.rel(); this.BMI(); break;
-            case 0xD0: this.rel(); this.BNE(); break;
-            case 0x10: this.rel(); this.BPL(); break;
-            case 0x50: this.rel(); this.BVC(); break;
-            case 0x70: this.rel(); this.BVS(); break;
+            case 0x90: this.rel(); extraCycles = this.BCC(); break;
+            case 0xB0: this.rel(); extraCycles = this.BCS(); break;
+            case 0xF0: this.rel(); extraCycles = this.BEQ(); break;
+            case 0x30: this.rel(); extraCycles = this.BMI(); break;
+            case 0xD0: this.rel(); extraCycles = this.BNE(); break;
+            case 0x10: this.rel(); extraCycles = this.BPL(); break;
+            case 0x50: this.rel(); extraCycles = this.BVC(); break;
+            case 0x70: this.rel(); extraCycles = this.BVS(); break;
 
             // BIT
             case 0x24: this.zp(); this.BIT(); break;

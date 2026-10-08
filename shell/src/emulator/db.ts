@@ -90,6 +90,17 @@ export class RetroStationDB {
     });
   }
 
+  async deleteRom(coreId: string): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('roms', 'readwrite');
+      const store = tx.objectStore('roms');
+      const req = store.delete(coreId);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   async saveAutosave(coreId: string, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {

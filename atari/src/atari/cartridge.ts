@@ -87,4 +87,15 @@ export class Cartridge {
     public reset() {
         this.currentBank = 0;
     }
+
+    public saveState(): any {
+        return { mapper: this.mapper, bankCount: this.bankCount, currentBank: this.currentBank };
+    }
+
+    public loadState(s: any): void {
+        if (!s) return;
+        if (typeof s.currentBank === 'number' && s.currentBank < this.bankCount) {
+            this.currentBank = s.currentBank;
+        }
+    }
 }

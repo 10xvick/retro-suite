@@ -2,12 +2,14 @@
 import { Memory, IO } from "./memory";
 import { ARM7TDMI } from "./arm7tdmi";
 import { PPU } from "./ppu";
+import { Apu } from "./apu";
 import { M_IRQ, M_SVC, M_SYSTEM, M_FIQ, M_ABORT, M_UNDEF } from "./types";
 
 export const CYCLES_PER_FRAME = 280896;
 export const CYCLES_PER_LINE = 1232; // 280896 / 228
 export const VISIBLE_LINES = 160;
 export const TOTAL_LINES = 228;
+const PRESCALE = [1, 64, 256, 1024];
 
 // Interrupt flags
 const IRQ_VBLANK = 1 << 0;
@@ -20,6 +22,8 @@ export class GBA {
   mem: Memory;
   cpu: ARM7TDMI;
   ppu: PPU;
+  apu: Apu;
+
 
   cycles = 0;
   scanline = 0;
@@ -53,6 +57,7 @@ export class GBA {
   private tmData = [0, 0, 0, 0];
   private tmReload = [0, 0, 0, 0]; // reload values (preserved)
   private tmCycles = [0, 0, 0, 0]; // sub-cycle accumulator
+  private apuPending = 0; // cycles accumulated for batched APU advancement
   private scanlineOverflow = 0; // cycle overshoot from previous scanline
 
   constructor() {
@@ -62,6 +67,17 @@ export class GBA {
     this.mem.cpu = this.cpu;
     this.mem.gba = this;
     this.ppu = new PPU(this.mem);
+    // Audio: APU is fed by Memory (sound IO writes) and GBA (timer overflows).
+    this.apu = new Apu();
+    this.mem.apu = this.apu;
+    // FIFO-refill handshake: APU requests, we dispatch exactly the right DMA
+    // channel (FIFO A -> DMA1, FIFO B -> DMA2). Must target the channel whose
+    // start-timing is 3 (sound FIFO) — the generic scheduler matches drq
+    // numbers 0/1/2 only, so routing refills through doDma(1|2) would either
+    // match nothing or fire unrelated VBlank/HBlank-timed channels.
+    this.apu.dmaRequest = (fifo) => {
+      this.doSoundFifoDma(fifo);
+    };
     this.mem.winVWriteCallback = (off) => this.ppu.checkWinVWrite(off);
     this.mem.dispcntWriteCallback = (val) => {
       if (this.scanline < VISIBLE_LINES && (CYCLES_PER_LINE - this.scanlineBudget) < 960) {
@@ -193,6 +209,7 @@ export class GBA {
     this.scanline = 0;
     this.frameCount = 0;
     this.mem.halted = false;
+    this.apu.reset();
     this.bootAnimActive = false;
     this.bootAnimFrames = 0;
     this.bootAnimChimePlayed = false;
@@ -215,6 +232,7 @@ export class GBA {
     this.scanline = 0;
     this.frameCount = 0;
     this.mem.halted = false;
+    this.apu.reset();
     this.mem.io.fill(0);
     // KEYINPUT: all keys released (active-low, 10 keys = 0x3FF)
     this.mem.io[IO.KEYINPUT] = 0xFF;
@@ -247,12 +265,13 @@ export class GBA {
 
   // Request an interrupt: set IF bits directly, and if enabled, raise IRQ / wake halt
   requestIrq(flag: number) {
-    const iflags = (this.mem.readIO16(IO.IF) | flag) & 0xffff;
+    const io = this.mem.io;
+    const iflags = (io[IO.IF] | (io[IO.IF + 1] << 8) | flag) & 0xffff;
     // Set IF bits directly (bypass writeIO to avoid ack semantics)
     this.mem.io[IO.IF] = iflags & 0xff;
     this.mem.io[IO.IF + 1] = (iflags >> 8) & 0xff;
-    const ie = this.mem.readIO16(IO.IE);
-    const ime = this.mem.readIO16(IO.IME);
+    const ie = io[IO.IE] | (io[IO.IE + 1] << 8);
+    const ime = io[IO.IME];
     if (ie & iflags) {
       this.mem.halted = false; // wake from HALT whenever an enabled interrupt fires
       if (ime) {
@@ -260,6 +279,7 @@ export class GBA {
       }
     }
   }
+
 
   // Write DISPSTAT bits directly, bypassing the writeIO handler which incorrectly
   // treats bits 0-1 (VBlank, HBlank status flags) as read-only. gba.ts acts as
@@ -281,7 +301,6 @@ export class GBA {
       this.scanline = line;
       this.ppu.midScanlineDispcnt[line] = undefined;
       this.ppu.updateScanline(line);
-
       if (line < VISIBLE_LINES) {
         this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
         this.ppu.oamHistory[line].set(this.mem.oam);
@@ -312,23 +331,26 @@ export class GBA {
       let budget = CYCLES_PER_LINE - this.scanlineOverflow;
       this.scanlineOverflow = 0;
       let guard = 0;
+      let hblankFired = false; // per-scanline HBlank edge latch (DISPSTAT bit 1)
       while (budget > 0 && guard < 100000) {
         if (this.mem.halted) {
           // halted: check if any IRQ is pending to wake up (un-halt occurs even if IME is 0)
-          const ie = this.mem.readIO16(IO.IE);
-          const ifl = this.mem.readIO16(IO.IF);
-          const ime = this.mem.readIO16(IO.IME);
+          const io = this.mem.io;
+          const ie = io[IO.IE] | (io[IO.IE + 1] << 8);
+          const ifl = io[IO.IF] | (io[IO.IF + 1] << 8);
+          const ime = io[IO.IME];
           if (ie & ifl) {
             this.mem.halted = false; // wake from HALT
             if (ime) this.cpu.raiseIrq(); // dispatch IRQ
           } else {
-            // Check HBlank threshold BEFORE consuming. Fire once (DISPSTAT.HBlank=1
-            // prevents re-entry). Consume 64 cycles AFTER firing so the ISR dispatches
-            // with budget=208 — same timing as hardware-verified behavior for all
-            // other subtests. The DISPSTAT fix ensures the guard works correctly now.
+            // Check HBlank threshold BEFORE consuming. Fire once (per-scanline
+            // hblankFired latch prevents re-entry). Consume 64 cycles AFTER firing so
+            // the ISR dispatches with budget=208 — same timing as hardware-verified
+            // behavior for all other subtests.
             const elapsed = CYCLES_PER_LINE - budget;
-            if (line < VISIBLE_LINES && elapsed >= 960) {
+            if (!hblankFired && line < VISIBLE_LINES && elapsed >= 960) {
               const ds = this.mem.readIO16(IO.DISPSTAT);
+              hblankFired = true;
               if (!(ds & 0x2)) {
                 this.writeDispstat(ds | 0x2); // set HBlank flag
                 if (ds & 0x10) {
@@ -355,9 +377,12 @@ export class GBA {
         this.scanlineBudget = budget;
         guard++;
 
-        // Set HBlank flag when instruction execution reaches HBlank period (after 960 cycles)
-        if (line < VISIBLE_LINES && (CYCLES_PER_LINE - budget) >= 960) {
+        // Set HBlank flag when instruction execution reaches HBlank period (after 960 cycles).
+        // Hot loop: the DISPSTAT read is gated behind !hblankFired — after the edge
+        // fires, zero IO reads happen for the rest of the scanline.
+        if (!hblankFired && line < VISIBLE_LINES && (CYCLES_PER_LINE - budget) >= 960) {
           const ds = this.mem.readIO16(IO.DISPSTAT);
+          hblankFired = true;
           if (!(ds & 0x2)) {
             this.writeDispstat(ds | 0x2); // set HBlank flag
             if (ds & 0x10) {
@@ -372,6 +397,16 @@ export class GBA {
       }
       // If budget went negative (instruction overshoot), carry it to next scanline
       this.scanlineOverflow = Math.max(0, -budget);
+
+      // Advance APU with all cycles accumulated this scanline
+      this.flushApu();
+
+      // Sync timer data to IO registers once per scanline
+      for (let t = 0; t < 4; t++) {
+        const off = IO.TM0D + t * 4;
+        this.mem.io[off] = this.tmData[t] & 0xff;
+        this.mem.io[off + 1] = (this.tmData[t] >> 8) & 0xff;
+      }
 
       // HBlank safety net + scanline render (after CPU has run H-Draw + ISR)
       if (line < VISIBLE_LINES) {
@@ -398,6 +433,7 @@ export class GBA {
     }
 
     this.updateBootAnimation();
+    this.flushApu(); // drain any cycles left after the last (VBlank) scanline
     this.frameCount++;
     this.fpsFrames++;
     const now = (typeof performance !== "undefined") ? performance.now() : Date.now();
@@ -409,9 +445,13 @@ export class GBA {
   }
 
   private checkPendingIrq() {
-    const ie = this.mem.readIO16(IO.IE);
-    const ifl = this.mem.readIO16(IO.IF);
-    const ime = this.mem.readIO16(IO.IME);
+    // Hot path (per CPU instruction): raw byte reads; IF==0 fast-path exits
+    // without touching IE/IME.
+    const io = this.mem.io;
+    const ifl = io[IO.IF] | (io[IO.IF + 1] << 8);
+    if (ifl === 0) return;
+    const ie = io[IO.IE] | (io[IO.IE + 1] << 8);
+    const ime = io[IO.IME];
     if (ie & ifl) {
       this.mem.halted = false;
       if (ime) this.cpu.raiseIrq();
@@ -420,31 +460,50 @@ export class GBA {
 
   // ---- Timers ----
   private tickTimers(c: number) {
+    // NOTE: hot path — called once per CPU instruction (~280k times/frame).
+    this.apuPending += c;
+    const io = this.mem.io;
     for (let t = 0; t < 4; t++) {
-      const ctrl = this.mem.readIO16(IO.TM0CNT + t * 4);
+      const ctrl = io[IO.TM0CNT + t * 4] | (io[IO.TM0CNT + t * 4 + 1] << 8);
       if (!(ctrl & 0x80)) continue; // not enabled
       if (t > 0 && (ctrl & 4)) continue; // cascade: ticked by previous overflow
-      const prescale = [1, 64, 256, 1024][ctrl & 3];
+      const prescale = PRESCALE[ctrl & 3];
       this.tmCycles[t] += c;
-      while (this.tmCycles[t] >= prescale) {
-        this.tmCycles[t] -= prescale;
-        this.tmData[t] = (this.tmData[t] + 1) & 0xffff;
-        if (this.tmData[t] === 0) {
-          // overflow: reload from preserved reload value
-          this.tmData[t] = this.tmReload[t];
-          if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
-          // Cascade: increment next timer if it has cascade bit set and is enabled
-          if (t < 3) {
-            this.cascadeTick(t + 1);
+      if (this.tmCycles[t] < prescale) continue;
+
+      const ticks = (this.tmCycles[t] / prescale) | 0;
+      this.tmCycles[t] -= ticks * prescale;
+      const cur = this.tmData[t];
+      const toOverflow = 0x10000 - cur;
+      if (ticks < toOverflow) {
+        this.tmData[t] = cur + ticks;
+      } else {
+        let remaining = ticks - toOverflow;
+        this.tmData[t] = this.tmReload[t];
+        if (t <= 1) this.apu.onTimerOverflow(t);
+        if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
+        if (t < 3) this.cascadeTick(t + 1);
+
+        if (remaining > 0) {
+          const period = (0x10000 - this.tmReload[t]) || 0x10000;
+          const extra = (remaining / period) | 0;
+          remaining %= period;
+          this.tmData[t] = (this.tmReload[t] + remaining) & 0xffff;
+          for (let e = 0; e < extra; e++) {
+            if (t <= 1) this.apu.onTimerOverflow(t);
+            if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
+            if (t < 3) this.cascadeTick(t + 1);
           }
         }
       }
     }
-    // Sync timer data to IO registers so reads see current count
-    for (let t = 0; t < 4; t++) {
-      const off = IO.TM0D + t * 4;
-      this.mem.io[off] = this.tmData[t] & 0xff;
-      this.mem.io[off + 1] = (this.tmData[t] >> 8) & 0xff;
+  }
+
+  /** Flush accumulated cycles into the APU (called per scanline + on FIFO DMA). */
+  private flushApu() {
+    if (this.apuPending > 0) {
+      this.apu.tick(this.apuPending);
+      this.apuPending = 0;
     }
   }
 
@@ -458,6 +517,7 @@ export class GBA {
     if (this.tmData[t] === 0) {
       // overflow: reload from preserved reload value
       this.tmData[t] = this.tmReload[t];
+      if (t <= 1) this.apu.onTimerOverflow(t); // direct-sound sample latch (cascaded timers!)
       if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
       // Continue cascade chain
       if (t < 3) {
@@ -475,6 +535,31 @@ export class GBA {
 
   private doDma(trigger: number) {
     this.triggerDmaScheduler(trigger);
+  }
+
+  /**
+   * Direct transfer for sound-FIFO refills (DMA1 -> FIFO A, DMA2 -> FIFO B).
+   * Runs only if that channel is enabled AND configured with start-timing=3
+   * (sound FIFO mode). Releases the APU's request slot unconditionally so a
+   * disabled/misconfigured channel can never deadlock future refills.
+   */
+  private doSoundFifoDma(fifo: 0 | 1) {
+    // Bring the APU up to the current cycle before refilling its FIFO.
+    this.flushApu();
+    const ch = fifo === 0 ? 1 : 2;
+    const base = IO.DMA0SAD + ch * 12;
+    const ctrl = this.mem.readIO16(base + 10);
+    const enabled = (ctrl & 0x8000) !== 0;
+    const isFifoMode = ((ctrl >>> 12) & 3) === 3;
+    if (enabled && isFifoMode && !this.isDmaRunning) {
+      this.isDmaRunning = true;
+      try {
+        this.runDmaChannel(ch);
+      } finally {
+        this.isDmaRunning = false;
+      }
+    }
+    this.apu.notifyDmaRan(fifo);
   }
 
   private triggerDmaScheduler(trigger: number) {
@@ -526,6 +611,12 @@ export class GBA {
     const dad = this.mem.readIO32(base + 4);
     let count = this.mem.readIO16(base + 8);
     if (count === 0) count = (ch === 3) ? 0x10000 : 0x4000;
+    const startTiming0 = (ctrl >>> 12) & 3;
+    // Sound-FIFO transfers ALWAYS move exactly 4 words (16 bytes), regardless
+    // of DMAxCNT_L — hardware ignores the count field in this mode. CNT_L=0
+    // would otherwise trigger a runaway 0x4000-word transfer.
+    const isSoundFifo = startTiming0 === 3;
+    if (isSoundFifo && (ch === 1 || ch === 2)) count = 4;
     // GBATEK DMA CNT_H bit layout:
     // bit 15=enable, 14=IRQ, 13-12=start timing, 11=DRQ(DMA3 only),
     // bit 10=transfer type (0=16bit, 1=32bit), 9=repeat,
@@ -535,7 +626,9 @@ export class GBA {
     const soundMode = startTiming === 3; // special timing = audio FIFO
     const size16 = soundMode ? false : (((ctrl >>> 10) & 1) === 0);
     const sadInc = (ctrl >>> 7) & 3;
-    const dadInc = (ctrl >>> 5) & 3;
+    // Sound-FIFO destination is always the fixed FIFO address (no increment,
+    // regardless of the programmed dest-control bits).
+    const dadInc = soundMode ? 3 : (ctrl >>> 5) & 3;
     const repeat = (ctrl >>> 9) & 1;
     const word = size16 ? 2 : 4;
     let s = sad, d = dad;
@@ -553,9 +646,13 @@ export class GBA {
       }
       s += stepS; d += stepD;
     }
-    if (!repeat) {
+    if (!repeat && !soundMode) {
       this.mem.writeIO16(base + 10, ctrl & ~0x8000); // disable
     }
+    // Sound-FIFO transfers: hardware treats them as repeat-only (the channel
+    // stays armed for timer-driven refills); tell the APU the refill attempt
+    // completed so it can request another one on the next latch.
+    if (soundMode) this.apu.notifyDmaRan(ch === 1 ? 0 : 1);
     if (ctrl & 0x4000) this.requestIrq(IRQ_DMA0 << ch);
   }
 
@@ -564,6 +661,7 @@ export class GBA {
     return {
       cpu: this.cpu.saveState(),
       mem: this.mem.saveState(),
+      apu: this.apu.saveState(),
       cycles: this.cycles,
       scanline: this.scanline,
       frameCount: this.frameCount,
@@ -580,6 +678,7 @@ export class GBA {
   loadState(s: {
     cpu: ReturnType<ARM7TDMI["saveState"]>;
     mem: ReturnType<Memory["saveState"]>;
+    apu?: ReturnType<Apu["saveState"]>;
     cycles: number; scanline: number; frameCount: number;
     tmData: number[]; tmCycles: number[];
     directBootMode: boolean;
@@ -588,6 +687,7 @@ export class GBA {
   }) {
     this.cpu.loadState(s.cpu);
     this.mem.loadState(s.mem);
+    if (s.apu) this.apu.loadState(s.apu);
     this.cycles = s.cycles;
     this.scanline = s.scanline;
     this.frameCount = s.frameCount;

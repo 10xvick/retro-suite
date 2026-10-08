@@ -12,6 +12,7 @@ build/
 *.log
 *.tmp
 *.bmp
+atari/testout/
 
 # Include test and game ROMs in git
 !**/public/roms/**
