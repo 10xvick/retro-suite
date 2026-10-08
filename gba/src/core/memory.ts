@@ -69,6 +69,7 @@ export class Memory {
   lastOpenBus: number = 0xFEEDFACE;
   biosPrefetchOffset = 8;
   dmaEnableCallback: (() => void) | null = null;
+  dmaCntWriteCallback: ((ch: number, val: number) => void) | null = null;
   timerWriteCallback: ((timer: number, value: number) => void) | null = null;
   winVWriteCallback: ((off: number) => void) | null = null;
   irqCallback: (() => void) | null = null;
@@ -215,7 +216,12 @@ export class Memory {
   // ---- IO helpers ----
   // readIO16: for internal emulator use (PPU, timers, etc.) — returns raw value
   // Bus reads (CPU instructions) go through read8/read16/read32 which apply ioReadMask16
-  readIO16(off: number): number { return this.ioView.getUint16(off, true); }
+  readIO16(off: number): number {
+    if (off === 0x082) return this.ioView.getUint16(0x082, true) & 0x770F;
+    return this.ioView.getUint16(off, true);
+  }
+  readIO8(off: number): number { return this.io[off]; }
+  writeIO8(off: number, val: number) { this.writeIO(off, val, 1); }
   writeIO16(off: number, val: number) { this.writeIO(off, val, 2); }
   readIO32(off: number): number { return this.ioView.getUint32(off, true); }
   writeIO32(off: number, val: number) { this.writeIO(off, val, 4); }
@@ -386,6 +392,11 @@ export class Memory {
       if (a.waveActive) status |= 4;
       if (a.noiseActive) status |= 8;
       return (this.ioView.getUint16(0x084, true) & 0xfff0) | status;
+    }
+
+    // SOUNDCNT_H (0x082): bits 11, 15 are write-only (Sound A/B FIFO reset); bits 4-7 are unused
+    if (off === 0x082) {
+      return this.ioView.getUint16(0x082, true) & 0x770F;
     }
 
     // DISPSTAT: mask out unused bits 6-7
@@ -664,6 +675,19 @@ export class Memory {
     return false;
   }
 
+  private notifyDmaCntWrite(off: number, size: 1 | 2 | 4) {
+    for (let ch = 0; ch < 4; ch++) {
+      const base = IO.DMA0CNT_H + ch * 12;
+      if (off < base + 2 && (off + size) > base) {
+        const val = this.readIO16(base);
+        if (this.dmaCntWriteCallback) {
+          this.dmaCntWriteCallback(ch, val);
+        }
+      }
+    }
+    this.checkDmaEnable();
+  }
+
   // True when a byte offset belongs to the SIO registers (0x120..0x15F)
   // excluding KEYINPUT (0x130/0x132).
   private isSioOffStatic(off: number): boolean {
@@ -765,9 +789,7 @@ export class Memory {
         if (this.irqCallback) this.irqCallback();
         return;
       }
-      const evenOff = off & ~1;
-      const dup16 = (val & 0xff) | ((val & 0xff) << 8);
-      this.ioView.setUint16(evenOff, dup16, true);
+      this.io[off] = val & 0xff;
       if (off === 0x128 || off === 0x129) {
         let v = this.ioView.getUint16(0x128, true);
         this.writeSiocnt(v);
@@ -793,7 +815,7 @@ export class Memory {
         this.dispcntWriteCallback(fullDispcnt, vcount, dispstat);
       }
       if (off >= 0x44 && off <= 0x47 && this.winVWriteCallback) this.winVWriteCallback(off);
-      if (this.isDmaCntOff(off)) this.checkDmaEnable();
+      if (this.isDmaCntOff(off)) this.notifyDmaCntWrite(off, 1);
       // Timer data write: notify GBA to update internal counter
       const ti = this.timerIndexForOff(off);
       if (ti >= 0 && this.timerWriteCallback) {
@@ -880,7 +902,7 @@ export class Memory {
       if (off === 0x200 || off === 0x202 || off === 0x208) {
         if (this.irqCallback) this.irqCallback();
       }
-      if (this.isDmaCntOff(off)) this.checkDmaEnable();
+      if (this.isDmaCntOff(off)) this.notifyDmaCntWrite(off, 2);
       // Timer data write: notify GBA to update internal counter
       const ti = this.timerIndexForOff(off);
       if (ti >= 0 && this.timerWriteCallback) {
@@ -912,7 +934,7 @@ export class Memory {
       }
       // DMA enable check (if write covers any DMA control register)
       for (let i = 0; i < 4; i++) {
-        if (this.isDmaCntOff(off + i)) { this.checkDmaEnable(); break; }
+        if (this.isDmaCntOff(off + i)) { this.notifyDmaCntWrite(off, 4); break; }
       }
       if (off <= 0x208 && off + 4 > 0x200) {
         if (this.irqCallback) this.irqCallback();
@@ -927,6 +949,10 @@ export class Memory {
           }
         }
       }
+    }
+    if (off <= 0x082 && off + size > 0x082) {
+      const cur = this.ioView.getUint16(0x082, true);
+      this.ioView.setUint16(0x082, cur & ~0x8800, true);
     }
   }
 

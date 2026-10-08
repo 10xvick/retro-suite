@@ -1082,9 +1082,9 @@ export class GbaEmulatorCore implements EmulatorCore {
       const apu = this.gba.apu;
       const apuSampleRate = 32768; // GBA native mixer rate (16.78MHz / 512)
       const tempBuf = new Float32Array(8192);
-      let srcPos = 0; // fractional source-frame position
-      let carry = new Float32Array(2); // last carried stereo frame
-      let haveCarry = false;
+      let prevL = 0, prevR = 0;
+      let currL = 0, currR = 0;
+      let srcFrac = 0;
 
       this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
         const output = e.outputBuffer;
@@ -1107,32 +1107,37 @@ export class GbaEmulatorCore implements EmulatorCore {
             apu.readSamples(tempBuf, chunk * 2);
             discardFrames -= chunk;
           }
-          srcPos = 0;
-          haveCarry = false;
+          prevL = currL = prevR = currR = 0;
+          srcFrac = 0;
         }
 
         const ratio = apuSampleRate / this.audioCtx!.sampleRate;
         for (let i = 0; i < framesNeeded; i++) {
-          srcPos += ratio;
-          // Fetch whole source frames as needed
-          while (srcPos >= 1) {
+          srcFrac += ratio;
+          while (srcFrac >= 1.0) {
+            prevL = currL;
+            prevR = currR;
+            srcFrac -= 1.0;
             const got = apu.readSamples(tempBuf, 2);
             if (got < 2) {
-              // Underrun: emit silence until more data arrives
-              leftData[i] = 0;
-              rightData[i] = 0;
-              srcPos -= ratio;
-              haveCarry = false;
-              break;
+              // Underrun: clear remainder of output buffer and reset state cleanly
+              currL = 0;
+              currR = 0;
+              prevL = 0;
+              prevR = 0;
+              srcFrac = 0;
+              while (i < framesNeeded) {
+                leftData[i] = 0;
+                rightData[i] = 0;
+                i++;
+              }
+              return;
             }
-            carry[0] = tempBuf[0];
-            carry[1] = tempBuf[1];
-            haveCarry = true;
-            srcPos -= 1;
+            currL = tempBuf[0];
+            currR = tempBuf[1];
           }
-          if (!haveCarry && leftData[i] !== 0) continue;
-          leftData[i] = haveCarry ? carry[0] : 0;
-          rightData[i] = haveCarry ? carry[1] : 0;
+          leftData[i] = prevL + (currL - prevL) * srcFrac;
+          rightData[i] = prevR + (currR - prevR) * srcFrac;
         }
       };
 

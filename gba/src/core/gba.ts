@@ -42,6 +42,9 @@ export class GBA {
   // DMA Scheduler state
   private isDmaRunning = false;
   private dmaTriggerPending = [false, false, false, false];
+  dmaInternalSad: Uint32Array = new Uint32Array(4);
+  dmaInternalDad: Uint32Array = new Uint32Array(4);
+  private dmaActive: boolean[] = [false, false, false, false];
 
   // Boot-animation assist: the real BIOS copies the Nintendo logo to VRAM, but
   // a remaining CPU-emulation bug in the IRQ path prevents the BIOS from enabling
@@ -94,6 +97,16 @@ export class GBA {
     // run immediate (DRQ=0) DMA channels right away.
     this.mem.dmaEnableCallback = () => {
       this.doImmediateDma();
+    };
+    this.mem.dmaCntWriteCallback = (ch: number, val: number) => {
+      if (val & 0x8000) {
+        const base = IO.DMA0SAD + ch * 12;
+        this.dmaInternalSad[ch] = this.mem.readIO32(base);
+        this.dmaInternalDad[ch] = this.mem.readIO32(base + 4);
+        this.dmaActive[ch] = true;
+      } else {
+        this.dmaActive[ch] = false;
+      }
     };
     // Set timer write callback — when TMxD is written, update internal counter
     // and reload value so the timer starts from the written value.
@@ -210,6 +223,12 @@ export class GBA {
     this.frameCount = 0;
     this.mem.halted = false;
     this.apu.reset();
+    // BIOS audio defaults: SOUNDCNT_X bit 7 = master enable, SOUNDBIAS = 0x0200
+    this.mem.writeIO16(0x084, 0x0080);
+    this.mem.writeIO16(0x088, 0x0200);
+    this.dmaInternalSad.fill(0);
+    this.dmaInternalDad.fill(0);
+    this.dmaActive = [false, false, false, false];
     this.bootAnimActive = false;
     this.bootAnimFrames = 0;
     this.bootAnimChimePlayed = false;
@@ -233,6 +252,9 @@ export class GBA {
     this.frameCount = 0;
     this.mem.halted = false;
     this.apu.reset();
+    this.dmaInternalSad.fill(0);
+    this.dmaInternalDad.fill(0);
+    this.dmaActive = [false, false, false, false];
     this.mem.io.fill(0);
     // KEYINPUT: all keys released (active-low, 10 keys = 0x3FF)
     this.mem.io[IO.KEYINPUT] = 0xFF;
@@ -607,8 +629,11 @@ export class GBA {
     const base = IO.DMA0SAD + ch * 12;
     const ctrl = this.mem.readIO16(base + 10);
     if (!(ctrl & 0x8000)) return;
-    const sad = this.mem.readIO32(base);
-    const dad = this.mem.readIO32(base + 4);
+    if (!this.dmaActive[ch]) {
+      this.dmaInternalSad[ch] = this.mem.readIO32(base);
+      this.dmaInternalDad[ch] = this.mem.readIO32(base + 4);
+      this.dmaActive[ch] = true;
+    }
     let count = this.mem.readIO16(base + 8);
     if (count === 0) count = (ch === 3) ? 0x10000 : 0x4000;
     const startTiming0 = (ctrl >>> 12) & 3;
@@ -631,9 +656,9 @@ export class GBA {
     const dadInc = soundMode ? 3 : (ctrl >>> 5) & 3;
     const repeat = (ctrl >>> 9) & 1;
     const word = size16 ? 2 : 4;
-    let s = sad, d = dad;
+    let s = this.dmaInternalSad[ch], d = this.dmaInternalDad[ch];
     const stepS = sadInc === 0 ? word : sadInc === 1 ? -word : sadInc === 3 ? word : 0;
-    const stepD = dadInc === 0 ? word : dadInc === 1 ? -word : dadInc === 3 ? word : 0;
+    const stepD = soundMode ? 0 : (dadInc === 0 ? word : dadInc === 1 ? -word : dadInc === 3 ? word : 0);
     // Byte-level reads/writes — use full 32-bit addresses (do NOT mask with 0x0fffffff,
     // which would strip the 0x08 from ROM addresses like 0x0803C438 → 0x003C438 → BIOS!)
     for (let i = 0; i < count; i++) {
@@ -646,7 +671,14 @@ export class GBA {
       }
       s += stepS; d += stepD;
     }
+    this.dmaInternalSad[ch] = s >>> 0;
+    if (dadInc === 3) {
+      this.dmaInternalDad[ch] = this.mem.readIO32(base + 4);
+    } else {
+      this.dmaInternalDad[ch] = d >>> 0;
+    }
     if (!repeat && !soundMode) {
+      this.dmaActive[ch] = false;
       this.mem.writeIO16(base + 10, ctrl & ~0x8000); // disable
     }
     // Sound-FIFO transfers: hardware treats them as repeat-only (the channel
@@ -667,6 +699,9 @@ export class GBA {
       frameCount: this.frameCount,
       tmData: [...this.tmData],
       tmCycles: [...this.tmCycles],
+      dmaInternalSad: [...this.dmaInternalSad],
+      dmaInternalDad: [...this.dmaInternalDad],
+      dmaActive: [...this.dmaActive],
       directBootMode: this.directBootMode,
       bootAnimActive: this.bootAnimActive,
       bootAnimFrames: this.bootAnimFrames,
@@ -681,6 +716,8 @@ export class GBA {
     apu?: ReturnType<Apu["saveState"]>;
     cycles: number; scanline: number; frameCount: number;
     tmData: number[]; tmCycles: number[];
+    dmaInternalSad?: number[]; dmaInternalDad?: number[];
+    dmaActive?: boolean[];
     directBootMode: boolean;
     bootAnimActive: boolean; bootAnimFrames: number;
     bootAnimChimePlayed: boolean; vramSeenNonzero: boolean;
@@ -693,6 +730,9 @@ export class GBA {
     this.frameCount = s.frameCount;
     this.tmData = [...s.tmData];
     this.tmCycles = [...s.tmCycles];
+    if (s.dmaInternalSad) this.dmaInternalSad.set(s.dmaInternalSad);
+    if (s.dmaInternalDad) this.dmaInternalDad.set(s.dmaInternalDad);
+    if (s.dmaActive) this.dmaActive = [...s.dmaActive];
     this.directBootMode = s.directBootMode;
     this.bootAnimActive = s.bootAnimActive;
     this.bootAnimFrames = s.bootAnimFrames;
