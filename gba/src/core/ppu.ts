@@ -1,6 +1,19 @@
-// GBA Pixel Processing Unit — renders the 240x160 display
 import { Memory, IO } from "./memory";
 import { GBA_WIDTH, GBA_HEIGHT } from "./types";
+
+const OBJ_WIDTH = new Int32Array([
+  8, 16, 32, 64,  // square (shape 0)
+  16, 32, 32, 64, // wide (shape 1)
+  8, 8, 16, 32,   // tall (shape 2)
+  8, 8, 8, 8      // invalid (shape 3)
+]);
+const OBJ_HEIGHT = new Int32Array([
+  8, 16, 32, 64,  // square (shape 0)
+  8, 8, 16, 32,   // wide (shape 1)
+  16, 32, 32, 64, // tall (shape 2)
+  8, 8, 8, 8      // invalid (shape 3)
+]);
+const LAYER_BIT = [0x20, 0x01, 0x02, 0x04, 0x08, 0x10];
 
 export class PPU {
   mem: Memory;
@@ -28,7 +41,29 @@ export class PPU {
   // Per-scanline history arrays (populated in updateScanline for mid-frame state capture)
   dispcntHistory!: Uint16Array;  // DISPCNT value at the start of each scanline (size 230)
   oamHistory!: Uint8Array[];     // OAM snapshot at the start of each scanline (size 230, each 1024 bytes)
-  midScanlineDispcnt: ({ x: number; val: number } | undefined)[] = new Array(230);
+  midScanlineX = new Int16Array(230).fill(-1);
+  midScanlineVal = new Uint16Array(230);
+
+  get midScanlineDispcnt(): ({ x: number; val: number } | undefined)[] {
+    const res: ({ x: number; val: number } | undefined)[] = new Array(230);
+    for (let i = 0; i < 230; i++) {
+      if (this.midScanlineX[i] >= 0) res[i] = { x: this.midScanlineX[i], val: this.midScanlineVal[i] };
+    }
+    return res;
+  }
+
+  setMidScanlineDispcnt(line: number, x: number, val: number) {
+    if (line >= 0 && line < 230) {
+      this.midScanlineX[line] = x;
+      this.midScanlineVal[line] = val;
+    }
+  }
+
+  clearMidScanlineDispcnt(line: number) {
+    if (line >= 0 && line < 230) {
+      this.midScanlineX[line] = -1;
+    }
+  }
 
   ensureBuffers() {
     if (!this.framebuffer || this.framebuffer.length !== GBA_WIDTH * GBA_HEIGHT) this.framebuffer = new Uint32Array(GBA_WIDTH * GBA_HEIGHT);
@@ -189,11 +224,13 @@ export class PPU {
     // during H-Draw at 0x0800af1c, then disables it during HBlank at 0x0800af46).
     const cntNow = this.dispcntHistory[y];
     const cntPrev2 = y >= 2 ? this.dispcntHistory[y - 2] : this.dispcntHistory[0];
-    const midOverride = this.midScanlineDispcnt[y];
+    const midX = this.midScanlineX[y];
+    const hasMid = midX >= 0;
+    const midVal = this.midScanlineVal[y];
     // Layer enable bits (0x1f00): Turning a layer OFF takes effect immediately (+1 line after HBlank),
     // but turning a layer ON from OFF takes +3 lines (+2 lines after HBlank) due to PPU pre-fetch pipeline.
     cnt = (cntNow & ~0x1f00) | (cntNow & cntPrev2 & 0x1f00);
-    const effMidVal = midOverride ? ((midOverride.val & ~0x1f00) | (midOverride.val & cntPrev2 & 0x1f00)) : 0;
+    const effMidVal = hasMid ? ((midVal & ~0x1f00) | (midVal & cntPrev2 & 0x1f00)) : 0;
     mode = cnt & 7;
 
     const fb = this.framebuffer;
@@ -244,8 +281,8 @@ export class PPU {
 
       for (let x = 0; x < GBA_WIDTH; x++) {
         let curCnt = cnt;
-        if (midOverride && x >= midOverride.x) {
-          curCnt = (curCnt & ~0x1f00) | (midOverride.val & 0x1f00);
+        if (hasMid && x >= midX) {
+          curCnt = (curCnt & ~0x1f00) | (midVal & 0x1f00);
         }
         let winMask = 0x3f;
         if (anyWinEnable) {
@@ -302,19 +339,17 @@ export class PPU {
     // Text/affine modes: render BGs
     // Reset line buffers. Use 0 as the transparent sentinel — real colors always
     // have alpha 0xFF (0xFFxxxxxx), so they are never 0.
-    for (let x = 0; x < GBA_WIDTH; x++) {
-      this.bgColor[x] = 0;
-      this.bgColor2[x] = 0;
-      this.bgPrio[x] = 4;
-      this.bgPrio2[x] = 4;
-      this.bgLayer[x] = 0;
-      this.bgLayer2[x] = 0;
-      this.objColor[x] = 0;
-      this.objPrio[x] = 4;
-      this.objLayer[x] = 0;
-      this.objSemi[x] = 0;
-      this.objWinMask[x] = 0;
-    }
+    this.bgColor.fill(0);
+    this.bgColor2.fill(0);
+    this.bgPrio.fill(4);
+    this.bgPrio2.fill(4);
+    this.bgLayer.fill(0);
+    this.bgLayer2.fill(0);
+    this.objColor.fill(0);
+    this.objPrio.fill(4);
+    this.objLayer.fill(0);
+    this.objSemi.fill(0);
+    this.objWinMask.fill(0);
 
     // Render BG layers — ONLY enabled ones (checked via DISPCNT bits 8-11).
     // Rendering disabled BGs would let them win priority slots and displace
@@ -346,11 +381,16 @@ export class PPU {
     const anyWinEnable = win0Enable || win1Enable || objWinEnable;
 
     let win0h = 0, win1h = 0, winin = 0, winout = 0;
+    let win0_x1 = 0, win0_x2 = 0, win1_x1 = 0, win1_x2 = 0;
     if (anyWinEnable) {
       win0h = this.mem.readIO16(0x40); // WIN0H
       win1h = this.mem.readIO16(0x42); // WIN1H
       winin = this.mem.readIO16(0x48); // WININ
       winout = this.mem.readIO16(0x4a); // WINOUT
+      win0_x1 = (win0h >>> 8) & 0xff;
+      win0_x2 = win0h & 0xff;
+      win1_x1 = (win1h >>> 8) & 0xff;
+      win1_x2 = win1h & 0xff;
     }
 
     // Composite: backdrop + BGs (by priority) + OBJ, with alpha blending & brightness
@@ -360,25 +400,18 @@ export class PPU {
     const eva = bldalpha & 0x1f;
     const evb = (bldalpha >> 8) & 0x1f;
     const evy = bldy & 0x1f;
-    // BLDCNT: bits 0-5 = target 1 (BG0,BG1,BG2,BG3,OBJ,BD)
-    //         bits 6-7 = effect (0=none,1=blend,2=brightup,3=brightdown)
-    //         bits 8-13 = target 2
     const t1Mask = bldcnt & 0x3f;
     const t2Mask = (bldcnt >> 8) & 0x3f;
     const effect = (bldcnt >> 6) & 3;
-    // Layer ID → BLDCNT bit: 0=BD(5), 1=BG0(0), 2=BG1(1), 3=BG2(2), 4=BG3(3), 5=OBJ(4)
-    const layerBit = [0x20, 0x01, 0x02, 0x04, 0x08, 0x10];
 
     for (let x = 0; x < GBA_WIDTH; x++) {
       let curCnt = cnt;
-      if (midOverride && x >= midOverride.x) {
+      if (hasMid && x >= midX) {
         curCnt = (curCnt & ~0x1f00) | (effMidVal & 0x1f00);
       }
       let winMask = 0x3f;
       if (anyWinEnable) {
         let winControl = winout & 0x3f;
-        const win0_x1 = (win0h >>> 8) & 0xff, win0_x2 = win0h & 0xff;
-        const win1_x1 = (win1h >>> 8) & 0xff, win1_x2 = win1h & 0xff;
         const inWin0X = (win0_x1 === win0_x2) ? false : (win0_x1 < win0_x2 ? (x >= win0_x1 && x < win0_x2) : (x >= win0_x1 || x < win0_x2));
         const inWin1X = (win1_x1 === win1_x2) ? false : (win1_x1 < win1_x2 ? (x >= win1_x1 && x < win1_x2) : (x >= win1_x1 || x < win1_x2));
 
@@ -391,6 +424,7 @@ export class PPU {
         }
         winMask = winControl;
       }
+
 
       let col = backdrop;
       let curPrio = 5;
@@ -432,13 +466,13 @@ export class PPU {
       // Apply special effects (alpha blending / brightness) — use 32-bit direct if allowed by window
       const allowEffect = (winMask & 0x20) !== 0;
       if (effect !== 0 && allowEffect) {
-        const topBit = layerBit[topLayer];
+        const topBit = LAYER_BIT[topLayer];
         if (effect === 1) {
           // Alpha blending
           if (isSemiTransparent) {
             col = PPU.blend32(col, bottomCol, eva, evb);
           } else if (t1Mask & topBit) {
-            const botBit = layerBit[bottomLayer];
+            const botBit = LAYER_BIT[bottomLayer];
             if (t2Mask & botBit) {
               col = PPU.blend32(col, bottomCol, eva, evb);
             }
@@ -474,14 +508,16 @@ export class PPU {
     const vram = this.mem.vram;
     const palette = this.mem.palette;
 
-    const midOverride = this.midScanlineDispcnt[y];
     const cntNow = this.dispcntHistory[y];
     const cntPrev2 = y >= 2 ? this.dispcntHistory[y - 2] : this.dispcntHistory[0];
-    const effMidVal = midOverride ? ((midOverride.val & ~0x1f00) | (midOverride.val & cntPrev2 & 0x1f00)) : 0;
-    const isMidEnable = midOverride &&
+    const midX = this.midScanlineX[y];
+    const hasMid = midX >= 0;
+    const midVal = this.midScanlineVal[y];
+    const effMidVal = hasMid ? ((midVal & ~0x1f00) | (midVal & cntPrev2 & 0x1f00)) : 0;
+    const isMidEnable = hasMid &&
       (((cntNow >>> (8 + bg)) & 1) === 0) &&
       (((effMidVal >>> (8 + bg)) & 1) === 1);
-    const startX = midOverride ? midOverride.x : 0;
+    const startX = hasMid ? midX : 0;
 
     for (let x = 0; x < GBA_WIDTH; x++) {
       const px = (x + hofs) % sizeW;
@@ -716,8 +752,9 @@ export class PPU {
       const shape = (attr0 >>> 14) & 3;
       if (shape === 3) continue; // invalid
       const size = (attr1 >>> 14) & 3;
-      const dims = this.objDims(shape, size);
-      let w = dims.w, h = dims.h;
+      const shapeSize = (shape << 2) | size;
+      const w = OBJ_WIDTH[shapeSize];
+      const h = OBJ_HEIGHT[shapeSize];
       const objMode = (attr0 >>> 10) & 3;
       if (objMode === 3) continue; // invalid
       const affine = ((attr0 >>> 8) & 1) === 1;
@@ -831,14 +868,8 @@ export class PPU {
   }
 
   private objDims(shape: number, size: number): { w: number; h: number } {
-    // GBA sprite dimension table (from GBATEK)
-    const t = [
-      [[8, 8], [16, 16], [32, 32], [64, 64]],    // square (shape 0)
-      [[16, 8], [32, 8], [32, 16], [64, 32]],     // wide (shape 1)
-      [[8, 16], [8, 32], [16, 32], [32, 64]],     // tall (shape 2)
-      [[8, 8], [8, 8], [8, 8], [8, 8]],           // invalid (shape 3)
-    ];
-    const d = t[shape][size];
-    return { w: d[0], h: d[1] };
+    const idx = (shape << 2) | size;
+    return { w: OBJ_WIDTH[idx], h: OBJ_HEIGHT[idx] };
   }
 }
+

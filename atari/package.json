@@ -7,7 +7,8 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test": "vitest run src/__tests__"
     },
     "devDependencies": {
         "typescript": "^5.3.3",

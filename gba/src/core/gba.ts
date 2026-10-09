@@ -10,6 +10,8 @@ export const CYCLES_PER_LINE = 1232; // 280896 / 228
 export const VISIBLE_LINES = 160;
 export const TOTAL_LINES = 228;
 const PRESCALE = [1, 64, 256, 1024];
+const PRESCALE_SHIFT = [0, 6, 8, 10];
+const PRESCALE_MASK = [0, 63, 255, 1023];
 
 // Interrupt flags
 const IRQ_VBLANK = 1 << 0;
@@ -60,6 +62,9 @@ export class GBA {
   private tmData = [0, 0, 0, 0];
   private tmReload = [0, 0, 0, 0]; // reload values (preserved)
   private tmCycles = [0, 0, 0, 0]; // sub-cycle accumulator
+  private tmCtrl = new Uint16Array(4);
+  private activeTimersMask = 0;
+  private irqPending = false;
   private apuPending = 0; // cycles accumulated for batched APU advancement
   private scanlineOverflow = 0; // cycle overshoot from previous scanline
 
@@ -87,7 +92,7 @@ export class GBA {
         const cyc = CYCLES_PER_LINE - this.scanlineBudget;
         const x = Math.max(0, cyc - 9);
         if (x < 240) {
-          this.ppu.midScanlineDispcnt[this.scanline] = { x, val };
+          this.ppu.setMidScanlineDispcnt(this.scanline, x, val);
         }
       }
     };
@@ -114,6 +119,10 @@ export class GBA {
       this.tmData[timer] = value & 0xffff;
       this.tmReload[timer] = value & 0xffff;
     };
+    this.mem.timerCntWriteCallback = (timer: number, ctrl: number) => {
+      this.tmCtrl[timer] = ctrl & 0xffff;
+      this.updateActiveTimers();
+    };
     // Set IRQ write callback — when IE, IF, or IME are written, check for pending IRQs.
     this.mem.irqCallback = () => {
       const ie = this.mem.readIO16(IO.IE);
@@ -121,7 +130,11 @@ export class GBA {
       const iflags = this.mem.readIO16(IO.IF);
       if (ime && (ie & iflags)) {
         this.mem.halted = false; // wake from HALT
-        this.cpu.raiseIrq();
+        if (!this.cpu.raiseIrq()) {
+          this.irqPending = true;
+        } else {
+          this.irqPending = false;
+        }
       }
     };
   }
@@ -236,6 +249,9 @@ export class GBA {
     this.tmData = [0, 0, 0, 0];
     this.tmReload = [0, 0, 0, 0];
     this.tmCycles = [0, 0, 0, 0];
+    this.tmCtrl.fill(0);
+    this.activeTimersMask = 0;
+    this.irqPending = false;
     this.cpu.branched = false;
     this.cpu.instrCount = 0;
     this.cpu.cycles = 0;
@@ -255,6 +271,12 @@ export class GBA {
     this.dmaInternalSad.fill(0);
     this.dmaInternalDad.fill(0);
     this.dmaActive = [false, false, false, false];
+    this.tmData = [0, 0, 0, 0];
+    this.tmReload = [0, 0, 0, 0];
+    this.tmCycles = [0, 0, 0, 0];
+    this.tmCtrl.fill(0);
+    this.activeTimersMask = 0;
+    this.irqPending = false;
     this.mem.io.fill(0);
     // KEYINPUT: all keys released (active-low, 10 keys = 0x3FF)
     this.mem.io[IO.KEYINPUT] = 0xFF;
@@ -297,7 +319,13 @@ export class GBA {
     if (ie & iflags) {
       this.mem.halted = false; // wake from HALT whenever an enabled interrupt fires
       if (ime) {
-        this.cpu.raiseIrq();
+        if (!this.cpu.raiseIrq()) {
+          this.irqPending = true;
+        } else {
+          this.irqPending = false;
+        }
+      } else {
+        this.irqPending = true;
       }
     }
   }
@@ -321,7 +349,7 @@ export class GBA {
 
     for (let line = 0; line < TOTAL_LINES; line++) {
       this.scanline = line;
-      this.ppu.midScanlineDispcnt[line] = undefined;
+      this.ppu.clearMidScanlineDispcnt(line);
       this.ppu.updateScanline(line);
       if (line < VISIBLE_LINES) {
         this.ppu.dispcntHistory[line] = this.mem.readIO16(IO.DISPCNT);
@@ -414,8 +442,10 @@ export class GBA {
           }
         }
 
-        // check pending IRQ after each step (in case IF set by SWI/timer)
-        this.checkPendingIrq();
+        // check pending IRQ after step ONLY if an interrupt is pending
+        if (this.irqPending) {
+          this.checkPendingIrq();
+        }
       }
       // If budget went negative (instruction overshoot), carry it to next scanline
       this.scanlineOverflow = Math.max(0, -budget);
@@ -467,58 +497,89 @@ export class GBA {
   }
 
   private checkPendingIrq() {
-    // Hot path (per CPU instruction): raw byte reads; IF==0 fast-path exits
-    // without touching IE/IME.
     const io = this.mem.io;
     const ifl = io[IO.IF] | (io[IO.IF + 1] << 8);
-    if (ifl === 0) return;
+    if (ifl === 0) {
+      this.irqPending = false;
+      return;
+    }
     const ie = io[IO.IE] | (io[IO.IE + 1] << 8);
     const ime = io[IO.IME];
     if (ie & ifl) {
       this.mem.halted = false;
-      if (ime) this.cpu.raiseIrq();
+      if (ime) {
+        if (this.cpu.raiseIrq()) {
+          this.irqPending = false;
+        }
+      }
+    } else {
+      this.irqPending = false;
     }
   }
 
   // ---- Timers ----
-  private tickTimers(c: number) {
-    // NOTE: hot path — called once per CPU instruction (~280k times/frame).
-    this.apuPending += c;
-    const io = this.mem.io;
+  private updateActiveTimers() {
+    let mask = 0;
     for (let t = 0; t < 4; t++) {
-      const ctrl = io[IO.TM0CNT + t * 4] | (io[IO.TM0CNT + t * 4 + 1] << 8);
-      if (!(ctrl & 0x80)) continue; // not enabled
-      if (t > 0 && (ctrl & 4)) continue; // cascade: ticked by previous overflow
-      const prescale = PRESCALE[ctrl & 3];
-      this.tmCycles[t] += c;
-      if (this.tmCycles[t] < prescale) continue;
+      const c = this.tmCtrl[t];
+      if ((c & 0x80) && (t === 0 || !(c & 4))) {
+        mask |= (1 << t);
+      }
+    }
+    this.activeTimersMask = mask;
+  }
 
-      const ticks = (this.tmCycles[t] / prescale) | 0;
-      this.tmCycles[t] -= ticks * prescale;
-      const cur = this.tmData[t];
+  private stepTimer(t: number, c: number) {
+    const ctrl = this.tmCtrl[t];
+    const prescaleIdx = ctrl & 3;
+    let ticks = c;
+    if (prescaleIdx > 0) {
+      const cyc = this.tmCycles[t] + c;
+      const prescale = 1 << PRESCALE_SHIFT[prescaleIdx];
+      if (cyc < prescale) {
+        this.tmCycles[t] = cyc;
+        return;
+      }
+      ticks = cyc >> PRESCALE_SHIFT[prescaleIdx];
+      this.tmCycles[t] = cyc & (prescale - 1);
+    }
+
+    const cur = this.tmData[t];
+    const next = cur + ticks;
+    if (next < 0x10000) {
+      this.tmData[t] = next;
+    } else {
       const toOverflow = 0x10000 - cur;
-      if (ticks < toOverflow) {
-        this.tmData[t] = cur + ticks;
-      } else {
-        let remaining = ticks - toOverflow;
-        this.tmData[t] = this.tmReload[t];
-        if (t <= 1) this.apu.onTimerOverflow(t);
-        if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
-        if (t < 3) this.cascadeTick(t + 1);
+      let remaining = ticks - toOverflow;
+      this.tmData[t] = this.tmReload[t];
+      if (t <= 1) this.apu.onTimerOverflow(t);
+      if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
+      if (t < 3) this.cascadeTick(t + 1);
 
-        if (remaining > 0) {
-          const period = (0x10000 - this.tmReload[t]) || 0x10000;
-          const extra = (remaining / period) | 0;
-          remaining %= period;
-          this.tmData[t] = (this.tmReload[t] + remaining) & 0xffff;
-          for (let e = 0; e < extra; e++) {
-            if (t <= 1) this.apu.onTimerOverflow(t);
-            if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
-            if (t < 3) this.cascadeTick(t + 1);
-          }
+      if (remaining > 0) {
+        const period = (0x10000 - this.tmReload[t]) || 0x10000;
+        const extra = (remaining / period) | 0;
+        remaining = remaining - extra * period;
+        this.tmData[t] = (this.tmReload[t] + remaining) & 0xffff;
+        for (let e = 0; e < extra; e++) {
+          if (t <= 1) this.apu.onTimerOverflow(t);
+          if (ctrl & 0x40) this.requestIrq(IRQ_TIMER0 << t);
+          if (t < 3) this.cascadeTick(t + 1);
         }
       }
     }
+  }
+
+  private tickTimers(c: number) {
+    // NOTE: hot path — called once per CPU instruction (~280k times/frame).
+    this.apuPending += c;
+    const mask = this.activeTimersMask;
+    if (mask === 0) return;
+
+    if (mask & 1) this.stepTimer(0, c);
+    if (mask & 2) this.stepTimer(1, c);
+    if (mask & 4) this.stepTimer(2, c);
+    if (mask & 8) this.stepTimer(3, c);
   }
 
   /** Flush accumulated cycles into the APU (called per scanline + on FIFO DMA). */
@@ -532,7 +593,7 @@ export class GBA {
   // Cascade tick: increment timer T by 1 (triggered by T-1 overflow).
   // Handles chain overflow (T overflow → cascade to T+1, etc.)
   private cascadeTick(t: number) {
-    const ctrl = this.mem.readIO16(IO.TM0CNT + t * 4);
+    const ctrl = this.tmCtrl[t];
     if (!(ctrl & 0x80)) return; // not enabled
     if (!(ctrl & 4)) return;    // cascade bit not set
     this.tmData[t] = (this.tmData[t] + 1) & 0xffff;

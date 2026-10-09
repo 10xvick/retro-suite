@@ -1071,10 +1071,12 @@ export default function App() {
 
     let lastTime = performance.now();
     let frameAccumulator = 0;
-    let debugFrameCounter = 0;
+    let fpsFrames = 0;
+    let lastFpsTime = performance.now();
+    let lastDebugSnapshotTime = performance.now();
 
     let rafId = 0;
-    const loop = async (timestamp: number) => {
+    const loop = (timestamp: number) => {
       // NOTE: do NOT reschedule here — the tail of this function schedules the
       // next iteration exactly once. A second schedule point would fork a new
       // rAF chain every frame (2^n growth) and saturate the main thread.
@@ -1107,7 +1109,8 @@ export default function App() {
         }
 
         let framesRun = 0;
-        const maxFramesRun = Math.max(2, Math.ceil(2 * speedMultiplier));
+        const maxFramesRun = speedMultiplier > 1 ? Math.ceil(speedMultiplier) : 2;
+        const rAFStart = performance.now();
         while (frameAccumulator >= frameInterval && framesRun < maxFramesRun) {
           let activeInput = controllerState;
 
@@ -1132,17 +1135,21 @@ export default function App() {
           }
 
           const res = emulator.runFrame(activeInput);
-          lastFrameResult = res instanceof Promise ? await res : res;
+          lastFrameResult = res instanceof Promise ? null : res;
+
           frameAccumulator -= frameInterval;
           framesRun++;
-          debugFrameCounter++;
 
           accumulatedGameTimeRef.current += frameInterval;
+
+          if (framesRun > 0 && (performance.now() - rAFStart) > 20.0) {
+            break;
+          }
         }
 
-        // Drop residual debt if the core took too long so browser doesn't choke
-        if (frameAccumulator > frameInterval) {
-          frameAccumulator = 0;
+        // Cap residual accumulator debt so browser never falls into an unbounded backlog
+        if (frameAccumulator > frameInterval * 2) {
+          frameAccumulator = frameInterval;
         }
 
         if (automationStateRef.current === 'recording') {
@@ -1168,23 +1175,30 @@ export default function App() {
 
           setIsScreenBlank(lastFrameResult.frameStartBlank);
 
-          // Update FPS state and debugger info occasionally (approx 30 frames)
-          if (debugFrameCounter >= 30) {
-            setEmulatorState(prev => ({ ...prev, fps: Math.round(1000 / Math.max(1, delta)) }));
-            debugFrameCounter = 0;
+          // Update rolling FPS over a 1-second window
+          fpsFrames += framesRun;
+          const nowTime = performance.now();
+          if (nowTime - lastFpsTime >= 1000) {
+            const measuredFps = Math.round((fpsFrames * 1000) / (nowTime - lastFpsTime));
+            fpsFrames = 0;
+            lastFpsTime = nowTime;
+            setEmulatorState(prev => (prev.fps === measuredFps ? prev : { ...prev, fps: measuredFps }));
+          }
 
-            const snapshot = await emulator.getDebugSnapshot();
-            setEmulatorState(prev => ({
-              ...prev,
-              cpuState: snapshot.cpu,
-              isScreenBlank: snapshot.isScreenBlank,
-              bgMode: snapshot.bgMode,
-              screenDisplay: snapshot.screenDisplay,
-              disassemblyList: snapshot.disassembly,
-              oamList: snapshot.oam,
-              cgramList: snapshot.cgram,
-              hexData: snapshot.hexData
-            }));
+          // Throttle debug inspection to once per second, only when CPU tab is active
+          if (nowTime - lastDebugSnapshotTime >= 1000) {
+            lastDebugSnapshotTime = nowTime;
+            if (activeTab === 'cpu') {
+              emulator.getDebugSnapshot().then(snapshot => {
+                if (isRunningRef.current) {
+                  setEmulatorState(prev => ({
+                    ...prev,
+                    cpuState: snapshot.cpu,
+                    bgMode: snapshot.bgMode,
+                  }));
+                }
+              }).catch(() => {});
+            }
           }
         }
       } catch (err) {

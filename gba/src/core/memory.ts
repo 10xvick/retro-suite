@@ -71,6 +71,7 @@ export class Memory {
   dmaEnableCallback: (() => void) | null = null;
   dmaCntWriteCallback: ((ch: number, val: number) => void) | null = null;
   timerWriteCallback: ((timer: number, value: number) => void) | null = null;
+  timerCntWriteCallback: ((timer: number, ctrl: number) => void) | null = null;
   winVWriteCallback: ((off: number) => void) | null = null;
   irqCallback: (() => void) | null = null;
   /** Debug hook: called whenever DISPCNT (IO offset 0x000) is written by CPU/DMA. */
@@ -109,6 +110,12 @@ export class Memory {
   }
 
   private ioView: DataView;
+  private ewramView: DataView;
+  private iwramView: DataView;
+  private paletteView: DataView;
+  private vramView: DataView;
+  private oamView: DataView;
+  private cartView: DataView;
 
   constructor() {
     this.bios = new Uint8Array(BIOS_SIZE);
@@ -121,6 +128,12 @@ export class Memory {
     this.cart = new Uint8Array(0);
     this.sram = new Uint8Array(SRAM_SIZE * 2).fill(0xFF);
     this.ioView = new DataView(this.io.buffer);
+    this.ewramView = new DataView(this.ewram.buffer);
+    this.iwramView = new DataView(this.iwram.buffer);
+    this.paletteView = new DataView(this.palette.buffer);
+    this.vramView = new DataView(this.vram.buffer);
+    this.oamView = new DataView(this.oam.buffer);
+    this.cartView = new DataView(this.cart.buffer);
   }
 
   loadBios(data: Uint8Array) {
@@ -136,6 +149,7 @@ export class Memory {
     this.cart = new Uint8Array(pow2);
     this.cart.set(data.subarray(0, Math.min(data.length, pow2)));
     this.cartMask = pow2 - 1;
+    this.cartView = new DataView(this.cart.buffer);
   }
 
   // ---- SRAM / Flash ----
@@ -320,13 +334,18 @@ export class Memory {
   }
 
   private writeSiocnt(val: number) {
-    const storedVal = val & 0x7F8F;
-    this.ioView.setUint16(0x128, storedVal, true);
-    if ((val & 0x0080) && (val & 0x4000)) {
-      const curIf = this.ioView.getUint16(0x202, true);
-      this.ioView.setUint16(0x202, curIf | 0x0080, true);
-      this.halted = false;
+    const mode = (val >>> 12) & 3;
+    let storedVal = val & 0x7F8F;
+    if (val & 0x0080) {
+      // Start bit set. Without a link cable / connected slave, the transfer terminates with error.
+      // Bit 7 (Start/Busy) is cleared by hardware upon completion/timeout.
+      storedVal &= ~0x0080;
+      if (mode === 1) {
+        // Multi-player mode: set bit 6 (Error flag: no slaves responding)
+        storedVal |= 0x0040;
+      }
     }
+    this.ioView.setUint16(0x128, storedVal, true);
   }
 
   private writeRcnt(val: number) {
@@ -508,22 +527,22 @@ export class Memory {
     }
     this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios16(addr);
-    if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~1; return this.ewram[o] | (this.ewram[o + 1] << 8); }
-    if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~1; return this.iwram[o] | (this.iwram[o + 1] << 8); }
+    if (addr < 0x03000000) return this.ewramView.getUint16((addr & (EWRAM_SIZE - 1)) & ~1, true);
+    if (addr < 0x04000000) return this.iwramView.getUint16((addr & (IWRAM_SIZE - 1)) & ~1, true);
     if (addr < 0x05000000) {
       if ((addr & 0x00FFFFFF) >= 0x400) return this.getOpenBus16(addr);
       return this.ioReadMask16((addr & (IO_SIZE - 1)) & ~1, addr);
     }
-    if (addr < 0x06000000) { const o = (addr & (PALETTE_SIZE - 1)) & ~1; return this.palette[o] | (this.palette[o + 1] << 8); }
-    if (addr < 0x07000000) { const o = this.vramOffset(addr) & ~1; return this.vram[o] | (this.vram[o + 1] << 8); }
-    if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~1; return this.oam[o] | (this.oam[o + 1] << 8); }
+    if (addr < 0x06000000) return this.paletteView.getUint16((addr & (PALETTE_SIZE - 1)) & ~1, true);
+    if (addr < 0x07000000) return this.vramView.getUint16(this.vramOffset(addr) & ~1, true);
+    if (addr < 0x08000000) return this.oamView.getUint16((addr & (OAM_SIZE - 1)) & ~1, true);
     if (addr < 0x0e000000) {
       // GamePak0/1/2 mirroring
       const o = ((addr - 0x08000000) & 0x01FFFFFF) & ~1;
       if (o >= this.cartActualSize) {
         return this.getCartOpenBus16(addr);
       }
-      return this.cart[o] | (this.cart[o + 1] << 8);
+      return this.cartView.getUint16(o, true);
     }
     if (addr < 0x0f000000) {
       const b = this.sram[this.sramOffset(addr)];
@@ -539,8 +558,8 @@ export class Memory {
     }
     this.checkReadBreakpoint(addr);
     if (addr < 0x02000000) return this.readBios32(addr);
-    if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~3; return (this.ewram[o] | (this.ewram[o+1]<<8) | (this.ewram[o+2]<<16) | (this.ewram[o+3]<<24)) >>> 0; }
-    if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~3; return (this.iwram[o] | (this.iwram[o+1]<<8) | (this.iwram[o+2]<<16) | (this.iwram[o+3]<<24)) >>> 0; }
+    if (addr < 0x03000000) return this.ewramView.getUint32((addr & (EWRAM_SIZE - 1)) & ~3, true);
+    if (addr < 0x04000000) return this.iwramView.getUint32((addr & (IWRAM_SIZE - 1)) & ~3, true);
     if (addr < 0x05000000) {
       if ((addr & 0x00FFFFFF) >= 0x400) return this.getOpenBus32(addr);
       const off = (addr & (IO_SIZE - 1)) & ~3;
@@ -548,16 +567,16 @@ export class Memory {
       const hi = this.ioReadMask16((off + 2) & (IO_SIZE - 1), addr + 2);
       return ((hi << 16) | lo) >>> 0;
     }
-    if (addr < 0x06000000) { const o = (addr & (PALETTE_SIZE - 1)) & ~3; return (this.palette[o] | (this.palette[o+1]<<8) | (this.palette[o+2]<<16) | (this.palette[o+3]<<24)) >>> 0; }
-    if (addr < 0x07000000) { const o = this.vramOffset(addr) & ~3; return (this.vram[o] | (this.vram[o+1]<<8) | (this.vram[o+2]<<16) | (this.vram[o+3]<<24)) >>> 0; }
-    if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~3; return (this.oam[o] | (this.oam[o+1]<<8) | (this.oam[o+2]<<16) | (this.oam[o+3]<<24)) >>> 0; }
+    if (addr < 0x06000000) return this.paletteView.getUint32((addr & (PALETTE_SIZE - 1)) & ~3, true);
+    if (addr < 0x07000000) return this.vramView.getUint32(this.vramOffset(addr) & ~3, true);
+    if (addr < 0x08000000) return this.oamView.getUint32((addr & (OAM_SIZE - 1)) & ~3, true);
     if (addr < 0x0e000000) {
       // GamePak0/1/2 mirroring
       const o = ((addr - 0x08000000) & 0x01FFFFFF) & ~3;
       if (o >= this.cartActualSize) {
         return this.getCartOpenBus32(addr);
       }
-      return (this.cart[o] | (this.cart[o+1]<<8) | (this.cart[o+2]<<16) | (this.cart[o+3]<<24)) >>> 0;
+      return this.cartView.getUint32(o, true);
     }
     if (addr < 0x0f000000) {
       const b = this.sram[this.sramOffset(addr)];
@@ -626,16 +645,16 @@ export class Memory {
     addr >>>= 0; val &= 0xffff;
     this.checkWriteBreakpoint(addr, val);
     if (addr < 0x02000000) return;
-    if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~1; this.ewram[o]=val&0xff; this.ewram[o+1]=(val>>8)&0xff; return; }
-    if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~1; this.iwram[o]=val&0xff; this.iwram[o+1]=(val>>8)&0xff; return; }
+    if (addr < 0x03000000) { this.ewramView.setUint16((addr & (EWRAM_SIZE - 1)) & ~1, val, true); return; }
+    if (addr < 0x04000000) { this.iwramView.setUint16((addr & (IWRAM_SIZE - 1)) & ~1, val, true); return; }
     if (addr < 0x05000000) {
       if ((addr & 0x00FFFFFF) >= 0x400) return;
       this.writeIO((addr & (IO_SIZE - 1)) & ~1, val, 2);
       return;
     }
-    if (addr < 0x06000000) { const o = (addr & (PALETTE_SIZE - 1)) & ~1; this.palette[o]=val&0xff; this.palette[o+1]=(val>>8)&0xff; return; }
-    if (addr < 0x07000000) { const o = this.vramOffset(addr) & ~1; this.vram[o]=val&0xff; this.vram[o+1]=(val>>8)&0xff; return; }
-    if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~1; this.oam[o]=val&0xff; this.oam[o+1]=(val>>8)&0xff; return; }
+    if (addr < 0x06000000) { this.paletteView.setUint16((addr & (PALETTE_SIZE - 1)) & ~1, val, true); return; }
+    if (addr < 0x07000000) { this.vramView.setUint16(this.vramOffset(addr) & ~1, val, true); return; }
+    if (addr < 0x08000000) { this.oamView.setUint16((addr & (OAM_SIZE - 1)) & ~1, val, true); return; }
     if (addr < 0x0e000000) return;
     if (addr < 0x0f000000) {
       // SRAM is 8-bit bus: write only low 8 bits to specified address
@@ -648,16 +667,16 @@ export class Memory {
     addr >>>= 0; val >>>= 0;
     this.checkWriteBreakpoint(addr, val);
     if (addr < 0x02000000) return;
-    if (addr < 0x03000000) { const o = (addr & (EWRAM_SIZE - 1)) & ~3; this.ewram[o]=val; this.ewram[o+1]=val>>8; this.ewram[o+2]=val>>16; this.ewram[o+3]=val>>24; return; }
-    if (addr < 0x04000000) { const o = (addr & (IWRAM_SIZE - 1)) & ~3; this.iwram[o]=val; this.iwram[o+1]=val>>8; this.iwram[o+2]=val>>16; this.iwram[o+3]=val>>24; return; }
+    if (addr < 0x03000000) { this.ewramView.setUint32((addr & (EWRAM_SIZE - 1)) & ~3, val, true); return; }
+    if (addr < 0x04000000) { this.iwramView.setUint32((addr & (IWRAM_SIZE - 1)) & ~3, val, true); return; }
     if (addr < 0x05000000) {
       if ((addr & 0x00FFFFFF) >= 0x400) return;
       this.writeIO((addr & (IO_SIZE - 1)) & ~3, val, 4);
       return;
     }
-    if (addr < 0x06000000) { const o = (addr & (PALETTE_SIZE - 1)) & ~3; this.palette[o]=val; this.palette[o+1]=val>>8; this.palette[o+2]=val>>16; this.palette[o+3]=val>>24; return; }
-    if (addr < 0x07000000) { const o = this.vramOffset(addr) & ~3; this.vram[o]=val; this.vram[o+1]=val>>8; this.vram[o+2]=val>>16; this.vram[o+3]=val>>24; return; }
-    if (addr < 0x08000000) { const o = (addr & (OAM_SIZE - 1)) & ~3; this.oam[o]=val; this.oam[o+1]=val>>8; this.oam[o+2]=val>>16; this.oam[o+3]=val>>24; return; }
+    if (addr < 0x06000000) { this.paletteView.setUint32((addr & (PALETTE_SIZE - 1)) & ~3, val, true); return; }
+    if (addr < 0x07000000) { this.vramView.setUint32(this.vramOffset(addr) & ~3, val, true); return; }
+    if (addr < 0x08000000) { this.oamView.setUint32((addr & (OAM_SIZE - 1)) & ~3, val, true); return; }
     if (addr < 0x0e000000) return;
     if (addr < 0x0f000000) {
       // SRAM is 8-bit bus: write only low 8 bits to specified address
@@ -698,6 +717,15 @@ export class Memory {
   private timerIndexForOff(off: number): number {
     for (let t = 0; t < 4; t++) {
       const base = IO.TM0D + t * 4;
+      if (off === base || off === base + 1) return t;
+    }
+    return -1;
+  }
+
+  // Get timer index for a TMxCNT offset, or -1 if not a timer control register
+  private timerCntIndexForOff(off: number): number {
+    for (let t = 0; t < 4; t++) {
+      const base = IO.TM0CNT + t * 4;
       if (off === base || off === base + 1) return t;
     }
     return -1;
@@ -953,6 +981,15 @@ export class Memory {
     if (off <= 0x082 && off + size > 0x082) {
       const cur = this.ioView.getUint16(0x082, true);
       this.ioView.setUint16(0x082, cur & ~0x8800, true);
+    }
+    if (this.timerCntWriteCallback) {
+      for (let i = 0; i < size; i++) {
+        const tci = this.timerCntIndexForOff(off + i);
+        if (tci >= 0) {
+          const ctrl = this.ioView.getUint16(IO.TM0CNT + tci * 4, true);
+          this.timerCntWriteCallback(tci, ctrl);
+        }
+      }
     }
   }
 

@@ -1,13 +1,13 @@
 // Atari 2600 TIA (Television Interface Adaptor)
-// Handles scanline timing, playfield/player/missile/ball rendering, collision latches.
-// Clocking: called once per CPU cycle (= 3 color clocks). Scanline = 228 color clocks.
+// Pixel-accurate rendering of Playfield, Players, Missiles, Ball, Collisions, and Audio synthesis
 
-const CLOCKS_PER_SCANLINE = 228;
-const SCANLINES_PER_FRAME = 262;
-const VISIBLE_CLOCK_START = 68;
-const VISIBLE_PIXELS = 160;
+export const CLOCKS_PER_SCANLINE = 228;
+export const SCANLINES_PER_FRAME = 262;
+export const VISIBLE_CLOCK_START = 68;
+export const VISIBLE_PIXELS = 160;
+export const VISIBLE_HEIGHT = 192;
 
-// LFSR tables for TIA tone generators (index 0 = current output bit)
+// LFSR Polynomial generator for Atari TIA audio
 function buildPoly(len: number, taps: number[], init: number): Uint8Array {
     const seq = new Uint8Array(len);
     let reg = init & ((1 << Math.max(...taps)) - 1) || 1;
@@ -19,14 +19,13 @@ function buildPoly(len: number, taps: number[], init: number): Uint8Array {
     }
     return seq;
 }
-// 4-bit: 15-length; 5-bit: 31-length; 9-bit: 511-length
+
 const POLY4 = buildPoly(15, [4, 3], 0x1);
 const POLY5 = buildPoly(31, [5, 3], 0x1);
 const POLY9 = buildPoly(511, [9, 5], 0x1);
-const POLY4_LEN = 15, POLY5_LEN = 31, POLY9_LEN = 511;
 
-// Standard Atari 2600 NTSC palette (128 color entries)
-const NTSC_PALETTE: [number, number, number][] = [
+// Standard Atari 2600 NTSC palette (128 entries: 16 hues x 8 lums)
+export const NTSC_PALETTE: [number, number, number][] = [
     [0x00, 0x00, 0x00], [0x40, 0x40, 0x40], [0x6c, 0x6c, 0x6c], [0x90, 0x90, 0x90],
     [0xb0, 0xb0, 0xb0], [0xc8, 0xc8, 0xc8], [0xdc, 0xdc, 0xdc], [0xec, 0xec, 0xec],
     [0x44, 0x44, 0x00], [0x64, 0x64, 0x10], [0x84, 0x84, 0x1c], [0xa0, 0xa0, 0x2c],
@@ -66,33 +65,33 @@ const NTSC_PALETTE: [number, number, number][] = [
 ];
 
 export class TIA {
-    // Framebuffer (160x262, top 192 rows are the visible picture)
-    public framebuffer = new Uint32Array(VISIBLE_PIXELS * SCANLINES_PER_FRAME);
-    public visibleHeight = 192;
+    // Framebuffer: 160 x 192 (or 160 x 262) packed ABGR little-endian pixels
+    public framebuffer = new Uint32Array(VISIBLE_PIXELS * VISIBLE_HEIGHT);
+    public visibleHeight = VISIBLE_HEIGHT;
 
-    // Timing state
+    // Beam timing & frame synchronization
     public scanline = 0;
     public pixelClock = 0;
     public frameComplete = false;
     public wsyncRequested = false;
+    public frameLines = 262;
+    private displayTop = 34; // default start scanline of visible active video
+    private _frameStarted = false;
+    private _linesSinceFrameStart = 0;
+    private _vsyncActive = false;
 
-    // TV-style frame lock: the frame ends when the GAME starts VSYNC (like a
-    // real TV), not after a fixed 262 lines. Kernels whose timing drifts a
-    // line or two can never roll the picture. The 192-row window starts at a
-    // fixed offset below VSYNC (a real TV does the same — no auto-centering).
-    public frameLines = 262;        // measured VSYNC-to-VSYNC distance
-    private displayTop = 34;        // first kernel scanline shown (VBLANK off at 35; 37 VBLANK)
-
-    // Register values
+    // Registers
     public vsync = 0;
     public vblank = 0;
-    public ctrlpf = 0;
     public nusiz0 = 0;
     public nusiz1 = 0;
     public p0col = 0;
     public p1col = 0;
     public pfcol = 0;
     public bcol = 0;
+    public ctrlpf = 0;
+    public refp0 = 0;
+    public refp1 = 0;
     public pf0 = 0;
     public pf1 = 0;
     public pf2 = 0;
@@ -107,38 +106,43 @@ export class TIA {
     public resmp0 = 0;
     public resmp1 = 0;
 
-    // Object positions (in color clocks)
+    // Object Positions (color clocks: 0..227)
     public posP0 = 0;
     public posP1 = 0;
     public posM0 = 0;
     public posM1 = 0;
     public posBL = 0;
 
-    // Horizontal motion registers
+    // Horizontal Motion (-8..+7)
     public hmp0 = 0;
     public hmp1 = 0;
     public hmm0 = 0;
     public hmm1 = 0;
     public hmbl = 0;
 
-    // Graphics latches (after VDEL delay)
+    // Active graphics latches (affected by VDEL)
     private grp0Active = 0;
     private grp1Active = 0;
-    private enam0Active = 0;
-    private enam1Active = 0;
     private enablActive = 0;
 
-    // Collision latches (bit 7 set when latched)
-    public collM0P0 = 0; public collM0P1 = 0;
-    public collM1P0 = 0; public collM1P1 = 0;
-    public collP0PF = 0; public collP0BL = 0;
-    public collP1PF = 0; public collP1BL = 0;
-    public collM0PF = 0; public collM0BL = 0;
-    public collM1PF = 0; public collM1BL = 0;
+    // Collision Latches (bit 6/7 set)
+    public collM0P0 = 0;
+    public collM0P1 = 0;
+    public collM1P0 = 0;
+    public collM1P1 = 0;
+    public collP0PF = 0;
+    public collP0BL = 0;
+    public collP1PF = 0;
+    public collP1BL = 0;
+    public collM0PF = 0;
+    public collM0BL = 0;
+    public collM1PF = 0;
+    public collM1BL = 0;
     public collBLPF = 0;
-    public collP0P1 = 0; public collM0M1 = 0;
+    public collP0P1 = 0;
+    public collM0M1 = 0;
 
-    // Inputs (set by the emulator each frame)
+    // Controller Inputs (active low bit 7)
     public inpt0 = 0x80;
     public inpt1 = 0x80;
     public inpt2 = 0x80;
@@ -146,348 +150,478 @@ export class TIA {
     public inpt4 = 0x80;
     public inpt5 = 0x80;
 
-    private phase = 0;
+    // Audio State
+    public audc = [0, 0];
+    public audf = [0, 0];
+    public audv = [0, 0];
+    private chDiv = [114, 114];
+    private chCounter = [0, 0];
+    private p4Idx = [0, 0];
+    private p5Idx = [0, 0];
+    private p9Idx = [0, 0];
+    private sqLevel = [1, 1];
+
+    // Audio Ring Buffer (mono samples at ~31399 Hz)
+    private audioRing = new Float32Array(16384);
+    private audioWritePos = 0;
+    private audioReadPos = 0;
+    private audioCount = 0;
+    private audioClockAcc = 0;
 
     constructor() {
         this.reset();
     }
 
-    public reset() {
+    public reset(): void {
         this.scanline = 0;
         this.pixelClock = 0;
         this.frameComplete = false;
         this.wsyncRequested = false;
-        this.framebuffer.fill(0);
-        this._vsyncActive = false;
+        this.frameLines = 262;
+        this.displayTop = 34;
         this._frameStarted = false;
         this._linesSinceFrameStart = 0;
-        this.displayTop = 34;
-        this.frameLines = 262;
+        this._vsyncActive = false;
+
+        this.framebuffer.fill(0);
+
         this.vsync = 0;
         this.vblank = 0;
-        this.ctrlpf = 0;
         this.nusiz0 = 0;
         this.nusiz1 = 0;
-        this.p0col = 0; this.p1col = 0; this.pfcol = 0; this.bcol = 0;
-        this.pf0 = 0; this.pf1 = 0; this.pf2 = 0;
-        this.grp0 = 0; this.grp1 = 0;
-        this.enam0 = 0; this.enam1 = 0; this.enabl = 0;
-        this.vdelp0 = 0; this.vdelp1 = 0; this.vdelbl = 0;
-        this.resmp0 = 0; this.resmp1 = 0;
-        this.posP0 = 0; this.posP1 = 0; this.posM0 = 0; this.posM1 = 0; this.posBL = 0;
-        this.hmp0 = 0; this.hmp1 = 0; this.hmm0 = 0; this.hmm1 = 0; this.hmbl = 0;
-        this.grp0Active = 0; this.grp1Active = 0;
-        this.enam0Active = 0; this.enam1Active = 0; this.enablActive = 0;
-        this.audc[0] = 0; this.audc[1] = 0;
-        this.audf[0] = 0; this.audf[1] = 0;
-        this.audv[0] = 0; this.audv[1] = 0;
-        this.audioReadPos = 0; this.audioWritePos = 0; this.audioCount = 0; this.sampleFrac = 0;
-        this.chDiv[0] = 114; this.chDiv[1] = 114;
-        this.p4Idx[0] = 0; this.p4Idx[1] = 0;
-        this.p5Idx[0] = 0; this.p5Idx[1] = 0;
-        this.p9Idx[0] = 0; this.p9Idx[1] = 0;
-        this.sqLevel[0] = 1; this.sqLevel[1] = 1;
+        this.p0col = 0;
+        this.p1col = 0;
+        this.pfcol = 0;
+        this.bcol = 0;
+        this.ctrlpf = 0;
+        this.refp0 = 0;
+        this.refp1 = 0;
+        this.pf0 = 0;
+        this.pf1 = 0;
+        this.pf2 = 0;
+        this.grp0 = 0;
+        this.grp1 = 0;
+        this.enam0 = 0;
+        this.enam1 = 0;
+        this.enabl = 0;
+        this.vdelp0 = 0;
+        this.vdelp1 = 0;
+        this.vdelbl = 0;
+        this.resmp0 = 0;
+        this.resmp1 = 0;
+
+        this.posP0 = 0;
+        this.posP1 = 0;
+        this.posM0 = 0;
+        this.posM1 = 0;
+        this.posBL = 0;
+
+        this.hmp0 = 0;
+        this.hmp1 = 0;
+        this.hmm0 = 0;
+        this.hmm1 = 0;
+        this.hmbl = 0;
+
+        this.grp0Active = 0;
+        this.grp1Active = 0;
+        this.enablActive = 0;
+
+        this.audc = [0, 0];
+        this.audf = [0, 0];
+        this.audv = [0, 0];
+        this.chDiv = [114, 114];
+        this.chCounter = [0, 0];
+        this.p4Idx = [0, 0];
+        this.p5Idx = [0, 0];
+        this.p9Idx = [0, 0];
+        this.sqLevel = [1, 1];
+
+        this.audioWritePos = 0;
+        this.audioReadPos = 0;
+        this.audioCount = 0;
+        this.audioClockAcc = 0;
+
         this.clearCollisions();
     }
 
-    public clearCollisions() {
-        this.collM0P0 = 0; this.collM0P1 = 0;
-        this.collM1P0 = 0; this.collM1P1 = 0;
-        this.collP0PF = 0; this.collP0BL = 0;
-        this.collP1PF = 0; this.collP1BL = 0;
-        this.collM0PF = 0; this.collM0BL = 0;
-        this.collM1PF = 0; this.collM1BL = 0;
+    public clearCollisions(): void {
+        this.collM0P0 = 0;
+        this.collM0P1 = 0;
+        this.collM1P0 = 0;
+        this.collM1P1 = 0;
+        this.collP0PF = 0;
+        this.collP0BL = 0;
+        this.collP1PF = 0;
+        this.collP1BL = 0;
+        this.collM0PF = 0;
+        this.collM0BL = 0;
+        this.collM1PF = 0;
+        this.collM1BL = 0;
         this.collBLPF = 0;
-        this.collP0P1 = 0; this.collM0M1 = 0;
+        this.collP0P1 = 0;
+        this.collM0M1 = 0;
     }
 
-    // ---- Register writes ----
-    public write(addr: number, data: number) {
-        data &= 0xFF;
-        switch (addr & 0x3F) {
-            case 0x00:
-                this.vsync = data;
-                if (data !== 0 && !this._vsyncActive) {
-                    // VSYNC onset: THIS is where the TV would start a new frame.
-                    // End the current frame here (TV-style frame lock).
-                    this.frameLines = this._frameStarted
-                        ? this._linesSinceFrameStart : 262;
-                    this.endFrame();
-                    this._vsyncActive = true;
-                } else if (data === 0 && this._vsyncActive) {
-                    // VSYNC end: the new frame begins (real TV behavior)
-                    this._vsyncActive = false;
-                    this.startFrame();
-                }
-                break;
-            case 0x01: this.vblank = data; break;
-            case 0x02: this.wsyncRequested = true; break; // WSYNC - CPU halts until end of scanline
-            case 0x03: break; // RSYNC
-            case 0x04: this.nusiz0 = data; break;
-            case 0x05: this.nusiz1 = data; break;
-            case 0x06: this.p0col = data; break;
-            case 0x07: this.p1col = data; break;
-            case 0x08: this.pfcol = data; break;
-            case 0x09: this.bcol = data; break;
-            case 0x0A: this.ctrlpf = data; break; // CTRLPF: reflect/score/priority/ball size
-            case 0x0B: this.pf0 = data; break;
-            case 0x0C: this.pf1 = data; break;
-            case 0x0D: this.pf2 = data; break;
-            // RESP/RESM/RESBL: reset object position to the current color clock.
-            // Writes during HBLANK (clk < 68) place the object ~3 pixels into
-            // the visible area on real hardware (counter starts at 0).
-            case 0x0E: this.posP0 = this.respPosition(); break; // RESP0
-            case 0x0F: this.posP1 = this.respPosition(); break; // RESP1
-            case 0x10: this.posM0 = this.respPosition(); break; // RESM0
-            case 0x11: this.posM1 = this.respPosition(); break; // RESM1
-            case 0x12: this.posBL = this.respPosition(); break; // RESBL
-            case 0x13: this.audc[0] = data; break; // AUDC0
-            case 0x14: this.audc[1] = data; break; // AUDC1
-            case 0x15: this.audf[0] = data & 0x1F; break; // AUDF0
-            case 0x16: this.audf[1] = data & 0x1F; break; // AUDF1
-            case 0x17: this.audv[0] = data & 0x0F; break; // AUDV0
-            case 0x18: this.audv[1] = data & 0x0F; break; // AUDV1
-            case 0x19: this.hmp0 = (data >> 4) & 0x0F; break; // HMP0
-            case 0x1A: this.hmp1 = (data >> 4) & 0x0F; break; // HMP1
-            case 0x1B:
-                this.grp0 = data; // GRP0
-                // VDELP1: writing GRP0 latches GRP1 into the active register
-                if (this.vdelp1) this.grp1Active = this.grp1;
-                // VDELP0 (not set): GRP0 becomes active immediately
-                if (!this.vdelp0) this.grp0Active = data;
-                break;
-            case 0x1C:
-                this.grp1 = data; // GRP1
-                // VDELP0: writing GRP1 latches GRP0 into the active register
-                if (this.vdelp0) this.grp0Active = this.grp0;
-                // VDELBL: writing GRP1 latches ENABL into the active register
-                if (this.vdelbl) this.enablActive = this.enabl;
-                // VDELP1 (not set): GRP1 becomes active immediately
-                if (!this.vdelp1) this.grp1Active = data;
-                break;
-            case 0x1D:
-                this.enam0 = data & 0x01;
-                if (!this.vdelp0) this.enam0Active = this.enam0;
-                break;
-            case 0x1E:
-                this.enam1 = data & 0x01;
-                if (!this.vdelp1) this.enam1Active = this.enam1;
-                break;
-            case 0x1F:
-                this.enabl = data & 0x01;
-                // VDELBL (not set): ball enable becomes active immediately
-                if (!this.vdelbl) this.enablActive = this.enabl;
-                break;
-            case 0x20: this.hmm0 = (data >> 4) & 0x0F; break; // HMM0
-            case 0x21: this.hmm1 = (data >> 4) & 0x0F; break; // HMM1
-            case 0x22: this.hmbl = (data >> 4) & 0x0F; break; // HMBL
-            case 0x23: this.vdelp0 = data & 0x01; break;
-            case 0x24: this.vdelp1 = data & 0x01; break;
-            case 0x25: this.vdelbl = data & 0x01; break;
-            case 0x26: this.resmp0 = data & 0x01; break;
-            case 0x27: this.resmp1 = data & 0x01; break;
-            case 0x28: this.applyHMOVE(); break;
-            case 0x29: this.hmp0 = 0; this.hmp1 = 0; this.hmm0 = 0; this.hmm1 = 0; this.hmbl = 0; break;
-            case 0x2A: this.clearCollisions(); break;
-            default: break;
-        }
-    }
-
-    // ---- Register reads ----
-    public read(addr: number): number {
-        switch (addr & 0x3F) {
-            case 0x00: return this.collM0P0 | this.collM0P1;
-            case 0x01: return this.collM1P0 | this.collM1P1;
-            case 0x02: return this.collP0PF | this.collP0BL;
-            case 0x03: return this.collP1PF | this.collP1BL;
-            case 0x04: return this.collM0PF | this.collM0BL;
-            case 0x05: return this.collM1PF | this.collM1BL;
-            case 0x06: return this.collBLPF;
-            case 0x07: return this.collP0P1 | this.collM0M1;
-            case 0x08: return this.inpt0;
-            case 0x09: return this.inpt1;
-            case 0x0A: return this.inpt2;
-            case 0x0B: return this.inpt3;
-            case 0x0C: return this.inpt4;
-            case 0x0D: return this.inpt5;
-            default: return 0xFF; // open bus
-        }
-    }
-
-    // Position resulting from a RESP/RESM/RESBL write at the current clock.
-    private respPosition(): number {
-        const pos = (this.pixelClock + 1) % CLOCKS_PER_SCANLINE;
-        if (pos < VISIBLE_CLOCK_START) return VISIBLE_CLOCK_START;
-        return pos;
-    }
-
-    // HMOVE: apply horizontal motion registers (motion amount = hmp value)
-    private applyHMOVE() {
-        const apply = (pos: number, hmp: number) => {
-            // Real TIA: motion = (hmp ^ 0x08) - 0x08, giving -8..+7 color clocks.
-            // hmp 0-7 => move right 1-8... per Stella: 0x00-0x70 => -8..+7.
-            const motion = ((hmp ^ 0x08) - 0x08);
-            return (pos + motion + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
-        };
-        this.posP0 = apply(this.posP0, this.hmp0);
-        this.posP1 = apply(this.posP1, this.hmp1);
-        this.posM0 = apply(this.posM0, this.hmm0);
-        this.posM1 = apply(this.posM1, this.hmm1);
-        this.posBL = apply(this.posBL, this.hmbl);
-    }
-
-    // Advance one CPU cycle (3 color clocks)
-    public clock() {
+    // Advance 1 CPU cycle = 3 TIA color clocks
+    public clock(): void {
         for (let i = 0; i < 3; i++) {
-            this.audioClockColor();
-            this.renderPixel();
-            this.pixelClock = (this.pixelClock + 1) % CLOCKS_PER_SCANLINE;
-            if (this.pixelClock === 0) {
-                this.onScanlineEnd();
-            }
+            this.clockColor();
         }
 
-        // WSYNC releases exactly at the end of the scanline (clock 0 of the
-        // next line), matching real hardware timing.
+        // Release WSYNC at the end of the scanline
         if (this.wsyncRequested && this.pixelClock === 0) {
             this.wsyncRequested = false;
         }
     }
 
-    private onScanlineEnd() {
-        this.scanline++;
-        this._linesSinceFrameStart++;
-        if (this.frameComplete) return; // frame already ended via VSYNC lock
-        if (this._linesSinceFrameStart >= 320) {
-            // Safety net: game never asserted VSYNC (crashed kernel) — end
-            // anyway. Must exceed any LEGAL kernel frame (some run 265-280
-            // lines); a 262 cutoff would chop the frame before its VSYNC and
-            // shatter the picture into fragments.
-            this.endFrame();
+    private clockColor(): void {
+        this.renderPixel();
+        this.clockAudio();
+
+        this.pixelClock++;
+        if (this.pixelClock >= CLOCKS_PER_SCANLINE) {
+            this.pixelClock = 0;
+            this.onScanlineEnd();
         }
     }
 
-    private _contentFound = false;
-    private _vsyncActive = false;
-    private _frameStarted = false;
-    private _linesSinceFrameStart = 0;
+    private onScanlineEnd(): void {
+        this.scanline++;
+        this._linesSinceFrameStart++;
 
-    private endFrame() {
-        this.frameComplete = true;
-        this._frameStarted = false;
+        // Reset missile to player if RESMP is active
+        if (this.resmp0) this.posM0 = (this.posP0 + 4) % CLOCKS_PER_SCANLINE;
+        if (this.resmp1) this.posM1 = (this.posP1 + 4) % CLOCKS_PER_SCANLINE;
+
+        if (this.frameComplete) return;
+
+        // Safety fallback if game kernel fails to assert VSYNC
+        if (this._linesSinceFrameStart >= 320) {
+            this.frameComplete = true;
+            this._frameStarted = false;
+        }
     }
 
-    private startFrame() {
-        // Clear stale content from last frame BEFORE drawing the new one (the
-        // shell reads the buffer after runFrame returns, so it must still hold
-        // the finished picture here — clearing at endFrame would blank it).
+    private startFrame(): void {
         this.framebuffer.fill(0);
         this.scanline = 0;
         this._linesSinceFrameStart = 0;
         this._frameStarted = true;
     }
 
-    // Decode NUSIZ: returns { size, copies: number[] } per real TIA semantics.
-    // NUSIZ 0-7: 0=one copy, 1=two close (16), 2=two medium (32),
-    // 3=three close (16,32), 4=two wide (64), 5=ONE double-size copy,
-    // 6=three medium (32,64), 7=ONE quad-size copy.
-    private decodeNusiz(nusiz: number): { size: number; copies: number[]; missile: boolean } {
-        const code = nusiz & 0x07;
-        let size = 1;
-        let copies: number[] = [0];
-        switch (code) {
-            case 0: size = 1; copies = [0]; break;
-            case 1: size = 1; copies = [0, 16]; break;
-            case 2: size = 1; copies = [0, 32]; break;
-            case 3: size = 1; copies = [0, 16, 32]; break;
-            case 4: size = 1; copies = [0, 64]; break;
-            case 5: size = 2; copies = [0]; break;
-            case 6: size = 1; copies = [0, 32, 64]; break;
-            case 7: size = 4; copies = [0]; break;
-        }
-        return { size, copies, missile: (nusiz & 0x20) !== 0 };
+    private endFrame(): void {
+        this.frameComplete = true;
+        this._frameStarted = false;
     }
 
-    private renderPixel() {
-        const clock = this.pixelClock;
-        if (clock < VISIBLE_CLOCK_START) return;
+    // Position resulting from a strobe write (RESP0, RESP1, etc.)
+    private respPosition(): number {
+        // Strobe takes effect immediately; near HBLANK, object appears around start of visible line
+        const pos = (this.pixelClock + 4) % CLOCKS_PER_SCANLINE;
+        return pos;
+    }
 
-        const x = clock - VISIBLE_CLOCK_START;
+    // Apply HMOVE horizontal motion
+    private applyHMOVE(): void {
+        const move = (pos: number, val: number) => {
+            // Signed 4-bit nibble (-8..+7)
+            const motion = (val ^ 0x08) - 0x08;
+            return (pos - motion + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
+        };
+
+        this.posP0 = move(this.posP0, this.hmp0);
+        this.posP1 = move(this.posP1, this.hmp1);
+        this.posM0 = move(this.posM0, this.hmm0);
+        this.posM1 = move(this.posM1, this.hmm1);
+        this.posBL = move(this.posBL, this.hmbl);
+    }
+
+    // TIA Memory Writes ($00-$3F)
+    public write(addr: number, data: number): void {
+        data &= 0xFF;
+        const reg = addr & 0x3F;
+
+        switch (reg) {
+            case 0x00: // VSYNC
+                this.vsync = data;
+                if ((data & 0x02) !== 0 && !this._vsyncActive) {
+                    this.frameLines = this._frameStarted ? this._linesSinceFrameStart : 262;
+                    this.endFrame();
+                    this._vsyncActive = true;
+                } else if ((data & 0x02) === 0 && this._vsyncActive) {
+                    this._vsyncActive = false;
+                    this.startFrame();
+                }
+                break;
+            case 0x01: // VBLANK
+                this.vblank = data;
+                break;
+            case 0x02: // WSYNC
+                this.wsyncRequested = true;
+                break;
+            case 0x03: // RSYNC
+                this.pixelClock = 0;
+                break;
+            case 0x04: // NUSIZ0
+                this.nusiz0 = data;
+                break;
+            case 0x05: // NUSIZ1
+                this.nusiz1 = data;
+                break;
+            case 0x06: // COLUP0
+                this.p0col = data;
+                break;
+            case 0x07: // COLUP1
+                this.p1col = data;
+                break;
+            case 0x08: // COLUPF
+                this.pfcol = data;
+                break;
+            case 0x09: // COLUBK
+                this.bcol = data;
+                break;
+            case 0x0A: // CTRLPF
+                this.ctrlpf = data;
+                break;
+            case 0x0B: // REFP0
+                this.refp0 = data;
+                break;
+            case 0x0C: // REFP1
+                this.refp1 = data;
+                break;
+            case 0x0D: // PF0
+                this.pf0 = data;
+                break;
+            case 0x0E: // PF1
+                this.pf1 = data;
+                break;
+            case 0x0F: // PF2
+                this.pf2 = data;
+                break;
+            case 0x10: // RESP0
+                this.posP0 = this.respPosition();
+                break;
+            case 0x11: // RESP1
+                this.posP1 = this.respPosition();
+                break;
+            case 0x12: // RESM0
+                this.posM0 = this.respPosition();
+                break;
+            case 0x13: // RESM1
+                this.posM1 = this.respPosition();
+                break;
+            case 0x14: // RESBL
+                this.posBL = this.respPosition();
+                break;
+            case 0x15: // AUDC0
+                this.audc[0] = data & 0x0F;
+                break;
+            case 0x16: // AUDC1
+                this.audc[1] = data & 0x0F;
+                break;
+            case 0x17: // AUDF0
+                this.audf[0] = data & 0x1F;
+                break;
+            case 0x18: // AUDF1
+                this.audf[1] = data & 0x1F;
+                break;
+            case 0x19: // AUDV0
+                this.audv[0] = data & 0x0F;
+                break;
+            case 0x1A: // AUDV1
+                this.audv[1] = data & 0x0F;
+                break;
+            case 0x1B: // GRP0
+                this.grp0 = data;
+                if (!this.vdelp0) this.grp0Active = data;
+                if (this.vdelp1) this.grp1Active = this.grp1;
+                break;
+            case 0x1C: // GRP1
+                this.grp1 = data;
+                if (!this.vdelp1) this.grp1Active = data;
+                if (this.vdelp0) this.grp0Active = this.grp0;
+                if (this.vdelbl) this.enablActive = this.enabl;
+                break;
+            case 0x1D: // ENAM0
+                this.enam0 = data & 0x02;
+                break;
+            case 0x1E: // ENAM1
+                this.enam1 = data & 0x02;
+                break;
+            case 0x1F: // ENABL
+                this.enabl = data & 0x02;
+                if (!this.vdelbl) this.enablActive = this.enabl;
+                break;
+            case 0x20: // HMP0
+                this.hmp0 = (data >> 4) & 0x0F;
+                break;
+            case 0x21: // HMP1
+                this.hmp1 = (data >> 4) & 0x0F;
+                break;
+            case 0x22: // HMM0
+                this.hmm0 = (data >> 4) & 0x0F;
+                break;
+            case 0x23: // HMM1
+                this.hmm1 = (data >> 4) & 0x0F;
+                break;
+            case 0x24: // HMBL
+                this.hmbl = (data >> 4) & 0x0F;
+                break;
+            case 0x25: // VDELP0
+                this.vdelp0 = data & 0x01;
+                break;
+            case 0x26: // VDELP1
+                this.vdelp1 = data & 0x01;
+                break;
+            case 0x27: // VDELBL
+                this.vdelbl = data & 0x01;
+                break;
+            case 0x28: // RESMP0
+                this.resmp0 = data & 0x02;
+                if (this.resmp0) this.posM0 = (this.posP0 + 4) % CLOCKS_PER_SCANLINE;
+                break;
+            case 0x29: // RESMP1
+                this.resmp1 = data & 0x02;
+                if (this.resmp1) this.posM1 = (this.posP1 + 4) % CLOCKS_PER_SCANLINE;
+                break;
+            case 0x2A: // HMOVE
+                this.applyHMOVE();
+                break;
+            case 0x2B: // HMCLR
+                this.hmp0 = 0; this.hmp1 = 0; this.hmm0 = 0; this.hmm1 = 0; this.hmbl = 0;
+                break;
+            case 0x2C: // CXCLR
+                this.clearCollisions();
+                break;
+        }
+    }
+
+    // TIA Memory Reads ($00-$0D)
+    public read(addr: number): number {
+        const reg = addr & 0x0F;
+        switch (reg) {
+            case 0x00: return this.collM0P1 | (this.collM0P0 >> 1); // CXM0P: bit 7 = M0-P1, bit 6 = M0-P0
+            case 0x01: return this.collM1P0 | (this.collM1P1 >> 1); // CXM1P: bit 7 = M1-P0, bit 6 = M1-P1
+            case 0x02: return this.collP0PF | (this.collP0BL >> 1); // CXP0FB: bit 7 = P0-PF, bit 6 = P0-BL
+            case 0x03: return this.collP1PF | (this.collP1BL >> 1); // CXP1FB: bit 7 = P1-PF, bit 6 = P1-BL
+            case 0x04: return this.collM0PF | (this.collM0BL >> 1); // CXM0FB: bit 7 = M0-PF, bit 6 = M0-BL
+            case 0x05: return this.collM1PF | (this.collM1BL >> 1); // CXM1FB: bit 7 = M1-PF, bit 6 = M1-BL
+            case 0x06: return this.collBLPF;                        // CXBLPF: bit 7 = BL-PF
+            case 0x07: return this.collP0P1 | (this.collM0M1 >> 1); // CXPPMM: bit 7 = P0-P1, bit 6 = M0-M1
+            case 0x08: return this.inpt0;
+            case 0x09: return this.inpt1;
+            case 0x0A: return this.inpt2;
+            case 0x0B: return this.inpt3;
+            case 0x0C: return this.inpt4;
+            case 0x0D: return this.inpt5;
+            default: return 0xFF;
+        }
+    }
+
+    // Helper: evaluate player sprite bit at current clock
+    private getPlayerPixel(playerPos: number, grp: number, refp: number, nusiz: number): boolean {
+        if (grp === 0) return false;
+        const code = nusiz & 0x07;
+
+        // Player copy offsets and sizing
+        let copies: number[];
+        let pixelWidth = 1;
+
+        switch (code) {
+            case 0: copies = [0]; pixelWidth = 1; break;
+            case 1: copies = [0, 16]; pixelWidth = 1; break;
+            case 2: copies = [0, 32]; pixelWidth = 1; break;
+            case 3: copies = [0, 16, 32]; pixelWidth = 1; break;
+            case 4: copies = [0, 64]; pixelWidth = 1; break;
+            case 5: copies = [0]; pixelWidth = 2; break; // Double size
+            case 6: copies = [0, 32, 64]; pixelWidth = 1; break;
+            case 7: copies = [0]; pixelWidth = 4; break; // Quad size
+            default: copies = [0]; pixelWidth = 1; break;
+        }
+
+        const totalWidth = 8 * pixelWidth;
+        const clk = this.pixelClock;
+
+        for (let i = 0; i < copies.length; i++) {
+            const origin = (playerPos + copies[i]) % CLOCKS_PER_SCANLINE;
+            const diff = (clk - origin + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
+            if (diff < totalWidth) {
+                const bitIndex = Math.floor(diff / pixelWidth);
+                const bit = (refp & 0x08) !== 0 ? (bitIndex) : (7 - bitIndex);
+                if ((grp & (1 << bit)) !== 0) return true;
+            }
+        }
+        return false;
+    }
+
+    // Helper: evaluate missile pixel
+    private getMissilePixel(missilePos: number, enabled: number, nusiz: number): boolean {
+        if (!enabled) return false;
+        const sizeCode = (nusiz >> 4) & 0x03;
+        const width = 1 << sizeCode; // 1, 2, 4, or 8 clocks
+        const clk = this.pixelClock;
+        const diff = (clk - missilePos + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
+        return diff < width;
+    }
+
+    // Helper: evaluate ball pixel
+    private getBallPixel(ballPos: number, enabled: number, ctrlpf: number): boolean {
+        if (!enabled) return false;
+        const sizeCode = (ctrlpf >> 4) & 0x03;
+        const width = 1 << sizeCode; // 1, 2, 4, or 8 clocks
+        const clk = this.pixelClock;
+        const diff = (clk - ballPos + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
+        return diff < width;
+    }
+
+    private renderPixel(): void {
+        const clk = this.pixelClock;
+        if (clk < VISIBLE_CLOCK_START) return;
+
+        const x = clk - VISIBLE_CLOCK_START;
         if (x >= VISIBLE_PIXELS) return;
 
         const line = this.scanline;
         if (line >= SCANLINES_PER_FRAME) return;
 
-        // Background
-        let color = this.bcol;
+        // ---- 1. Playfield Bit ----
         let pfOn = false;
-        let p0On = false, p1On = false, m0On = false, m1On = false, blOn = false;
+        const reflect = (this.ctrlpf & 0x01) !== 0;
+        const pfPixel = x >> 2; // 0..39 playfield pixels
 
-        // ---- Playfield ----
-        // Each PF register bit is 4 color clocks wide. Left half: PF0 (nibbles
-        // 4-7, MSB-first), PF1 (all 8 bits, MSB-first), PF2 (8 bits, LSB-first).
-        // Right half mirrors the left when CTRLPF bit0 is set; otherwise it is
-        // a copy of the same sequence in forward order.
-        {
-            const p = clock - VISIBLE_CLOCK_START; // 0..159
-            const reflect = (this.ctrlpf & 0x01) !== 0;
-            let pfBit = 0;
-            if (p < 80) {
-                // Left half: 20 playfield pixels of 4 clocks each
-                const idx = p >> 2; // 0..19
-                if (idx < 4) pfBit = (this.pf0 >> (7 - idx)) & 0x01;
-                else if (idx < 12) pfBit = (this.pf1 >> (11 - idx)) & 0x01;
-                else pfBit = (this.pf2 >> (idx - 12)) & 0x01;
+        if (pfPixel < 20) {
+            // Left half
+            if (pfPixel < 4) pfOn = ((this.pf0 >> (4 + pfPixel)) & 1) !== 0;
+            else if (pfPixel < 12) pfOn = ((this.pf1 >> (11 - pfPixel)) & 1) !== 0;
+            else pfOn = ((this.pf2 >> (pfPixel - 12)) & 1) !== 0;
+        } else {
+            // Right half (reflected or repeated)
+            const rPixel = pfPixel - 20;
+            if (reflect) {
+                const mirr = 19 - rPixel;
+                if (mirr < 4) pfOn = ((this.pf0 >> (4 + mirr)) & 1) !== 0;
+                else if (mirr < 12) pfOn = ((this.pf1 >> (11 - mirr)) & 1) !== 0;
+                else pfOn = ((this.pf2 >> (mirr - 12)) & 1) !== 0;
             } else {
-                // Right half: mirrored or repeated
-                const idx = (p - 80) >> 2; // 0..19
-                if (reflect) {
-                    const midx = 19 - idx;
-                    if (midx < 4) pfBit = (this.pf0 >> (7 - midx)) & 0x01;
-                    else if (midx < 12) pfBit = (this.pf1 >> (11 - midx)) & 0x01;
-                    else pfBit = (this.pf2 >> (midx - 12)) & 0x01;
-                } else {
-                    // Non-reflected: right half repeats PF0's LOW nibble
-                    // (real TIA behavior — PF0 high nibble is left-half only)
-                    if (idx < 4) pfBit = (this.pf0 >> idx) & 0x01;
-                    else if (idx < 12) pfBit = (this.pf1 >> (11 - idx)) & 0x01;
-                    else pfBit = (this.pf2 >> (idx - 12)) & 0x01;
-                }
+                if (rPixel < 4) pfOn = ((this.pf0 >> (4 + rPixel)) & 1) !== 0;
+                else if (rPixel < 12) pfOn = ((this.pf1 >> (11 - rPixel)) & 1) !== 0;
+                else pfOn = ((this.pf2 >> (rPixel - 12)) & 1) !== 0;
             }
-            pfOn = pfBit !== 0;
         }
 
-        // ---- Player/Missile/Ball positions ----
-        const checkObject = (pos: number, nusiz: number): boolean => {
-            const { size, copies } = this.decodeNusiz(nusiz);
-            for (const off of copies) {
-                const target = (pos + off) % CLOCKS_PER_SCANLINE;
-                const diff = (clock - target + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
-                if (diff < size) return true;
-            }
-            return false;
-        };
+        // ---- 2. Objects ----
+        const p0On = this.getPlayerPixel(this.posP0, this.grp0Active, this.refp0, this.nusiz0);
+        const p1On = this.getPlayerPixel(this.posP1, this.grp1Active, this.refp1, this.nusiz1);
+        const m0On = !this.resmp0 && this.getMissilePixel(this.posM0, this.enam0, this.nusiz0);
+        const m1On = !this.resmp1 && this.getMissilePixel(this.posM1, this.enam1, this.nusiz1);
+        const blOn = this.getBallPixel(this.posBL, this.enablActive, this.ctrlpf);
 
-        p0On = checkObject(this.posP0, this.nusiz0);
-        p1On = checkObject(this.posP1, this.nusiz1);
-
-        // Missiles: need ENAM enabled and RESMP cleared
-        if (this.enam0Active && !this.resmp0 && this.grpHit(this.grp0Active, this.posP0, this.nusiz0, this.posM0, clock)) {
-            m0On = true;
-        }
-        if (this.enam1Active && !this.resmp1 && this.grpHit(this.grp1Active, this.posP1, this.nusiz1, this.posM1, clock)) {
-            m1On = true;
-        }
-        if (this.enablActive) {
-            blOn = checkObject(this.posBL, (0x20 | 0x01)); // ball: 1x with double width
-        }
-
-        // ---- Collision detection (only in visible area) ----
-        if (!this.vblank) {
-            if (p0On && m0On) this.collM0P0 = 0x80;
-            if (p1On && m0On) this.collM0P1 = 0x80;
-            if (p0On && m1On) this.collM1P0 = 0x80;
-            if (p1On && m1On) this.collM1P1 = 0x80;
+        // ---- 3. Collisions (latched only outside VBLANK) ----
+        if ((this.vblank & 0x02) === 0) {
+            if (m0On && p1On) this.collM0P1 = 0x80;
+            if (m0On && p0On) this.collM0P0 = 0x80;
+            if (m1On && p0On) this.collM1P0 = 0x80;
+            if (m1On && p1On) this.collM1P1 = 0x80;
             if (p0On && pfOn) this.collP0PF = 0x80;
             if (p0On && blOn) this.collP0BL = 0x80;
             if (p1On && pfOn) this.collP1PF = 0x80;
@@ -501,229 +635,168 @@ export class TIA {
             if (m0On && m1On) this.collM0M1 = 0x80;
         }
 
-        // ---- Priority resolution ----
-        const playfieldInFront = (this.ctrlpf & 0x04) !== 0;
-        const spritePresent = p0On || p1On || m0On || m1On || blOn;
+        // If VBLANK is enabled, screen is black
+        if ((this.vblank & 0x02) !== 0) return;
 
-        if (playfieldInFront) {
-            if (pfOn) color = this.pfcol;
-            else if (spritePresent) color = this.spriteColor(p0On, p1On, m0On, m1On, blOn);
-        } else {
-            if (spritePresent) color = this.spriteColor(p0On, p1On, m0On, m1On, blOn);
-            else if (pfOn) color = this.pfcol;
+        // ---- 4. Priority Resolution & Pixel Color ----
+        const priorityPF = (this.ctrlpf & 0x04) !== 0;
+        const scoreMode = (this.ctrlpf & 0x02) !== 0;
+
+        // Determine Playfield color (Score mode uses COLUP0 left, COLUP1 right)
+        let curPfCol = this.pfcol;
+        if (scoreMode) {
+            curPfCol = x < 80 ? this.p0col : this.p1col;
         }
 
-        // TIA color $XY: X = hue (palette row), Y = luminance (column).
-        // The table is hue-major (16 hues x 8 lums) — a linear index would
-        // scramble hues (e.g. $85 purple -> gray).
-        const pal = NTSC_PALETTE[(((color >> 4) & 0x0F) << 3) | (color & 0x07)] ?? NTSC_PALETTE[0];
-        // Map the physical scanline into the 192-row display window (TV-style
-        // vertical hold: the window tracks the content, so kernels that start
-        // a line or two off still fill the screen identically every frame).
-        const dispLine = line - this.displayTop;
-        if (dispLine < 0 || dispLine >= 192) return;
-        this.framebuffer[dispLine * VISIBLE_PIXELS + x] = (0xFF << 24) | (pal[0] << 16) | (pal[1] << 8) | pal[2];
+        let pixelColor = this.bcol;
+
+        if (priorityPF) {
+            // Playfield / Ball priority
+            if (pfOn) pixelColor = curPfCol;
+            else if (blOn) pixelColor = this.pfcol;
+            else if (p0On || m0On) pixelColor = this.p0col;
+            else if (p1On || m1On) pixelColor = this.p1col;
+        } else {
+            // Player / Missile priority
+            if (p0On || m0On) pixelColor = this.p0col;
+            else if (p1On || m1On) pixelColor = this.p1col;
+            else if (pfOn) pixelColor = curPfCol;
+            else if (blOn) pixelColor = this.pfcol;
+        }
+
+        // Palette lookup: hue = high nibble (0..15), lum = low nibble & 0x0E >> 1 (0..7)
+        const hue = (pixelColor >> 4) & 0x0F;
+        const lum = (pixelColor >> 1) & 0x07;
+        const rgb = NTSC_PALETTE[(hue << 3) | lum] || NTSC_PALETTE[0];
+
+        // Framebuffer mapping into 192 visible lines
+        const dispY = line - this.displayTop;
+        if (dispY >= 0 && dispY < VISIBLE_HEIGHT) {
+            // ABGR 32-bit packed
+            this.framebuffer[dispY * VISIBLE_PIXELS + x] =
+                (0xFF << 24) | (rgb[2] << 16) | (rgb[1] << 8) | rgb[0];
+        }
     }
 
-    private grpHit(grp: number, playerPos: number, playerNusiz: number, missilePos: number, clock: number): boolean {
-        // Simple missile rendering: missile appears when it overlaps the player's
-        // graphic position region. The missile is 1-2 clocks wide.
-        const { size } = this.decodeNusiz(playerNusiz);
-        const diff = (clock - missilePos + CLOCKS_PER_SCANLINE) % CLOCKS_PER_SCANLINE;
-        return diff < (size === 8 ? 8 : 2);
+    // Audio clocking: called every color clock (~3.58 MHz)
+    private clockAudio(): void {
+        this.audioClockAcc++;
+        // Downsample from 3.579545 MHz color clock to ~31399 Hz (every 114 color clocks)
+        if (this.audioClockAcc >= 114) {
+            this.audioClockAcc = 0;
+            this.generateAudioSample();
+        }
     }
 
-    private spriteColor(p0On: boolean, p1On: boolean, m0On: boolean, m1On: boolean, blOn: boolean): number {
-        // Priority: player0 > player1 > missile0 > missile1 > ball
-        if (p0On) return this.p0col;
-        if (p1On) return this.p1col;
-        if (blOn) return this.bcol;
-        if (m0On) return this.p0col;
-        if (m1On) return this.p1col;
-        return this.bcol;
+    private generateAudioSample(): void {
+        let sample = 0;
+
+        for (let ch = 0; ch < 2; ch++) {
+            const c = this.audc[ch];
+            const f = this.audf[ch] + 1;
+            const v = this.audv[ch];
+
+            this.chCounter[ch]++;
+            if (this.chCounter[ch] >= f) {
+                this.chCounter[ch] = 0;
+                this.p4Idx[ch] = (this.p4Idx[ch] + 1) % 15;
+                this.p5Idx[ch] = (this.p5Idx[ch] + 1) % 31;
+                this.p9Idx[ch] = (this.p9Idx[ch] + 1) % 511;
+                this.sqLevel[ch] ^= 1;
+            }
+
+            let bit = 1;
+            switch (c) {
+                case 0: case 11: bit = 1; break;
+                case 1: bit = POLY4[this.p4Idx[ch]]; break;
+                case 2: bit = (this.p4Idx[ch] & 1) ? POLY4[this.p4Idx[ch]] : 1; break;
+                case 3: bit = POLY5[this.p5Idx[ch]]; break;
+                case 4: case 5: bit = this.sqLevel[ch]; break;
+                case 6: case 10: bit = (this.p5Idx[ch] % 2 === 0) ? 1 : 0; break;
+                case 7: case 9: bit = POLY5[this.p5Idx[ch]]; break;
+                case 8: bit = POLY9[this.p9Idx[ch]]; break;
+                case 12: case 13: bit = this.sqLevel[ch]; break;
+                case 14: bit = POLY5[this.p5Idx[ch]]; break;
+                case 15: bit = POLY4[this.p4Idx[ch]]; break;
+            }
+
+            const channelSample = bit ? (v / 15.0) : -(v / 15.0);
+            sample += channelSample * 0.5;
+        }
+
+        // Enqueue into ring buffer
+        if (this.audioCount < this.audioRing.length) {
+            this.audioRing[this.audioWritePos] = sample;
+            this.audioWritePos = (this.audioWritePos + 1) % this.audioRing.length;
+            this.audioCount++;
+        }
     }
 
-    public getFrameBuffer(): Uint32Array {
-        return this.framebuffer;
-    }
-
-    // ===================== Audio =====================
-    // Two tone generators clocked off the color clock. One output sample is
-    // produced every 114 color clocks => 3579545/114 ~= 31399 Hz.
-    public audc = [0, 0];
-    public audf = [0, 0];
-    public audv = [0, 0];
-
-    private audioBuf = new Float32Array(16384);
-    private audioReadPos = 0;
-    private audioWritePos = 0;
-    private audioCount = 0;
-    private sampleFrac = 0;
-
-    // Per-channel divider + poly-counter state
-    private chDiv = [0, 0];
-    private p4Idx = [0, 0];
-    private p5Idx = [0, 0];
-    private p9Idx = [0, 0];
-    private sqLevel = [1, 1];
-
+    // Audio interface for WebAudio
     public get audioSamplesAvailable(): number {
         return this.audioCount;
     }
 
-    /** Drain up to out.length mono samples; returns how many were written. */
-    public drainAudio(out: Float32Array): number {
-        let n = 0;
-        while (n < out.length && this.audioCount > 0) {
-            out[n++] = this.audioBuf[this.audioReadPos];
-            this.audioReadPos = (this.audioReadPos + 1) % this.audioBuf.length;
-            this.audioCount--;
+    public drainAudio(outBuf: Float32Array): number {
+        const toCopy = Math.min(outBuf.length, this.audioCount);
+        for (let i = 0; i < toCopy; i++) {
+            outBuf[i] = this.audioRing[this.audioReadPos];
+            this.audioReadPos = (this.audioReadPos + 1) % this.audioRing.length;
         }
-        return n;
-    }
-
-    private pushSample(v: number) {
-        if (this.audioCount >= this.audioBuf.length) {
-            // Buffer full: drop oldest sample to keep latency bounded.
-            this.audioReadPos = (this.audioReadPos + 1) % this.audioBuf.length;
-            this.audioCount--;
-        }
-        this.audioBuf[this.audioWritePos] = v;
-        this.audioWritePos = (this.audioWritePos + 1) % this.audioBuf.length;
-        this.audioCount++;
-    }
-
-    /** Advance audio by one color clock. */
-    private audioClockColor() {
-        this.tickChannel(0);
-        this.tickChannel(1);
-
-        this.sampleFrac++;
-        if (this.sampleFrac >= 114) {
-            this.sampleFrac -= 114;
-            const s0 = this.channelOutput(0);
-            const s1 = this.channelOutput(1);
-            // Each channel contributes -15..+15; normalize summed mix to -1..1.
-            const mixed = (s0 + s1) / 30;
-            this.pushSample(mixed > 1 ? 1 : mixed < -1 ? -1 : mixed);
-        }
-    }
-
-    private tickChannel(ch: number) {
-        this.chDiv[ch]--;
-        if (this.chDiv[ch] > 0) return;
-        // Poly/divider clock = 31400 / (AUDF+1) Hz => one tick every 114*(AUDF+1) color clocks.
-        this.chDiv[ch] += 114 * (this.audf[ch] + 1);
-
-        const audc = this.audc[ch];
-        // Advance the relevant noise/tone stage(s).
-        switch (audc) {
-            case 0x01:
-            case 0x02:
-                this.p4Idx[ch] = (this.p4Idx[ch] + 1) % POLY4_LEN;
-                break;
-            case 0x03: // 5-bit poly gating 4-bit poly
-                this.p5Idx[ch] = (this.p5Idx[ch] + 1) % POLY5_LEN;
-                this.p4Idx[ch] = (this.p4Idx[ch] + 1) % POLY4_LEN;
-                break;
-            case 0x04:
-            case 0x05:
-            case 0x0B:
-            case 0x0C:
-            case 0x0D: // pure div-by-2 square
-                this.sqLevel[ch] ^= 1;
-                break;
-            case 0x06:
-            case 0x0A: // 9-bit poly then div2
-                this.p9Idx[ch] = (this.p9Idx[ch] + 1) % POLY9_LEN;
-                if (POLY9[this.p9Idx[ch]]) this.sqLevel[ch] ^= 1;
-                break;
-            case 0x07:
-            case 0x09: // 5-bit poly
-                this.p5Idx[ch] = (this.p5Idx[ch] + 1) % POLY5_LEN;
-                break;
-            case 0x08: // 5-bit poly gating 9-bit poly
-                this.p5Idx[ch] = (this.p5Idx[ch] + 1) % POLY5_LEN;
-                this.p9Idx[ch] = (this.p9Idx[ch] + 1) % POLY9_LEN;
-                break;
-            case 0x0E:
-            case 0x0F: // 4-bit poly then div2
-                this.p4Idx[ch] = (this.p4Idx[ch] + 1) % POLY4_LEN;
-                if (POLY4[this.p4Idx[ch]]) this.sqLevel[ch] ^= 1;
-                break;
-            default: // 0x00: constant level (volume-only / PCM)
-                break;
-        }
-    }
-
-    private channelOutput(ch: number): number {
-        const vol = this.audv[ch];
-        if (vol === 0) return 0;
-
-        const audc = this.audc[ch];
-        let bit: number;
-        switch (audc) {
-            case 0x00: bit = 1; break; // constant (PCM via AUDV)
-            case 0x01:
-            case 0x02: bit = POLY4[this.p4Idx[ch]]; break;
-            case 0x03: bit = POLY4[this.p4Idx[ch]] & POLY5[this.p5Idx[ch]]; break;
-            case 0x04:
-            case 0x05:
-            case 0x0B:
-            case 0x0C:
-            case 0x0D: bit = this.sqLevel[ch]; break;
-            case 0x06:
-            case 0x0A: bit = this.sqLevel[ch]; break;
-            case 0x07:
-            case 0x09: bit = POLY5[this.p5Idx[ch]]; break;
-            case 0x08: bit = POLY5[this.p5Idx[ch]] & POLY9[this.p9Idx[ch]]; break;
-            case 0x0E:
-            case 0x0F: bit = this.sqLevel[ch]; break;
-            default: bit = 1; break;
-        }
-        return bit ? vol : -vol;
+        this.audioCount -= toCopy;
+        return toCopy;
     }
 
     public saveState(): any {
         return {
-            vsync: this.vsync, vblank: this.vblank, ctrlpf: this.ctrlpf,
-            nusiz0: this.nusiz0, nusiz1: this.nusiz1,
-            p0col: this.p0col, p1col: this.p1col, pfcol: this.pfcol, bcol: this.bcol,
-            pf0: this.pf0, pf1: this.pf1, pf2: this.pf2,
-            grp0: this.grp0, grp1: this.grp1,
-            enam0: this.enam0, enam1: this.enam1, enabl: this.enabl,
-            vdelp0: this.vdelp0, vdelp1: this.vdelp1, vdelbl: this.vdelbl,
-            resmp0: this.resmp0, resmp1: this.resmp1,
-            posP0: this.posP0, posP1: this.posP1, posM0: this.posM0, posM1: this.posM1, posBL: this.posBL,
-            hmp0: this.hmp0, hmp1: this.hmp1, hmm0: this.hmm0, hmm1: this.hmm1, hmbl: this.hmbl,
-            audc: [...this.audc], audf: [...this.audf], audv: [...this.audv],
-            scanline: this.scanline, pixelClock: this.pixelClock,
+            scanline: this.scanline,
+            pixelClock: this.pixelClock,
+            frameLines: this.frameLines,
+            vsync: this.vsync,
+            vblank: this.vblank,
+            nusiz0: this.nusiz0,
+            nusiz1: this.nusiz1,
+            p0col: this.p0col,
+            p1col: this.p1col,
+            pfcol: this.pfcol,
+            bcol: this.bcol,
+            ctrlpf: this.ctrlpf,
+            refp0: this.refp0,
+            refp1: this.refp1,
+            pf0: this.pf0,
+            pf1: this.pf1,
+            pf2: this.pf2,
+            grp0: this.grp0,
+            grp1: this.grp1,
+            enam0: this.enam0,
+            enam1: this.enam1,
+            enabl: this.enabl,
+            vdelp0: this.vdelp0,
+            vdelp1: this.vdelp1,
+            vdelbl: this.vdelbl,
+            resmp0: this.resmp0,
+            resmp1: this.resmp1,
+            posP0: this.posP0,
+            posP1: this.posP1,
+            posM0: this.posM0,
+            posM1: this.posM1,
+            posBL: this.posBL,
+            hmp0: this.hmp0,
+            hmp1: this.hmp1,
+            hmm0: this.hmm0,
+            hmm1: this.hmm1,
+            hmbl: this.hmbl,
+            grp0Active: this.grp0Active,
+            grp1Active: this.grp1Active,
+            enablActive: this.enablActive,
+            audc: [...this.audc],
+            audf: [...this.audf],
+            audv: [...this.audv],
         };
     }
 
-    public loadState(s: any): void {
-        if (!s) return;
-        this.vsync = s.vsync ?? 0; this.vblank = s.vblank ?? 0; this.ctrlpf = s.ctrlpf ?? 0;
-        this.nusiz0 = s.nusiz0 ?? 0; this.nusiz1 = s.nusiz1 ?? 0;
-        this.p0col = s.p0col ?? 0; this.p1col = s.p1col ?? 0;
-        this.pfcol = s.pfcol ?? 0; this.bcol = s.bcol ?? 0;
-        this.pf0 = s.pf0 ?? 0; this.pf1 = s.pf1 ?? 0; this.pf2 = s.pf2 ?? 0;
-        this.grp0 = s.grp0 ?? 0; this.grp1 = s.grp1 ?? 0;
-        this.enam0 = s.enam0 ?? 0; this.enam1 = s.enam1 ?? 0; this.enabl = s.enabl ?? 0;
-        this.vdelp0 = s.vdelp0 ?? 0; this.vdelp1 = s.vdelp1 ?? 0; this.vdelbl = s.vdelbl ?? 0;
-        this.resmp0 = s.resmp0 ?? 0; this.resmp1 = s.resmp1 ?? 0;
-        this.posP0 = s.posP0 ?? 0; this.posP1 = s.posP1 ?? 0;
-        this.posM0 = s.posM0 ?? 0; this.posM1 = s.posM1 ?? 0; this.posBL = s.posBL ?? 0;
-        this.hmp0 = s.hmp0 ?? 0; this.hmp1 = s.hmp1 ?? 0;
-        this.hmm0 = s.hmm0 ?? 0; this.hmm1 = s.hmm1 ?? 0; this.hmbl = s.hmbl ?? 0;
-        if (s.audc) this.audc = [...s.audc];
-        if (s.audf) this.audf = [...s.audf];
-        if (s.audv) this.audv = [...s.audv];
-        this.scanline = s.scanline ?? 0;
-        this.pixelClock = s.pixelClock ?? 0;
-        this.grp0Active = this.vdelp0 ? this.grp0Active : this.grp0;
-        this.grp1Active = this.vdelp1 ? this.grp1Active : this.grp1;
-        this.enablActive = this.vdelbl ? this.enablActive : this.enabl;
-        this.clearCollisions();
+    public loadState(state: any): void {
+        if (!state) return;
+        Object.assign(this, state);
     }
 }
