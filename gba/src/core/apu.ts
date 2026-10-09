@@ -281,15 +281,29 @@ export class Apu {
         return this.count >> 1;
     }
 
+    /** Drop up to `frames` stereo frames in O(1) time without allocation or loops. */
+    dropFrames(frames: number): void {
+        const samples = Math.min(frames * 2, this.count);
+        this.readPos = (this.readPos + samples) % this.buf.length;
+        this.count -= samples;
+    }
+
     /** Read up to `max` interleaved stereo samples. Returns samples written. */
     readSamples(out: Float32Array, max: number): number {
-        let n = 0;
-        while (n < max && this.count > 0) {
-            out[n++] = this.buf[this.readPos];
-            this.readPos = (this.readPos + 1) % this.buf.length;
-            this.count--;
+        const toRead = Math.min(max, this.count);
+        if (toRead <= 0) return 0;
+
+        const firstChunk = Math.min(toRead, this.buf.length - this.readPos);
+        out.set(this.buf.subarray(this.readPos, this.readPos + firstChunk), 0);
+
+        const secondChunk = toRead - firstChunk;
+        if (secondChunk > 0) {
+            out.set(this.buf.subarray(0, secondChunk), firstChunk);
         }
-        return n;
+
+        this.readPos = (this.readPos + toRead) % this.buf.length;
+        this.count -= toRead;
+        return toRead;
     }
 
     pushFifoByte(off: number, byte: number) {

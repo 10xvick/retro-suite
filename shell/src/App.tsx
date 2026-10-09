@@ -1101,55 +1101,57 @@ export default function App() {
 
         // All cores run synchronously on the main thread (zero microtask yields)
         const speedMultiplier = speedMultiplierRef.current;
-        frameAccumulator += actualDelta * speedMultiplier;
-
-        // Cap accumulator to avoid spiral of death when frames take longer than interval
-        if (frameAccumulator > frameInterval * 2) {
-          frameAccumulator = frameInterval * 2;
-        }
-
         let framesRun = 0;
-        const maxFramesRun = speedMultiplier > 1 ? Math.ceil(speedMultiplier) : 2;
-        const rAFStart = performance.now();
-        while (frameAccumulator >= frameInterval && framesRun < maxFramesRun) {
-          let activeInput = controllerState;
 
-          if (automationStateRef.current === 'playing') {
-            while (playbackInputIndexRef.current < recordedInputsRef.current.length &&
-              recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
-              playbackInputIndexRef.current++;
+        if (speedMultiplier <= 1) {
+          // Standard 1x speed: strictly O(1) execution.
+          // Display refresh gate: on high refresh rate displays (e.g. 120Hz/144Hz),
+          // accumulate actual elapsed time up to 1 frame interval.
+          // On standard 60Hz displays, delta is ~16.6ms, executing exactly 1 frame per rAF.
+          frameAccumulator += Math.min(actualDelta, frameInterval * 1.5);
+          if (frameAccumulator >= frameInterval) {
+            let activeInput = controllerState;
+
+            if (automationStateRef.current === 'playing') {
+              while (playbackInputIndexRef.current < recordedInputsRef.current.length &&
+                recordedInputsRef.current[playbackInputIndexRef.current].timestamp <= accumulatedGameTimeRef.current) {
+                playbackInputIndexRef.current++;
+              }
+              const activeIndex = Math.max(0, playbackInputIndexRef.current - 1);
+              if (activeIndex < recordedInputsRef.current.length) {
+                activeInput = recordedInputsRef.current[activeIndex].input;
+              }
+              if (playbackInputIndexRef.current >= recordedInputsRef.current.length) {
+                automationStateRef.current = 'idle';
+                setAutomationUIState('idle');
+              }
+            } else if (automationStateRef.current === 'recording') {
+              recordedInputsRef.current.push({
+                timestamp: accumulatedGameTimeRef.current,
+                input: controllerState
+              });
             }
-            const activeIndex = Math.max(0, playbackInputIndexRef.current - 1);
-            if (activeIndex < recordedInputsRef.current.length) {
-              activeInput = recordedInputsRef.current[activeIndex].input;
-            }
-            if (playbackInputIndexRef.current >= recordedInputsRef.current.length) {
-              automationStateRef.current = 'idle';
-              setAutomationUIState('idle');
-            }
-          } else if (automationStateRef.current === 'recording') {
-            recordedInputsRef.current.push({
-              timestamp: accumulatedGameTimeRef.current,
-              input: controllerState
-            });
+
+            const res = emulator.runFrame(activeInput);
+            lastFrameResult = res instanceof Promise ? null : res;
+            framesRun = 1;
+            accumulatedGameTimeRef.current += frameInterval;
+
+            // Strict O(1) debt policy: NEVER accumulate backlog into the future.
+            // Subtract frameInterval and clamp residual remainder to under half a frame.
+            frameAccumulator = Math.max(0, Math.min(frameAccumulator - frameInterval, frameInterval * 0.5));
           }
-
-          const res = emulator.runFrame(activeInput);
-          lastFrameResult = res instanceof Promise ? null : res;
-
-          frameAccumulator -= frameInterval;
-          framesRun++;
-
-          accumulatedGameTimeRef.current += frameInterval;
-
-          if (framesRun > 0 && (performance.now() - rAFStart) > 20.0) {
-            break;
+        } else {
+          // Fast-forward mode (speedMultiplier > 1): run up to capped integer frames
+          const framesToRun = Math.min(4, Math.floor(speedMultiplier));
+          for (let f = 0; f < framesToRun; f++) {
+            let activeInput = controllerState;
+            const res = emulator.runFrame(activeInput);
+            lastFrameResult = res instanceof Promise ? null : res;
+            framesRun++;
+            accumulatedGameTimeRef.current += frameInterval;
           }
-        }
-
-        // Cap residual accumulator debt so browser never falls into an unbounded backlog
-        if (frameAccumulator > frameInterval * 2) {
-          frameAccumulator = frameInterval;
+          frameAccumulator = 0;
         }
 
         if (automationStateRef.current === 'recording') {

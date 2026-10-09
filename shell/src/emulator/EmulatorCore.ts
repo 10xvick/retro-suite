@@ -1081,10 +1081,8 @@ export class GbaEmulatorCore implements EmulatorCore {
       // fractional position and linearly interpolate to resample.
       const apu = this.gba.apu;
       const apuSampleRate = 32768; // GBA native mixer rate (16.78MHz / 512)
-      const tempBuf = new Float32Array(8192);
-      let prevL = 0, prevR = 0;
-      let currL = 0, currR = 0;
-      let srcFrac = 0;
+      // Preallocate batch input buffer for resampling (max needed: 2048 * (32768/44100) * 1.5 + 4 ~ 2300 frames = 4600 samples)
+      const inputBatch = new Float32Array(8192);
 
       this.audioNode.onaudioprocess = (e: AudioProcessingEvent) => {
         const output = e.outputBuffer;
@@ -1098,46 +1096,54 @@ export class GbaEmulatorCore implements EmulatorCore {
           return;
         }
 
-        // Drain excess backlog so latency doesn't grow unbounded when the
-        // emulator runs faster than realtime.
-        if (apu.bufferedFrames > framesNeeded * 4) {
-          let discardFrames = apu.bufferedFrames - framesNeeded * 2;
-          while (discardFrames > 0) {
-            const chunk = Math.min(discardFrames, tempBuf.length >> 1);
-            apu.readSamples(tempBuf, chunk * 2);
-            discardFrames -= chunk;
-          }
-          prevL = currL = prevR = currR = 0;
-          srcFrac = 0;
+        const buffered = apu.bufferedFrames;
+
+        // Hard bound protection: if tab was inactive or emulator fell way behind,
+        // prune excess in pure O(1) without loops or temporary buffer allocations.
+        // Target buffer depth is 2048 frames (~62ms).
+        if (buffered > 4096) {
+          apu.dropFrames(buffered - 2048);
         }
 
-        const ratio = apuSampleRate / this.audioCtx!.sampleRate;
+        // Dynamic rate control (pitch/clock auto-synchronization):
+        // Absorbs the slight difference between 60 FPS video clock and AudioContext clock (e.g. 48kHz).
+        // If buffer depth is higher than target, speed up consumption slightly; if lower, slow down.
+        const baseRatio = apuSampleRate / this.audioCtx!.sampleRate;
+        const currentBuffered = apu.bufferedFrames;
+        const targetFrames = 2048;
+        const drift = Math.max(-1.0, Math.min(1.0, (currentBuffered - targetFrames) / targetFrames));
+        // At most +/- 2% pitch adjustment (completely imperceptible to human ear)
+        const ratio = baseRatio * (1.0 + drift * 0.02);
+
+        // Batch read required input frames in ONE single O(1) memory copy operation
+        const neededInputFrames = Math.ceil(framesNeeded * ratio) + 2;
+        const gotSamples = apu.readSamples(inputBatch, neededInputFrames * 2);
+        const gotFrames = gotSamples >> 1;
+
+        if (gotFrames < 2) {
+          leftData.fill(0);
+          rightData.fill(0);
+          return;
+        }
+
+        // Linear interpolation across pre-fetched input batch: pure O(framesNeeded)
+        let srcPos = 0;
         for (let i = 0; i < framesNeeded; i++) {
-          srcFrac += ratio;
-          while (srcFrac >= 1.0) {
-            prevL = currL;
-            prevR = currR;
-            srcFrac -= 1.0;
-            const got = apu.readSamples(tempBuf, 2);
-            if (got < 2) {
-              // Underrun: clear remainder of output buffer and reset state cleanly
-              currL = 0;
-              currR = 0;
-              prevL = 0;
-              prevR = 0;
-              srcFrac = 0;
-              while (i < framesNeeded) {
-                leftData[i] = 0;
-                rightData[i] = 0;
-                i++;
-              }
-              return;
-            }
-            currL = tempBuf[0];
-            currR = tempBuf[1];
+          const idx = Math.floor(srcPos);
+          const frac = srcPos - idx;
+          if (idx + 1 < gotFrames) {
+            const l0 = inputBatch[idx * 2], r0 = inputBatch[idx * 2 + 1];
+            const l1 = inputBatch[(idx + 1) * 2], r1 = inputBatch[(idx + 1) * 2 + 1];
+            leftData[i] = l0 + (l1 - l0) * frac;
+            rightData[i] = r0 + (r1 - r0) * frac;
+          } else if (idx < gotFrames) {
+            leftData[i] = inputBatch[idx * 2];
+            rightData[i] = inputBatch[idx * 2 + 1];
+          } else {
+            leftData[i] = 0;
+            rightData[i] = 0;
           }
-          leftData[i] = prevL + (currL - prevL) * srcFrac;
-          rightData[i] = prevR + (currR - prevR) * srcFrac;
+          srcPos += ratio;
         }
       };
 
