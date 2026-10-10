@@ -81,6 +81,7 @@ export class Dsp {
     // Initialize master volume registers to maximum
     this.regs[0x0C] = 0x7F; // MVOLL (Master Volume Left)
     this.regs[0x1C] = 0x7F; // MVOLR (Master Volume Right)
+    this.regs[0x6C] = 0x20; // FLG: bit 5 = 1 (Echo write disabled on reset)
     this.noiseLfsr = 1;
     this.noiseCounter = 0;
     this.noiseSample = 0;
@@ -251,7 +252,7 @@ export class Dsp {
     }
 
     // Process Echo & Reverb
-    if (this.spcRam) {
+    if (this.spcRam && this.regs[0x6D] !== 0 && (this.regs[0x7D] & 0x0F) !== 0) {
       const esa = this.regs[0x6D];
       const edl = this.regs[0x7D] & 0x0F;
       const efb = this.toSigned(this.regs[0x0D]);
