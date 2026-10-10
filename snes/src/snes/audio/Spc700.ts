@@ -192,7 +192,6 @@ export class Spc700 {
 
   public stepCycles(cycles: number): void {
     const bounded = Math.max(0, Math.floor(cycles));
-    this.advanceTimers(bounded);
     let remaining = bounded - this.cycleDeficit;
     while (remaining > 0) {
       this.pcHistory[this.pcHistoryIdx] = this.state.pc;
@@ -200,6 +199,7 @@ export class Spc700 {
       const opcode = this.readByte(this.state.pc);
       this.state.pc = (this.state.pc + 1) & 0xFFFF;
       const taken = this.executeOpcode(opcode); if (Number.isNaN(taken) || taken === undefined) console.error("Opcode returned NaN:", opcode.toString(16));
+      this.advanceTimers(taken);
       remaining -= taken;
     }
     this.cycleDeficit = -remaining;
@@ -970,17 +970,17 @@ export class Spc700 {
       }
       case 0x9E: { // DIV YA, X
         const x = this.state.x;
-        this.setFlagV(this.state.y >= x);
-        this.setFlagH((this.state.y & 0x0F) >= (x & 0x0F));
-        if (x === 0) {
-          this.state.y = (this.state.y + this.state.a) & 0xFF;
-          this.state.a = 0xFF;
+        const y = this.state.y;
+        const a = this.state.a;
+        this.setFlagV(y >= x);
+        this.setFlagH((y & 0x0F) >= (x & 0x0F));
+        const ya = (y << 8) | a;
+        if (y < x * 2) {
+          this.state.a = Math.floor(ya / x) & 0xFF;
+          this.state.y = (ya % x) & 0xFF;
         } else {
-          const ya = (this.state.y << 8) | this.state.a;
-          const quotient = Math.floor(ya / x);
-          const remainder = ya % x;
-          this.state.a = quotient & 0xFF;
-          this.state.y = remainder & 0xFF;
+          this.state.a = (255 - Math.floor((ya - x * 0x200) / (256 - x))) & 0xFF;
+          this.state.y = (x + ((ya - x * 0x200) % (256 - x))) & 0xFF;
         }
         this.updateNZ(this.state.a);
         return 12;

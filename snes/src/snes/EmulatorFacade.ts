@@ -260,6 +260,14 @@ export class SnesEmulator {
     return this.audio.getVolume();
   }
 
+  public getAudioContext(): AudioContext | null {
+    return this.audio.getContext();
+  }
+
+  public getAudioNode(): AudioNode | null {
+    return this.audio.getGainNode();
+  }
+
   public getAudioDebugState(): AudioDebugState {
     return this.audio.getDebugState();
   }

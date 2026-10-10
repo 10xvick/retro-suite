@@ -129,9 +129,10 @@ export class SnesEmulatorCore implements EmulatorCore {
   }
 
   async enableAudio(): Promise<void> {
-    // Audio is permanently detached for now
-    this.emulator.disableAudio();
-    this.audioEnabled = false;
+    await this.emulator.enableAudio();
+    this.audioEnabled = true;
+    this.emulator.setAudioVolume(this.audioVolume);
+    this.emulator.setAudioTempo(this.audioTempo);
     this.status = 'ready';
   }
 
@@ -171,11 +172,11 @@ export class SnesEmulatorCore implements EmulatorCore {
   }
 
   getAudioContext(): AudioContext | null {
-    return (this.emulator as any).audio?.context || null;
+    return this.emulator.getAudioContext();
   }
 
   getAudioNode(): AudioNode | null {
-    return (this.emulator as any).audio?.gainNode || null;
+    return this.emulator.getAudioNode();
   }
 
   getRomHeader(): any {
