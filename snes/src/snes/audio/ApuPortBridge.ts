@@ -28,14 +28,14 @@ export class ApuPortBridge {
       this.onSync(cpu.cycles);
     }
 
-    if (a === 0x2142) {
-      // Keep existing execution-confirmation behavior used by current ROM paths.
-      return wram3 & 0xFF;
-    }
-
     if (this.onReadPort && port >= 0 && port <= 3) {
       const val = this.onReadPort(port);
       if (val !== -1) return val;
+    }
+
+    if (a === 0x2142) {
+      // Fallback execution-confirmation behavior if APU port read is detached
+      return wram3 & 0xFF;
     }
 
     if (a === 0x2140) {
