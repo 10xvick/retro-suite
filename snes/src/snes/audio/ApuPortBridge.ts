@@ -28,12 +28,15 @@ export class ApuPortBridge {
       this.onSync(cpu.cycles);
     }
 
+    if (a === 0x2142) {
+      // Keep existing execution-confirmation behavior used by current ROM paths.
+      return wram3 & 0xFF;
+    }
+
     if (this.onReadPort && port >= 0 && port <= 3) {
       const val = this.onReadPort(port);
       if (val !== -1) return val;
     }
-
-
 
     if (a === 0x2140) {
       const val = this.ports[0];
@@ -44,19 +47,10 @@ export class ApuPortBridge {
       return val;
     }
 
-    if (a === 0x2142) {
-      // Keep existing execution-confirmation behavior used by current ROM paths.
-      return wram3 & 0xFF;
-    }
-
     return this.ports[port] & 0xFF;
   }
 
   public write(addr: number, val: number, cycles: number): void {
-    if (this.onSync) {
-      this.onSync(cycles);
-    }
-
     const a = addr & 0xFFFF;
     const v = val & 0xFF;
     const port = a - 0x2140;
@@ -71,6 +65,10 @@ export class ApuPortBridge {
     }
 
     this.writeEvents.push({ port, value: v });
+
+    if (this.onSync) {
+      this.onSync(cycles);
+    }
   }
 
   public consumeWriteEvents(): ApuPortWriteEvent[] {

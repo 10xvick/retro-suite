@@ -201,7 +201,7 @@ export class SnesEmulator {
         irqCycle = scanlineStartCycles + htimeCycle;
       }
 
-      if (sy === 224) {
+      if (sy === 225) {
         this.bus.nmiActive = true;
         this.cpu.nmiPending = true;
       }
@@ -223,8 +223,10 @@ export class SnesEmulator {
         this.cpu.step();
       }
 
-      if (sy < 224) {
-        this.ppu.renderScanline(sy, pixels);
+      if (sy === 0) {
+        this.bus.executeHdmaScanline(0);
+      } else if (sy >= 1 && sy <= 224) {
+        this.ppu.renderScanline(sy, pixels, sy - 1);
         this.bus.executeHdmaScanline(sy);
       }
     }

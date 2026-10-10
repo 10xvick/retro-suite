@@ -90,6 +90,7 @@ export class PPU {
   private spritePriorities = new Uint8Array(256);
   private spritePaletteBases = new Uint16Array(256);
   private spriteIndices = new Int16Array(256);
+  private selectedSprites = new Int16Array(32);
 
   // Pre-allocated BG scanline buffers to avoid GC pressure and repeated tile fetches
   private bgLayerPixels = [new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256)];
@@ -116,7 +117,10 @@ export class PPU {
   public reset() {
     this.vram.fill(0);
     this.cgram.fill(0);
-    this.oam.fill(288);
+    this.oam.fill(0);
+    for (let s = 0; s < 128; s++) {
+      this.oam[s * 4 + 1] = 240; // Default offscreen Y = 240
+    }
 
     this.screenDisplay = 0x0F; // Full brightness, no blanking
     this.spriteSize = 0;
@@ -591,9 +595,9 @@ export class PPU {
 
   // Render a full frame of 256x224 pixels using scanline compositing
   // Render a single scanline of 256 pixels using compositing
-  public renderScanline(sy: number, pixelBuffer: Uint32Array) {
+  public renderScanline(sy: number, pixelBuffer: Uint32Array, targetY: number = sy) {
     if (this.screenDisplay & 0x80) {
-      const rowOffset = sy * this.width;
+      const rowOffset = (targetY >= 0 ? targetY : sy) * this.width;
       for (let sx = 0; sx < this.width; sx++) {
         pixelBuffer[rowOffset + sx] = 0xFF000000;
       }
@@ -626,9 +630,36 @@ export class PPU {
 
     if ((mainScreenObjEnabled || subScreenObjEnabled) && !this.disableSpritesForNextScanline) {
       const startSprite = this.oamPriorityRotation ? ((this.oamAddr >> 1) & 127) : 0;
-      // Loop from lowest priority to highest priority
-      for (let c = 127; c >= 0; c--) {
+      let spriteCount = 0;
+
+      // Range Over: scan up to 32 sprites that intersect this scanline
+      for (let c = 0; c < 128; c++) {
         const i = (startSprite + c) & 127;
+        const oamOffset = i * 4;
+        const y = this.oam[oamOffset + 1];
+
+        const highByteIdx = Math.floor(i / 4);
+        const highBitShift = (i % 4) * 2;
+        const highVal = this.oam[512 + highByteIdx];
+        const sizeToggle = (highVal >> (highBitShift + 1)) & 1;
+
+        const sizeInfo = this.getSpriteSize(sss, sizeToggle);
+        const height = sizeInfo.h;
+
+        let spriteY = y;
+        if (spriteY >= 224) {
+          spriteY -= 256;
+        }
+
+        if (sy >= spriteY && sy < spriteY + height) {
+          this.selectedSprites[spriteCount++] = i;
+          if (spriteCount === 32) break;
+        }
+      }
+
+      // Render selected sprites from lowest priority to highest priority
+      for (let s = spriteCount - 1; s >= 0; s--) {
+        const i = this.selectedSprites[s];
         const oamOffset = i * 4;
         const xLow = this.oam[oamOffset];
         const y = this.oam[oamOffset + 1];
@@ -649,58 +680,55 @@ export class PPU {
         const width = sizeInfo.w;
         const height = sizeInfo.h;
 
-        // Check if sprite is active on this scanline
+        if (x + width <= 0 || x >= 256) continue;
+
         let spriteY = y;
         if (spriteY >= 224) {
           spriteY -= 256;
         }
 
-        if (sy >= spriteY && sy < spriteY + height) {
-          if (x + width <= 0 || x >= 256) continue;
+        const useSecondBlock = attr & 1;
+        const charBase = useSecondBlock ? base2 : base1;
+        const paletteOffset = (attr >> 1) & 7;
+        const priority = (attr >> 4) & 3;
+        const hFlip = (attr & 0x40) !== 0;
+        const vFlip = (attr & 0x80) !== 0;
 
-          const useSecondBlock = attr & 1;
-          const charBase = useSecondBlock ? base2 : base1;
-          const paletteOffset = (attr >> 1) & 7;
-          const priority = (attr >> 4) & 3;
-          const hFlip = (attr & 0x40) !== 0;
-          const vFlip = (attr & 0x80) !== 0;
+        const paletteBase = 128 + (paletteOffset * 16);
+        const tileRowY = vFlip ? (height - 1 - (sy - spriteY)) : (sy - spriteY);
+        const subTileY = tileRowY & 7;
+        const rowOffset = Math.floor(tileRowY / 8);
 
-          const paletteBase = 128 + (paletteOffset * 16);
-          const tileRowY = vFlip ? (height - 1 - (sy - spriteY)) : (sy - spriteY);
-          const subTileY = tileRowY & 7;
-          const rowOffset = Math.floor(tileRowY / 8);
+        let prevColOffset = -999;
+        let word0 = 0, word1 = 0;
 
-          let prevColOffset = -999;
-          let word0 = 0, word1 = 0;
+        for (let sx = 0; sx < width; sx++) {
+          const screenX = x + sx;
+          if (screenX < 0 || screenX >= 256) continue;
 
-          for (let sx = 0; sx < width; sx++) {
-            const screenX = x + sx;
-            if (screenX < 0 || screenX >= 256) continue;
+          const tileColX = hFlip ? (width - 1 - sx) : sx;
+          const subTileX = tileColX & 7;
+          const colOffset = Math.floor(tileColX / 8);
 
-            const tileColX = hFlip ? (width - 1 - sx) : sx;
-            const subTileX = tileColX & 7;
-            const colOffset = Math.floor(tileColX / 8);
+          if (colOffset !== prevColOffset) {
+            prevColOffset = colOffset;
+            const spriteTile = (tileIndex + colOffset + (rowOffset * 16)) & 0xFF;
+            const tileStartAddr = (charBase + (spriteTile * 16)) & 0x7FFF;
+            word0 = this.vram[(tileStartAddr + subTileY) & 0x7FFF];
+            word1 = this.vram[(tileStartAddr + 8 + subTileY) & 0x7FFF];
+          }
 
-            if (colOffset !== prevColOffset) {
-              prevColOffset = colOffset;
-              const spriteTile = (tileIndex + colOffset + (rowOffset * 16)) & 0xFF;
-              const tileStartAddr = (charBase + (spriteTile * 16)) & 0x7FFF;
-              word0 = this.vram[(tileStartAddr + subTileY) & 0x7FFF];
-              word1 = this.vram[(tileStartAddr + 8 + subTileY) & 0x7FFF];
-            }
+          if (word0 === 0 && word1 === 0) continue;
 
-            if (word0 === 0 && word1 === 0) continue;
+          const shift = 7 - subTileX;
+          const colorIndex = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1) |
+                             (((word1 >> shift) & 1) << 2) | (((word1 >> (8 + shift)) & 1) << 3);
 
-            const shift = 7 - subTileX;
-            const colorIndex = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1) |
-                               (((word1 >> shift) & 1) << 2) | (((word1 >> (8 + shift)) & 1) << 3);
-
-            if (colorIndex !== 0) {
-              spritePixels[screenX] = colorIndex;
-              spritePriorities[screenX] = priority;
-              spritePaletteBases[screenX] = paletteBase;
-              spriteIndices[screenX] = i;
-            }
+          if (colorIndex !== 0) {
+            spritePixels[screenX] = colorIndex;
+            spritePriorities[screenX] = priority;
+            spritePaletteBases[screenX] = paletteBase;
+            spriteIndices[screenX] = i;
           }
         }
       }
@@ -1059,7 +1087,7 @@ export class PPU {
       g = (g << 3) | (g >> 2);
       b = (b << 3) | (b >> 2);
 
-      const pixelOffset = (sy * this.width) + sx;
+      const pixelOffset = ((targetY >= 0 ? targetY : sy) * this.width) + sx;
       pixelBuffer[pixelOffset] = 0xFF000000 | (b << 16) | (g << 8) | r;
     }
     this.disableSpritesForNextScanline = false;
@@ -1126,7 +1154,9 @@ export class PPU {
     const pris = this.bgLayerPri[bgIdx];
     const pals = this.bgLayerPal[bgIdx];
 
+    let prevSubTileCol = -999;
     let prevEntryX = -999;
+    let baseTileIndex = 0;
     let word0 = 0, word1 = 0, word2 = 0, word3 = 0;
     let hFlip = false, vFlip = false, priority = 0, paletteBase = 0;
     let renderPixelY = 0;
@@ -1138,22 +1168,35 @@ export class PPU {
       }
       const worldX = ((px + scrollX) % mapWidthPixels + mapWidthPixels) % mapWidthPixels;
       const entryX = Math.floor(worldX / tileSize);
+      const subTileCol = Math.floor(worldX / 8);
 
-      if (entryX !== prevEntryX) {
-        prevEntryX = entryX;
-        const pageX = Math.floor(entryX / 32) & 1;
-        const pageOffset = yPageOffset + (pageX * 1024);
-        const tilemapOffset = pageOffset + (entryX & 31);
-        const mapEntry = this.vram[(tilemapBase + tilemapOffset) & 0x7FFF];
-        if (mapEntry === undefined) {
-          pixels[sx] = 0; pris[sx] = 0; pals[sx] = 0;
-          continue;
+      if (subTileCol !== prevSubTileCol) {
+        prevSubTileCol = subTileCol;
+        if (entryX !== prevEntryX) {
+          prevEntryX = entryX;
+          const pageX = Math.floor(entryX / 32) & 1;
+          const pageOffset = yPageOffset + (pageX * 1024);
+          const tilemapOffset = pageOffset + (entryX & 31);
+          const mapEntry = this.vram[(tilemapBase + tilemapOffset) & 0x7FFF];
+          if (mapEntry === undefined) {
+            word0 = 0; word1 = 0; word2 = 0; word3 = 0;
+            priority = 0; paletteBase = 0;
+            pixels[sx] = 0; pris[sx] = 0; pals[sx] = 0;
+            continue;
+          }
+          baseTileIndex = mapEntry & 0x3FF;
+          const paletteOffset = (mapEntry >> 10) & 7;
+          hFlip = (mapEntry & 0x4000) !== 0;
+          vFlip = (mapEntry & 0x8000) !== 0;
+          priority = (mapEntry & 0x2000) !== 0 ? 1 : 0;
+
+          if (this.bgMode === 0) {
+            paletteBase = (bgIdx * 32) + (paletteOffset * 4);
+          } else {
+            paletteBase = bpp === 8 ? 0 : paletteOffset * (bpp === 4 ? 16 : 4);
+          }
+          renderPixelY = vFlip ? 7 - subTileY : subTileY;
         }
-        const baseTileIndex = mapEntry & 0x3FF;
-        const paletteOffset = (mapEntry >> 10) & 7;
-        hFlip = (mapEntry & 0x4000) !== 0;
-        vFlip = (mapEntry & 0x8000) !== 0;
-        priority = (mapEntry & 0x2000) !== 0 ? 1 : 0;
 
         let tileIndex = baseTileIndex;
         if (is16x16) {
@@ -1164,7 +1207,6 @@ export class PPU {
           tileIndex = (baseTileIndex + colOffset + (rOffset * verticalStride)) & 0x3FF;
         }
 
-        renderPixelY = vFlip ? 7 - subTileY : subTileY;
         const tileStartAddr = (charBase + (tileIndex * wordsPerTile)) & 0x7FFF;
 
         word0 = this.vram[(tileStartAddr + renderPixelY) & 0x7FFF];
@@ -1172,12 +1214,6 @@ export class PPU {
         if (bpp === 8) {
           word2 = this.vram[(tileStartAddr + 16 + renderPixelY) & 0x7FFF];
           word3 = this.vram[(tileStartAddr + 24 + renderPixelY) & 0x7FFF];
-        }
-
-        if (this.bgMode === 0) {
-          paletteBase = (bgIdx * 32) + (paletteOffset * 4);
-        } else {
-          paletteBase = bpp === 8 ? 0 : paletteOffset * (bpp === 4 ? 16 : 4);
         }
       }
 
@@ -1206,8 +1242,8 @@ export class PPU {
 
   // Render a full frame of 256x224 pixels using scanline compositing
   public renderFrame(pixelBuffer: Uint32Array) {
-    for (let sy = 0; sy < this.height; sy++) {
-      this.renderScanline(sy, pixelBuffer);
+    for (let sy = 1; sy <= 224; sy++) {
+      this.renderScanline(sy, pixelBuffer, sy - 1);
     }
     // Toggle the interlace field status bit at the end of each frame
     this.fieldToggle = !this.fieldToggle;
