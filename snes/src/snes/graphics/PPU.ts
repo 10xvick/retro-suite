@@ -91,6 +91,12 @@ export class PPU {
   private spritePaletteBases = new Uint16Array(256);
   private spriteIndices = new Int16Array(256);
 
+  // Pre-allocated BG scanline buffers to avoid GC pressure and repeated tile fetches
+  private bgLayerPixels = [new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256)];
+  private bgLayerPri = [new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256)];
+  private bgLayerPal = [new Uint16Array(256), new Uint16Array(256), new Uint16Array(256), new Uint16Array(256)];
+  private winMasks = [new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256), new Uint8Array(256)];
+
   // H/V Counters and Status ($2137, $213C-$213F)
   private hCounterLatched = 0;
   private vCounterLatched = 0;
@@ -664,6 +670,9 @@ export class PPU {
           const subTileY = tileRowY & 7;
           const rowOffset = Math.floor(tileRowY / 8);
 
+          let prevColOffset = -999;
+          let word0 = 0, word1 = 0;
+
           for (let sx = 0; sx < width; sx++) {
             const screenX = x + sx;
             if (screenX < 0 || screenX >= 256) continue;
@@ -672,8 +681,19 @@ export class PPU {
             const subTileX = tileColX & 7;
             const colOffset = Math.floor(tileColX / 8);
 
-            const spriteTile = (tileIndex + colOffset + (rowOffset * 16)) & 0xFF;
-            const colorIndex = this.getPixelColorIndex(spriteTile, charBase, subTileX, subTileY, 4);
+            if (colOffset !== prevColOffset) {
+              prevColOffset = colOffset;
+              const spriteTile = (tileIndex + colOffset + (rowOffset * 16)) & 0xFF;
+              const tileStartAddr = (charBase + (spriteTile * 16)) & 0x7FFF;
+              word0 = this.vram[(tileStartAddr + subTileY) & 0x7FFF];
+              word1 = this.vram[(tileStartAddr + 8 + subTileY) & 0x7FFF];
+            }
+
+            if (word0 === 0 && word1 === 0) continue;
+
+            const shift = 7 - subTileX;
+            const colorIndex = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1) |
+                               (((word1 >> shift) & 1) << 2) | (((word1 >> (8 + shift)) & 1) << 3);
 
             if (colorIndex !== 0) {
               spritePixels[screenX] = colorIndex;
@@ -686,66 +706,115 @@ export class PPU {
       }
     }
 
+    // Pre-render enabled BG layers for this scanline
+    const activeBGs = (this.mainScreenDesignation | this.subScreenDesignation) & 0x0F;
+    for (let bg = 0; bg < 4; bg++) {
+      if ((activeBGs & (1 << bg)) !== 0) {
+        this.renderBGLayerScanline(bg, sy);
+      }
+    }
+
+    // Precompute window masks for active layers
+    const winActive = this.mainScreenWindowEnable | this.subScreenWindowEnable;
+    for (let layer = 0; layer < 6; layer++) {
+      if (layer === 5 || (winActive & (1 << layer)) !== 0) {
+        const mask = this.winMasks[layer];
+        for (let sx = 0; sx < 256; sx++) {
+          mask[sx] = this.getWindowMask(layer, sx) ? 1 : 0;
+        }
+      }
+    }
+
+    const bgPix = this.bgLayerPixels;
+    const bgPri = this.bgLayerPri;
+    const bgPal = this.bgLayerPal;
+    const winMasks = this.winMasks;
+
+    const mainWinEnable = this.mainScreenWindowEnable;
+    const subWinEnable = this.subScreenWindowEnable;
+    const cgadsub = this.cgadsub;
+    const cgwsel = this.cgwsel;
+    const bgMode = this.bgMode;
+    const bg3Priority = this.bg3Priority;
+    const setiniReg = this.setiniReg;
+
+    const mainScreenDesignation = this.mainScreenDesignation;
+    const subScreenDesignation = this.subScreenDesignation;
+
+    let sx = 0;
+    let mainColor = backdropColor;
+    let mainCgramIndex = 0;
+    let mainMathEnabled = false;
+    let mainIsSprite = false;
+    let mainSpritePaletteIdx = 0;
+    let mainVisibleFound = false;
+
+    let subColor = backdropColor;
+    let subCgramIndex = 0;
+    let subVisibleFound = false;
+
+    const checkBGLayer = (bgIdx: number, targetPri: number): boolean => {
+      if ((mainScreenDesignation & (1 << bgIdx)) === 0) return false;
+      if (bgPix[bgIdx][sx] !== 0 && bgPri[bgIdx][sx] === targetPri) {
+        if ((mainWinEnable & (1 << bgIdx)) !== 0 && winMasks[bgIdx][sx]) return false;
+        mainCgramIndex = bgPal[bgIdx][sx] + bgPix[bgIdx][sx];
+        mainColor = this.cgram[mainCgramIndex & 0xFF];
+        mainMathEnabled = (cgadsub & (1 << bgIdx)) !== 0;
+        mainVisibleFound = true;
+        return true;
+      }
+      return false;
+    };
+
+    const checkObjLayer = (targetPri: number): boolean => {
+      if (mainScreenObjEnabled && spritePixels[sx] !== 0 && spritePriorities[sx] === targetPri) {
+        if ((mainWinEnable & 16) !== 0 && winMasks[4][sx]) return false;
+        mainCgramIndex = spritePaletteBases[sx] + spritePixels[sx];
+        mainColor = this.cgram[mainCgramIndex & 0xFF];
+        mainMathEnabled = (cgadsub & 0x10) !== 0;
+        mainIsSprite = true;
+        mainSpritePaletteIdx = (spritePaletteBases[sx] - 128) >> 4;
+        mainVisibleFound = true;
+        return true;
+      }
+      return false;
+    };
+
+    const checkBGSubLayer = (bgIdx: number, targetPri: number): boolean => {
+      if ((subScreenDesignation & (1 << bgIdx)) === 0) return false;
+      if (bgPix[bgIdx][sx] !== 0 && bgPri[bgIdx][sx] === targetPri) {
+        if ((subWinEnable & (1 << bgIdx)) !== 0 && winMasks[bgIdx][sx]) return false;
+        subCgramIndex = bgPal[bgIdx][sx] + bgPix[bgIdx][sx];
+        subColor = this.cgram[subCgramIndex & 0xFF];
+        subVisibleFound = true;
+        return true;
+      }
+      return false;
+    };
+
+    const checkObjSubLayer = (targetPri: number): boolean => {
+      if (subScreenObjEnabled && spritePixels[sx] !== 0 && spritePriorities[sx] === targetPri) {
+        if ((subWinEnable & 16) !== 0 && winMasks[4][sx]) return false;
+        subCgramIndex = spritePaletteBases[sx] + spritePixels[sx];
+        subColor = this.cgram[subCgramIndex & 0xFF];
+        subVisibleFound = true;
+        return true;
+      }
+      return false;
+    };
+
     // Composite scanline pixel-by-pixel
-    for (let sx = 0; sx < this.width; sx++) {
+    for (sx = 0; sx < this.width; sx++) {
       // Evaluate Main Screen pixel
-      let mainColor = backdropColor;
-      let mainCgramIndex = 0;
-      let mainMathEnabled = (this.cgadsub & 0x20) !== 0; // default to backdrop color math
-      let mainIsSprite = false;
-      let mainSpritePaletteIdx = 0;
-      let mainVisibleFound = false;
-
-      // Main Screen layer mask enabling
-      const mainScreenBg1Enabled = (this.mainScreenDesignation & 1) !== 0;
-      const mainScreenBg2Enabled = (this.mainScreenDesignation & 2) !== 0;
-      const mainScreenBg3Enabled = (this.mainScreenDesignation & 4) !== 0;
-      const mainScreenBg4Enabled = (this.mainScreenDesignation & 8) !== 0;
-
-      const checkBGLayer = (bgIdx: number, targetPri: number): boolean => {
-        // 1. EXACT FIX: Check if this BG is enabled in the TM ($212C) register
-        const isEnabled = (this.mainScreenDesignation & (1 << bgIdx)) !== 0;
-        if (!isEnabled) return false;
-
-        // 2. Existing window masking check...
-        if ((this.mainScreenWindowEnable & (1 << bgIdx)) !== 0) {
-          if (this.getWindowMask(bgIdx, sx)) return false;
-        }
-
-        // 3. Existing tile lookup...
-        const pxInfo = this.getBGColorIndex(bgIdx, sx, sy);
-        if (pxInfo.colorIndex !== 0 && pxInfo.priority === targetPri) {
-          mainCgramIndex = pxInfo.paletteBase + pxInfo.colorIndex;
-          mainColor = this.cgram[mainCgramIndex & 0xFF];
-          mainMathEnabled = (this.cgadsub & (1 << bgIdx)) !== 0;
-          mainVisibleFound = true;
-          return true;
-        }
-        return false;
-      };
-
-      const checkObjLayer = (targetPri: number): boolean => {
-        if (mainScreenObjEnabled) {
-          if ((this.mainScreenWindowEnable & 16) !== 0) {
-            if (this.getWindowMask(4, sx)) {
-              return false;
-            }
-          }
-          if (spritePixels[sx] !== 0 && spritePriorities[sx] === targetPri) {
-            mainCgramIndex = spritePaletteBases[sx] + spritePixels[sx];
-            mainColor = this.cgram[mainCgramIndex & 0xFF];
-            mainMathEnabled = (this.cgadsub & 0x10) !== 0;
-            mainIsSprite = true;
-            mainSpritePaletteIdx = (spritePaletteBases[sx] - 128) >> 4;
-            mainVisibleFound = true;
-            return true;
-          }
-        }
-        return false;
-      };
+      mainColor = backdropColor;
+      mainCgramIndex = 0;
+      mainMathEnabled = (cgadsub & 0x20) !== 0; // default to backdrop color math
+      mainIsSprite = false;
+      mainSpritePaletteIdx = 0;
+      mainVisibleFound = false;
 
       // Priority table scan for current Mode
-      switch (this.bgMode) {
+      switch (bgMode) {
         case 0:
           if (checkObjLayer(3)) break;
           if (checkBGLayer(0, 1)) break;
@@ -762,7 +831,7 @@ export class PPU {
           break;
 
         case 1:
-          if (this.bg3Priority) {
+          if (bg3Priority) {
             if (checkBGLayer(2, 1)) break;
             if (checkObjLayer(3)) break;
             if (checkBGLayer(0, 1)) break;
@@ -822,7 +891,7 @@ export class PPU {
 
         case 7:
           {
-            const extbg = (this.setiniReg & 0x40) !== 0;
+            const extbg = (setiniReg & 0x40) !== 0;
             if (checkObjLayer(3)) break;
             if (checkObjLayer(2)) break;
             if (extbg && checkBGLayer(1, 1)) break;
@@ -835,128 +904,91 @@ export class PPU {
       }
 
       // Evaluate Sub Screen pixel (for blending)
-      let subColor = backdropColor;
-      let subCgramIndex = 0;
-      let subVisibleFound = false;
+      subColor = backdropColor;
+      subCgramIndex = 0;
+      subVisibleFound = false;
 
-      const subScreenBg1Enabled = (this.subScreenDesignation & 1) !== 0;
-      const subScreenBg2Enabled = (this.subScreenDesignation & 2) !== 0;
-      const subScreenBg3Enabled = (this.subScreenDesignation & 4) !== 0;
-      const subScreenBg4Enabled = (this.subScreenDesignation & 8) !== 0;
+      const useSubscreen = (cgwsel & 0x02) !== 0 && cgadsub !== 0;
 
-      const checkBGSubLayer = (bgIdx: number, targetPri: number): boolean => {
-        const isEnabled = (this.subScreenDesignation & (1 << bgIdx)) !== 0;
-        if (!isEnabled) return false;
+      if (useSubscreen) {
+        switch (bgMode) {
+          case 0:
+            if (checkObjSubLayer(3)) break;
+            if (checkBGSubLayer(0, 1)) break;
+            if (checkBGSubLayer(1, 1)) break;
+            if (checkObjSubLayer(2)) break;
+            if (checkBGSubLayer(0, 0)) break;
+            if (checkBGSubLayer(1, 0)) break;
+            if (checkObjSubLayer(1)) break;
+            if (checkBGSubLayer(2, 1)) break;
+            if (checkBGSubLayer(3, 1)) break;
+            if (checkObjSubLayer(0)) break;
+            if (checkBGSubLayer(2, 0)) break;
+            if (checkBGSubLayer(3, 0)) break;
+            break;
 
-        if ((this.subScreenWindowEnable & (1 << bgIdx)) !== 0) {
-          if (this.getWindowMask(bgIdx, sx)) {
-            return false;
-          }
-        }
-        const pxInfo = this.getBGColorIndex(bgIdx, sx, sy);
-        if (pxInfo.colorIndex !== 0 && pxInfo.priority === targetPri) {
-          subCgramIndex = pxInfo.paletteBase + pxInfo.colorIndex;
-          subColor = this.cgram[subCgramIndex & 0xFF];
-          subVisibleFound = true;
-          return true;
-        }
-        return false;
-      };
-
-      const checkObjSubLayer = (targetPri: number): boolean => {
-        if (subScreenObjEnabled) {
-          if ((this.subScreenWindowEnable & 16) !== 0) {
-            if (this.getWindowMask(4, sx)) {
-              return false;
+          case 1:
+            if (bg3Priority) {
+              if (checkBGSubLayer(2, 1)) break;
+              if (checkObjSubLayer(3)) break;
+              if (checkBGSubLayer(0, 1)) break;
+              if (checkBGSubLayer(1, 1)) break;
+              if (checkObjSubLayer(2)) break;
+              if (checkBGSubLayer(0, 0)) break;
+              if (checkBGSubLayer(1, 0)) break;
+              if (checkObjSubLayer(1)) break;
+              if (checkBGSubLayer(2, 0)) break;
+              if (checkObjSubLayer(0)) break;
+            } else {
+              if (checkObjSubLayer(3)) break;
+              if (checkBGSubLayer(0, 1)) break;
+              if (checkBGSubLayer(1, 1)) break;
+              if (checkObjSubLayer(2)) break;
+              if (checkBGSubLayer(0, 0)) break;
+              if (checkBGSubLayer(1, 0)) break;
+              if (checkObjSubLayer(1)) break;
+              if (checkBGSubLayer(2, 1)) break;
+              if (checkObjSubLayer(0)) break;
+              if (checkBGSubLayer(2, 0)) break;
             }
-          }
-          if (spritePixels[sx] !== 0 && spritePriorities[sx] === targetPri) {
-            subCgramIndex = spritePaletteBases[sx] + spritePixels[sx];
-            subColor = this.cgram[subCgramIndex & 0xFF];
-            subVisibleFound = true;
-            return true;
-          }
+            break;
+
+          case 2:
+          case 3:
+          case 4:
+          case 5:
+            if (checkObjSubLayer(3)) break;
+            if (checkBGSubLayer(0, 1)) break;
+            if (checkObjSubLayer(2)) break;
+            if (checkBGSubLayer(1, 1)) break;
+            if (checkObjSubLayer(1)) break;
+            if (checkBGSubLayer(0, 0)) break;
+            if (checkObjSubLayer(0)) break;
+            if (checkBGSubLayer(1, 0)) break;
+            break;
+
+          case 6:
+            if (checkObjSubLayer(3)) break;
+            if (checkBGSubLayer(0, 1)) break;
+            if (checkObjSubLayer(2)) break;
+            if (checkObjSubLayer(1)) break;
+            if (checkBGSubLayer(0, 0)) break;
+            if (checkObjSubLayer(0)) break;
+            break;
+
+          case 7:
+            {
+              const extbg = (setiniReg & 0x40) !== 0;
+              if (checkObjSubLayer(3)) break;
+              if (checkObjSubLayer(2)) break;
+              if (extbg && checkBGSubLayer(1, 1)) break;
+              if (checkObjSubLayer(1)) break;
+              if (checkBGSubLayer(0, 0)) break;
+              if (checkObjSubLayer(0)) break;
+              if (extbg && checkBGSubLayer(1, 0)) break;
+            }
+            break;
         }
-        return false;
-      };
-
-      switch (this.bgMode) {
-        case 0:
-          if (checkObjSubLayer(3)) break;
-          if (checkBGSubLayer(0, 1)) break;
-          if (checkBGSubLayer(1, 1)) break;
-          if (checkObjSubLayer(2)) break;
-          if (checkBGSubLayer(0, 0)) break;
-          if (checkBGSubLayer(1, 0)) break;
-          if (checkObjSubLayer(1)) break;
-          if (checkBGSubLayer(2, 1)) break;
-          if (checkBGSubLayer(3, 1)) break;
-          if (checkObjSubLayer(0)) break;
-          if (checkBGSubLayer(2, 0)) break;
-          if (checkBGSubLayer(3, 0)) break;
-          break;
-
-        case 1:
-          if (this.bg3Priority) {
-            if (checkBGSubLayer(2, 1)) break;
-            if (checkObjSubLayer(3)) break;
-            if (checkBGSubLayer(0, 1)) break;
-            if (checkBGSubLayer(1, 1)) break;
-            if (checkObjSubLayer(2)) break;
-            if (checkBGSubLayer(0, 0)) break;
-            if (checkBGSubLayer(1, 0)) break;
-            if (checkObjSubLayer(1)) break;
-            if (checkBGSubLayer(2, 0)) break;
-            if (checkObjSubLayer(0)) break;
-          } else {
-            if (checkObjSubLayer(3)) break;
-            if (checkBGSubLayer(0, 1)) break;
-            if (checkBGSubLayer(1, 1)) break;
-            if (checkObjSubLayer(2)) break;
-            if (checkBGSubLayer(0, 0)) break;
-            if (checkBGSubLayer(1, 0)) break;
-            if (checkObjSubLayer(1)) break;
-            if (checkBGSubLayer(2, 1)) break;
-            if (checkObjSubLayer(0)) break;
-            if (checkBGSubLayer(2, 0)) break;
-          }
-          break;
-
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-          if (checkObjSubLayer(3)) break;
-          if (checkBGSubLayer(0, 1)) break;
-          if (checkObjSubLayer(2)) break;
-          if (checkBGSubLayer(1, 1)) break;
-          if (checkObjSubLayer(1)) break;
-          if (checkBGSubLayer(0, 0)) break;
-          if (checkObjSubLayer(0)) break;
-          if (checkBGSubLayer(1, 0)) break;
-          break;
-
-        case 6:
-          if (checkObjSubLayer(3)) break;
-          if (checkBGSubLayer(0, 1)) break;
-          if (checkObjSubLayer(2)) break;
-          if (checkObjSubLayer(1)) break;
-          if (checkBGSubLayer(0, 0)) break;
-          if (checkObjSubLayer(0)) break;
-          break;
-
-        case 7:
-          {
-            const extbg = (this.setiniReg & 0x40) !== 0;
-            if (checkObjSubLayer(3)) break;
-            if (checkObjSubLayer(2)) break;
-            if (extbg && checkBGSubLayer(1, 1)) break;
-            if (checkObjSubLayer(1)) break;
-            if (checkBGSubLayer(0, 0)) break;
-            if (checkObjSubLayer(0)) break;
-            if (extbg && checkBGSubLayer(1, 0)) break;
-          }
-          break;
       }
 
       // Color Math execution
@@ -965,9 +997,9 @@ export class PPU {
       let b = (mainColor >> 10) & 0x1F;
 
       let mathPrevented = false;
-      const colorWindowMask = this.getWindowMask(5, sx); // Color Window
+      const colorWindowMask = winMasks[5][sx] !== 0;
 
-      const preventMathMode = (this.cgwsel >> 4) & 3;
+      const preventMathMode = (cgwsel >> 4) & 3;
       if (preventMathMode === 3) mathPrevented = true;
       else if (preventMathMode === 1 && !colorWindowMask) mathPrevented = true;
       else if (preventMathMode === 2 && colorWindowMask) mathPrevented = true;
@@ -976,13 +1008,13 @@ export class PPU {
         // Sprite exception: palettes 0-3 do not support math
         if (!(mainIsSprite && mainSpritePaletteIdx < 4)) {
           // Clip Main screen color to black if required
-          const clipMode = (this.cgwsel >> 6) & 3;
+          const clipMode = (cgwsel >> 6) & 3;
           if (clipMode === 3 || (clipMode === 1 && !colorWindowMask) || (clipMode === 2 && colorWindowMask)) {
             r = 0; g = 0; b = 0;
           }
 
           // Select addend color source
-          const useSubscreen = (this.cgwsel & 0x02) !== 0;
+          const useSubscreen = (cgwsel & 0x02) !== 0;
           let addR = this.fixedColorR;
           let addG = this.fixedColorG;
           let addB = this.fixedColorB;
@@ -996,8 +1028,8 @@ export class PPU {
           }
 
           // Addition / Subtraction
-          const isSubtraction = (this.cgadsub & 0x80) !== 0;
-          const isHalf = (this.cgadsub & 0x40) !== 0 && actualSubscreenUsed;
+          const isSubtraction = (cgadsub & 0x80) !== 0;
+          const isHalf = (cgadsub & 0x40) !== 0 && actualSubscreenUsed;
 
           if (isSubtraction) {
             r = Math.max(0, r - addR);
@@ -1031,6 +1063,145 @@ export class PPU {
       pixelBuffer[pixelOffset] = 0xFF000000 | (b << 16) | (g << 8) | r;
     }
     this.disableSpritesForNextScanline = false;
+  }
+
+  // Pre-render a background layer across a single scanline into flat buffers
+  private renderBGLayerScanline(bgIdx: number, sy: number) {
+    if (this.bgMode === 7) {
+      const isBg2 = bgIdx === 1;
+      const pixels = this.bgLayerPixels[bgIdx];
+      const pris = this.bgLayerPri[bgIdx];
+      const pals = this.bgLayerPal[bgIdx];
+      for (let sx = 0; sx < 256; sx++) {
+        const pxInfo = this.getMode7Pixel(sx, sy, isBg2);
+        pixels[sx] = pxInfo.colorIndex;
+        pris[sx] = pxInfo.priority;
+        pals[sx] = pxInfo.paletteBase;
+      }
+      return;
+    }
+
+    const tilemapBase = this.bgTilemaps[bgIdx];
+    const charBase = this.bgCharAddress[bgIdx];
+    const scrollX = this.bgScrollH[bgIdx];
+    const scrollY = this.bgScrollV[bgIdx];
+
+    let py = sy;
+    const mosaicActive = (this.mosaicReg & (1 << bgIdx)) !== 0;
+    const mosaicSize = mosaicActive ? (((this.mosaicReg >> 4) & 0x0F) + 1) : 1;
+    if (mosaicActive) {
+      py = Math.floor(sy / mosaicSize) * mosaicSize;
+    }
+
+    const is16x16 = this.bgSizes[bgIdx] === 1;
+    const tileSize = is16x16 ? 16 : 8;
+    const mapSize = this.bgTilemapSizes[bgIdx];
+    const mapWidthPages = (mapSize & 1) ? 2 : 1;
+    const mapHeightPages = (mapSize & 2) ? 2 : 1;
+    const mapWidthPixels = mapWidthPages * 32 * tileSize;
+    const mapHeightPixels = mapHeightPages * 32 * tileSize;
+
+    let bpp = 2;
+    switch (this.bgMode) {
+      case 0: bpp = 2; break;
+      case 1: bpp = bgIdx < 2 ? 4 : 2; break;
+      case 2: bpp = 4; break;
+      case 3: bpp = bgIdx === 0 ? 8 : 4; break;
+      case 4: bpp = bgIdx === 0 ? 8 : 2; break;
+      case 5: bpp = bgIdx === 0 ? 4 : 2; break;
+      case 6: bpp = 4; break;
+    }
+
+    const wordsPerTile = bpp === 2 ? 8 : bpp === 4 ? 16 : 32;
+    const verticalStride = (bpp === 2) ? 32 : 16;
+
+    const worldY = ((py + scrollY) % mapHeightPixels + mapHeightPixels) % mapHeightPixels;
+    const entryY = Math.floor(worldY / tileSize);
+    const pageY = Math.floor(entryY / 32) & 1;
+    const yPageOffset = (pageY * mapWidthPages * 1024) + ((entryY & 31) << 5);
+    const subTileY = worldY & 7;
+    const rowOffset16 = is16x16 ? Math.floor((worldY & 15) / 8) : 0;
+
+    const pixels = this.bgLayerPixels[bgIdx];
+    const pris = this.bgLayerPri[bgIdx];
+    const pals = this.bgLayerPal[bgIdx];
+
+    let prevEntryX = -999;
+    let word0 = 0, word1 = 0, word2 = 0, word3 = 0;
+    let hFlip = false, vFlip = false, priority = 0, paletteBase = 0;
+    let renderPixelY = 0;
+
+    for (let sx = 0; sx < 256; sx++) {
+      let px = sx;
+      if (mosaicActive) {
+        px = Math.floor(sx / mosaicSize) * mosaicSize;
+      }
+      const worldX = ((px + scrollX) % mapWidthPixels + mapWidthPixels) % mapWidthPixels;
+      const entryX = Math.floor(worldX / tileSize);
+
+      if (entryX !== prevEntryX) {
+        prevEntryX = entryX;
+        const pageX = Math.floor(entryX / 32) & 1;
+        const pageOffset = yPageOffset + (pageX * 1024);
+        const tilemapOffset = pageOffset + (entryX & 31);
+        const mapEntry = this.vram[(tilemapBase + tilemapOffset) & 0x7FFF];
+        if (mapEntry === undefined) {
+          pixels[sx] = 0; pris[sx] = 0; pals[sx] = 0;
+          continue;
+        }
+        const baseTileIndex = mapEntry & 0x3FF;
+        const paletteOffset = (mapEntry >> 10) & 7;
+        hFlip = (mapEntry & 0x4000) !== 0;
+        vFlip = (mapEntry & 0x8000) !== 0;
+        priority = (mapEntry & 0x2000) !== 0 ? 1 : 0;
+
+        let tileIndex = baseTileIndex;
+        if (is16x16) {
+          let colOffset = Math.floor((worldX & 15) / 8);
+          let rOffset = rowOffset16;
+          if (hFlip) colOffset = 1 - colOffset;
+          if (vFlip) rOffset = 1 - rOffset;
+          tileIndex = (baseTileIndex + colOffset + (rOffset * verticalStride)) & 0x3FF;
+        }
+
+        renderPixelY = vFlip ? 7 - subTileY : subTileY;
+        const tileStartAddr = (charBase + (tileIndex * wordsPerTile)) & 0x7FFF;
+
+        word0 = this.vram[(tileStartAddr + renderPixelY) & 0x7FFF];
+        if (bpp >= 4) word1 = this.vram[(tileStartAddr + 8 + renderPixelY) & 0x7FFF];
+        if (bpp === 8) {
+          word2 = this.vram[(tileStartAddr + 16 + renderPixelY) & 0x7FFF];
+          word3 = this.vram[(tileStartAddr + 24 + renderPixelY) & 0x7FFF];
+        }
+
+        if (this.bgMode === 0) {
+          paletteBase = (bgIdx * 32) + (paletteOffset * 4);
+        } else {
+          paletteBase = bpp === 8 ? 0 : paletteOffset * (bpp === 4 ? 16 : 4);
+        }
+      }
+
+      const subTileX = worldX & 7;
+      const renderPixelX = hFlip ? 7 - subTileX : subTileX;
+      const shift = 7 - renderPixelX;
+
+      let colorIdx = 0;
+      if (bpp === 2) {
+        colorIdx = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1);
+      } else if (bpp === 4) {
+        colorIdx = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1) |
+                   (((word1 >> shift) & 1) << 2) | (((word1 >> (8 + shift)) & 1) << 3);
+      } else if (bpp === 8) {
+        colorIdx = ((word0 >> shift) & 1) | (((word0 >> (8 + shift)) & 1) << 1) |
+                   (((word1 >> shift) & 1) << 2) | (((word1 >> (8 + shift)) & 1) << 3) |
+                   (((word2 >> shift) & 1) << 4) | (((word2 >> (8 + shift)) & 1) << 5) |
+                   (((word3 >> shift) & 1) << 6) | (((word3 >> (8 + shift)) & 1) << 7);
+      }
+
+      pixels[sx] = colorIdx;
+      pris[sx] = priority;
+      pals[sx] = paletteBase;
+    }
   }
 
   // Render a full frame of 256x224 pixels using scanline compositing

@@ -1109,7 +1109,7 @@ export default function App() {
           // accumulate actual elapsed time up to 1 frame interval.
           // On standard 60Hz displays, delta is ~16.6ms, executing exactly 1 frame per rAF.
           frameAccumulator += Math.min(actualDelta, frameInterval * 1.5);
-          if (frameAccumulator >= frameInterval) {
+          if (frameAccumulator >= frameInterval - 4.0) {
             let activeInput = controllerState;
 
             if (automationStateRef.current === 'playing') {

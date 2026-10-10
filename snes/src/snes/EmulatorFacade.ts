@@ -122,6 +122,7 @@ export class SnesEmulator {
   private readonly cpu: CPU;
   private readonly apuBridge: ApuPortBridge;
   private readonly audio: AudioEngine;
+  private readonly framePixels = new Uint32Array(256 * 224);
   private romKind: 'demo' | 'custom' = 'custom';
 
   constructor() {
@@ -168,7 +169,7 @@ export class SnesEmulator {
     const targetCycles = 59666 * speedMultiplier;
     this.cpu.cycles = 0;
 
-    const pixels = new Uint32Array(this.ppu.width * this.ppu.height);
+    const pixels = this.framePixels;
 
     this.bus.initHdma();
     this.ppu.startFrame();

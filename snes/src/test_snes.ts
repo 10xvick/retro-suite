@@ -142,21 +142,26 @@ async function runSnesTest(romPath: string) {
   const romName = path.basename(romPath);
   
 
+  const outDir = path.join(process.cwd(), 'gba/public/debug/screenshots');
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
   if (result === 'PASS') {
     console.log(`[SUCCESS] Test ${romName} PASSED!`);
-    const pngPath = path.join(process.cwd(), `snes_${romName.replace('.sfc', '')}_passed.png`);
+    const pngPath = path.join(outDir, `snes_${romName.replace('.sfc', '')}_passed.png`);
     savePNG(lastPixels, snes['ppu'].width, snes['ppu'].height, pngPath);
     console.log(`Saved screenshot to ${pngPath}`);
     return true;
   } else if (result === 'FAIL') {
     console.error(`[FAILURE] Test ${romName} FAILED!`);
-    const pngPath = path.join(process.cwd(), `snes_${romName.replace('.sfc', '')}_failed.png`);
+    const pngPath = path.join(outDir, `snes_${romName.replace('.sfc', '')}_failed.png`);
     savePNG(lastPixels, snes['ppu'].width, snes['ppu'].height, pngPath);
     console.log(`Saved screenshot to ${pngPath}`);
     return false;
   } else {
     console.warn(`[TIMEOUT] Test ${romName} timed out (remained running)!`);
-    const pngPath = path.join(process.cwd(), `snes_${romName.replace('.sfc', '')}_timeout.png`);
+    const pngPath = path.join(outDir, `snes_${romName.replace('.sfc', '')}_timeout.png`);
     savePNG(lastPixels, snes['ppu'].width, snes['ppu'].height, pngPath);
     console.log(`Saved screenshot to ${pngPath}`);
     return false;
