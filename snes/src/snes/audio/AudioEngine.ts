@@ -33,7 +33,7 @@ export class AudioEngine {
   private ringRead = 0;
   private ringCount = 0;
 
-  private volume = 0.35;
+  private volume = 0.8;
   public tempo = 1.0;
   public readonly apu = new Apu();
   private rmsL = 0;
@@ -66,11 +66,13 @@ export class AudioEngine {
         this.pendingSpcCycles += elapsedCpuCycles * (1024000 / 3579545);
         const toRun = Math.floor(this.pendingSpcCycles);
         if (toRun > 0) {
-          const events = this.apuBridge.consumeWriteEvents();
-          this.applyApuEvents(events);
           this.apu.stepSpc(toRun);
           this.pendingSpcCycles -= toRun;
         }
+      }
+      const events = this.apuBridge.consumeWriteEvents();
+      if (events.length > 0) {
+        this.applyApuEvents(events);
       }
       this.lastSyncCpuCycles = cpuCycles;
     };
@@ -108,12 +110,7 @@ export class AudioEngine {
     }
 
     if (!this.enabled) {
-      // Render DSP to update internal registers (ENDX, timers)
-      const sampleRate = 2000;
-      const sampleCount = (req.cpuCycles - this.lastFrameCpuCycles) / 3579545 * sampleRate;
-      if (sampleCount > 0) {
-        this.apu.renderStereo(sampleCount);
-      }
+      this.apu.discardBufferedSamples();
       this.lastFrameCpuCycles = req.cpuCycles;
       return;
     }

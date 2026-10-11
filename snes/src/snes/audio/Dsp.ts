@@ -311,8 +311,8 @@ export class Dsp {
     }
 
     return {
-      left: Math.max(-1, Math.min(1, left * mvolL * 0.5)),
-      right: Math.max(-1, Math.min(1, right * mvolR * 0.5)),
+      left: Math.max(-1, Math.min(1, left * mvolL)),
+      right: Math.max(-1, Math.min(1, right * mvolR)),
     };
   }
 
@@ -494,7 +494,8 @@ export class Dsp {
       case 3: sample += ((p1 * 115) >> 6) - ((p2 * 13) >> 4); break;
     }
     sample = Math.max(-32768, Math.min(32767, sample));
-    return sample / 32768;
+    sample = (sample << 17) >> 17;
+    return sample / 16384;
   }
 
   private decodeBrrSample(nibble: number, range: number, filter: number, voice: DspVoice): number {
@@ -526,11 +527,12 @@ export class Dsp {
     }
 
     sample = Math.max(-32768, Math.min(32767, sample));
+    sample = (sample << 17) >> 17;
 
     voice.brrPrev2 = voice.brrPrev1;
     voice.brrPrev1 = sample;
 
-    return sample / 32768;
+    return sample / 16384;
   }
 
   private static readonly RATE_PERIODS = [

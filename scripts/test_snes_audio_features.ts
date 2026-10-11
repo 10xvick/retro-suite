@@ -266,4 +266,58 @@ console.log('Testing AudioEngine circular ring buffer & memory bounds...');
   console.log(`✓ AudioEngine queue depth locked at ${debug.queueSamples} frames (zero leak).`);
 }
 
+// 9. Test SPC700 CONTROL ($F1) PC10/PC32 Input Latch Reset & Fixed Opcodes (0x65 vs 0x75, 0x18, 0x89)
+console.log('Testing SPC700 CONTROL ($F1) port latch clear & fixed opcodes...');
+{
+  const spc = new Spc700();
+  spc.reset();
+
+  // CPU writes to ports 0..3 ($F4..$F7)
+  spc.writeCpuPort(0, 0x12);
+  spc.writeCpuPort(1, 0x34);
+  spc.writeCpuPort(2, 0x56);
+  spc.writeCpuPort(3, 0x78);
+  assert(spc.readByte(0xF4) === 0x12 && spc.readByte(0xF6) === 0x56, 'CPU port writes visible in SPC $F4..$F7');
+
+  // SPC writes to $F6 (output latch to CPU)
+  spc.writeByte(0xF6, 0x99);
+  assert(spc.readCpuPort(2) === 0x99, 'SPC output port $F6 readable by CPU');
+
+  // Writing $F1 with bit 4 (0x10) clears input latches $F4/$F5, bit 5 (0x20) clears $F6/$F7, without clearing output latch
+  spc.writeByte(0xF1, 0x30);
+  assert(spc.readByte(0xF4) === 0 && spc.readByte(0xF5) === 0, 'PC10 ($F1 bit 4) must clear $F4/$F5 input latches');
+  assert(spc.readByte(0xF6) === 0 && spc.readByte(0xF7) === 0, 'PC32 ($F1 bit 5) must clear $F6/$F7 input latches');
+  assert(spc.readCpuPort(2) === 0x99, '$F1 latch clear must preserve SPC-to-CPU output latches');
+
+  // Test 0x65 (CMP A, !abs) vs 0x75 (CMP A, !abs+X)
+  spc.ram[0x0400] = 0x43;
+  spc.ram[0x0405] = 0x48;
+  spc.state.a = 0x48;
+  spc.state.x = 5;
+  // 0x65 at $0200: CMP A, $0400 (0x48 vs 0x43 -> Z = 0)
+  spc.ram[0x0200] = 0x65;
+  spc.ram[0x0201] = 0x00;
+  spc.ram[0x0202] = 0x04;
+  // 0x75 at $0203: CMP A, $0400+X (0x48 vs 0x48 -> Z = 1)
+  spc.ram[0x0203] = 0x75;
+  spc.ram[0x0204] = 0x00;
+  spc.ram[0x0205] = 0x04;
+
+  spc.state.pc = 0x0200;
+  spc.stepCycles(4);
+  assert(!spc.getFlagZ(), '0x65 (CMP A, !abs) must not index by X');
+  spc.stepCycles(5);
+  assert(spc.getFlagZ(), '0x75 (CMP A, !abs+X) must index by X');
+
+  // Test 0x18 (OR dp, #imm): bytes are [0x18, imm, dp]
+  spc.ram[0x0020] = 0x0F;
+  spc.ram[0x0206] = 0x18;
+  spc.ram[0x0207] = 0xF0; // imm
+  spc.ram[0x0208] = 0x20; // dp
+  spc.state.pc = 0x0206;
+  spc.stepCycles(5);
+  assert(spc.ram[0x0020] === 0xFF, `0x18 (OR dp, #imm) expected 0xFF, got 0x${spc.ram[0x0020].toString(16)}`);
+  console.log('✓ SPC700 CONTROL ($F1) port latch reset & fixed opcodes verified.');
+}
+
 console.log('--- ALL SNES AUDIO FEATURES & FIXES PASSED SUCCESSFULLY ---');

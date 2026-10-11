@@ -156,11 +156,29 @@ export class Spc700 {
   private handleTimerControl(value: number): void {
     // Bit 7: IPL ROM visibility (1 = ROM mapped at 0xFFC0, 0 = RAM visible)
     this.iplRomEnabled = (value & 0x80) !== 0;
+
+    // Bit 4 (PC10): Reset CPU->SPC input latches $F4 and $F5
+    if ((value & 0x10) !== 0) {
+      this.portsFromCpu[0] = 0;
+      this.portsFromCpu[1] = 0;
+      this.ram[0xF4] = 0;
+      this.ram[0xF5] = 0;
+    }
+
+    // Bit 5 (PC32): Reset CPU->SPC input latches $F6 and $F7
+    if ((value & 0x20) !== 0) {
+      this.portsFromCpu[2] = 0;
+      this.portsFromCpu[3] = 0;
+      this.ram[0xF6] = 0;
+      this.ram[0xF7] = 0;
+    }
+
     for (let i = 0; i < 3; i++) {
       const enable = ((value >> i) & 1) !== 0;
       if (enable && !this.timers[i].enabled) {
         this.timers[i].counter = 0;
         this.timers[i].divider = 0;
+        this.timers[i].output = 0;
       }
       this.timers[i].enabled = enable;
     }
@@ -325,7 +343,7 @@ export class Spc700 {
       case 0x60: this.setFlagC(false); return 2;   // CLRC
       case 0x40: this.setFlagP(true); return 2;    // SETP
       case 0xA0: this.setFlagI(true); return 3;    // EI
-      case 0xE0: this.setFlagV(false); return 2;   // CLRV
+      case 0xE0: this.setFlagV(false); this.setFlagH(false); return 2; // CLRV
       case 0xC0: this.setFlagI(false); return 3;   // DI
 
       // ---------- Move (Load/Store) ----------
@@ -348,7 +366,19 @@ export class Spc700 {
       case 0xEC: { const addr = this.readWord(this.state.pc); this.state.pc += 2; this.state.y = this.readByte(addr); this.updateNZ(this.state.y); return 4; }
       case 0xF6: { const addr = this.readWord(this.state.pc); this.state.pc += 2; this.state.a = this.readByte((addr + this.state.y) & 0xFFFF); this.updateNZ(this.state.a); return 5; } // MOV A, !abs+Y
       case 0xF7: { const dp = this.readByte(this.state.pc++); const base = this.readWord(this.getDpAddr(dp)); this.state.a = this.readByte((base + this.state.y) & 0xFFFF); this.updateNZ(this.state.a); return 6; } // MOV A, [dp]+Y
-      case 0xB7: { const dp = this.readByte(this.state.pc++); const ptr = (dp + this.state.x) & 0xFF; const base = this.readWord(this.getDpAddr(ptr)); this.state.a = this.readByte((base + this.state.y) & 0xFFFF); this.updateNZ(this.state.a); return 6; } // MOV A, [dp+X]+Y (actually this should be indexed indirect indexed)
+      case 0xB7: { // SBC A, [dp]+Y
+        const dp = this.readByte(this.state.pc++);
+        const base = this.readWord(this.getDpAddr(dp));
+        const val = this.readByte((base + this.state.y) & 0xFFFF);
+        const borrow = this.getFlagC() ? 0 : 1;
+        const diff = this.state.a - val - borrow;
+        this.setFlagH(((this.state.a ^ val ^ diff) & 0x10) === 0);
+        this.setFlagV(((this.state.a ^ val) & (this.state.a ^ diff) & 0x80) !== 0);
+        this.setFlagC(diff >= 0);
+        this.state.a = diff & 0xFF;
+        this.updateNZ(this.state.a);
+        return 6;
+      }
       case 0xF9: { const dp = this.readByte(this.state.pc++); this.state.x = this.readByte(this.getDpAddr(dp + this.state.y)); this.updateNZ(this.state.x); return 4; }
       case 0xFA: { const src = this.readByte(this.state.pc++); const dst = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dst), this.readByte(this.getDpAddr(src))); return 5; }
       case 0xC4: { const dp = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dp), this.state.a); return 4; }
@@ -359,11 +389,11 @@ export class Spc700 {
       case 0xD7: { const dp = this.readByte(this.state.pc++); const base = this.readWord(this.getDpAddr(dp)); this.writeByte((base + this.state.y) & 0xFFFF, this.state.a); return 7; } // MOV [dp]+Y, A
       case 0xD8: { const dp = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dp), this.state.x); return 4; } // MOV dp, X
       case 0xD9: { const dp = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dp + this.state.y), this.state.x); return 5; } // MOV dp+Y, X
-      case 0xDB: { const addr = this.readWord(this.state.pc); this.state.pc += 2; this.writeByte(addr, this.state.y); return 5; }
-      case 0xAF: { this.writeByte(this.getDpAddr(this.state.x), this.state.a); this.state.x = (this.state.x + 1) & 0xFF; return 4; }
-      case 0xBF: { this.writeByte(this.getDpAddr(this.state.x), this.state.y); this.state.x = (this.state.x + 1) & 0xFF; return 4; }
+      case 0xDB: { const dp = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dp + this.state.x), this.state.y); return 5; } // MOV dp+X, Y
+      case 0xAF: { this.writeByte(this.getDpAddr(this.state.x), this.state.a); this.state.x = (this.state.x + 1) & 0xFF; return 4; } // MOV (X)+, A
+      case 0xBF: { this.state.a = this.readByte(this.getDpAddr(this.state.x)); this.state.x = (this.state.x + 1) & 0xFF; this.updateNZ(this.state.a); return 4; } // MOV A, (X)+
       case 0x8F: { const imm = this.readByte(this.state.pc++); const dp = this.readByte(this.state.pc++); this.writeByte(this.getDpAddr(dp), imm); return 5; }
-      case 0xC7: { const dp = this.readByte(this.state.pc++); const addr = this.readWord(this.getDpAddr(dp)); this.writeByte(addr, this.state.a); return 5; }
+      case 0xC7: { const dp = this.readByte(this.state.pc++); const addr = this.readWord(this.getDpAddr((dp + this.state.x) & 0xFF)); this.writeByte(addr, this.state.a); return 7; } // MOV [dp+X], A
       case 0x1F: { // JMP [!abs+X]
         const addr = this.readWord(this.state.pc);
         this.state.pc = this.readWord((addr + this.state.x) & 0xFFFF);
@@ -381,16 +411,19 @@ export class Spc700 {
         this.updateNZ(this.state.a);
         return 2;
       }
-      case 0x89: { // ADC A, !abs
-        const addr = this.readWord(this.state.pc); this.state.pc += 2;
-        const val = this.readByte(addr);
-        const sum = this.state.a + val + (this.getFlagC() ? 1 : 0);
-        this.setFlagH(((this.state.a ^ val ^ sum) & 0x10) !== 0);
-        this.setFlagV(((this.state.a ^ val ^ 0x80) & (this.state.a ^ sum) & 0x80) !== 0);
+      case 0x89: { // ADC dp(dst), dp(src)
+        const src = this.getDpAddr(this.readByte(this.state.pc++));
+        const dst = this.getDpAddr(this.readByte(this.state.pc++));
+        const valSrc = this.readByte(src);
+        const valDst = this.readByte(dst);
+        const sum = valDst + valSrc + (this.getFlagC() ? 1 : 0);
+        this.setFlagH(((valDst ^ valSrc ^ sum) & 0x10) !== 0);
+        this.setFlagV(((valDst ^ valSrc ^ 0x80) & (valDst ^ sum) & 0x80) !== 0);
         this.setFlagC(sum > 0xFF);
-        this.state.a = sum & 0xFF;
-        this.updateNZ(this.state.a);
-        return 4;
+        const res = sum & 0xFF;
+        this.writeByte(dst, res);
+        this.updateNZ(res);
+        return 6;
       }
       case 0xA8: { // SBC A, #imm
         const val = this.readByte(this.state.pc++);
@@ -426,17 +459,17 @@ export class Spc700 {
         this.writeByte(this.getDpAddr(this.state.x), this.state.a);
         return 4;
       }
-      case 0x35: { // AND A, !abs
+      case 0x35: { // AND A, !abs+X
         const addr = this.readWord(this.state.pc);
         this.state.pc += 2;
-        this.state.a &= this.readByte(addr);
+        this.state.a &= this.readByte((addr + this.state.x) & 0xFFFF);
         this.updateNZ(this.state.a);
         return 5;
       }
-      case 0x75: { // CMP A, !abs
+      case 0x75: { // CMP A, !abs+X
         const addr = this.readWord(this.state.pc);
         this.state.pc += 2;
-        const val = this.readByte(addr);
+        const val = this.readByte((addr + this.state.x) & 0xFFFF);
         const diff = this.state.a - val;
         this.setFlagN((diff & 0x80) !== 0);
         this.setFlagZ((diff & 0xFF) === 0);
@@ -629,14 +662,14 @@ export class Spc700 {
         this.updateNZ(this.state.a);
         return 3;
       }
-      case 0x65: { // CMP A, !abs+X
+      case 0x65: { // CMP A, !abs
         const addr = this.readWord(this.state.pc);
         this.state.pc += 2;
-        const val = this.readByte((addr + this.state.x) & 0xFFFF);
+        const val = this.readByte(addr);
         const diff = this.state.a - val;
         this.setFlagC(this.state.a >= val);
         this.updateNZ(diff & 0xFF);
-        return 5;
+        return 4;
       }
       case 0x39: { // AND (X), (Y)
         const xAddr = (this.state.psw & 0x20 ? 0x100 : 0) + this.state.x;
@@ -687,9 +720,9 @@ export class Spc700 {
         return 5;
       }
 
-      case 0x18: {
-        const dp = this.readByte(this.state.pc++);
+      case 0x18: { // OR dp, #imm
         const imm = this.readByte(this.state.pc++);
+        const dp = this.readByte(this.state.pc++);
         const val = this.readByte(this.getDpAddr(dp));
         const result = val | imm;
         this.writeByte(this.getDpAddr(dp), result);
@@ -732,14 +765,14 @@ export class Spc700 {
         this.setFlagC(this.state.y >= imm);
         return 2;
       }
-      case 0x5E: { // CMP Y, dp
-        const dp = this.readByte(this.state.pc++);
-        const val = this.readByte(this.getDpAddr(dp));
+      case 0x5E: { // CMP Y, !abs
+        const addr = this.readWord(this.state.pc); this.state.pc += 2;
+        const val = this.readByte(addr);
         const diff = this.state.y - val;
         this.setFlagN((diff & 0x80) !== 0);
         this.setFlagZ((diff & 0xFF) === 0);
         this.setFlagC(this.state.y >= val);
-        return 3;
+        return 4;
       }
       case 0x79: { // CMP (X), (Y)
         const x = this.readByte(this.getDpAddr(this.state.x));
@@ -789,12 +822,12 @@ export class Spc700 {
 
       // ---------- Shifts / Rotates ----------
       case 0x1C: { const carry = (this.state.a & 0x80) !== 0; this.state.a = (this.state.a << 1) & 0xFF; this.setFlagC(carry); this.updateNZ(this.state.a); return 2; } // ASL A
-      case 0x4C: { const carry = (this.state.a & 1) !== 0; this.state.a >>= 1; this.setFlagC(carry); this.updateNZ(this.state.a); return 2; } // LSR A
-      case 0x2C: { const carry = (this.state.a & 0x80) !== 0; this.state.a = ((this.state.a << 1) | (this.getFlagC() ? 1 : 0)) & 0xFF; this.setFlagC(carry); this.updateNZ(this.state.a); return 2; } // ROL A
-      case 0x6C: { const carry = (this.state.a & 1) !== 0; this.state.a = ((this.getFlagC() ? 0x80 : 0) | (this.state.a >> 1)) & 0xFF; this.setFlagC(carry); this.updateNZ(this.state.a); return 2; } // ROR A
-      case 0x7C: { const addr = this.readWord(this.state.pc); this.state.pc += 2; let v = this.readByte(addr); const carry = (v & 1) !== 0; v = ((this.getFlagC() ? 0x80 : 0) | (v >> 1)) & 0xFF; this.writeByte(addr, v); this.setFlagC(carry); this.updateNZ(v); return 5; } // ROR !abs
+      case 0x4C: { const addr = this.readWord(this.state.pc); this.state.pc += 2; let v = this.readByte(addr); const carry = (v & 1) !== 0; v >>= 1; this.writeByte(addr, v); this.setFlagC(carry); this.updateNZ(v); return 5; } // LSR !abs
+      case 0x2C: { const addr = this.readWord(this.state.pc); this.state.pc += 2; let v = this.readByte(addr); const carry = (v & 0x80) !== 0; v = ((v << 1) | (this.getFlagC() ? 1 : 0)) & 0xFF; this.writeByte(addr, v); this.setFlagC(carry); this.updateNZ(v); return 5; } // ROL !abs
+      case 0x6C: { const addr = this.readWord(this.state.pc); this.state.pc += 2; let v = this.readByte(addr); const carry = (v & 1) !== 0; v = ((this.getFlagC() ? 0x80 : 0) | (v >> 1)) & 0xFF; this.writeByte(addr, v); this.setFlagC(carry); this.updateNZ(v); return 5; } // ROR !abs
+      case 0x7C: { const carry = (this.state.a & 1) !== 0; this.state.a = ((this.getFlagC() ? 0x80 : 0) | (this.state.a >> 1)) & 0xFF; this.setFlagC(carry); this.updateNZ(this.state.a); return 2; } // ROR A
       case 0x7B: { const dp = this.readByte(this.state.pc++); let v = this.readByte(this.getDpAddr(dp + this.state.x)); const carry = (v & 1) !== 0; v = ((this.getFlagC() ? 0x80 : 0) | (v >> 1)) & 0xFF; this.writeByte(this.getDpAddr(dp + this.state.x), v); this.setFlagC(carry); this.updateNZ(v); return 6; } // ROR dp+X
-      case 0x1B: { const dp = this.readByte(this.state.pc++); let v = this.readByte(this.getDpAddr(dp)); const carry = (v & 0x80) !== 0; v = (v << 1) & 0xFF; this.writeByte(this.getDpAddr(dp), v); this.setFlagC(carry); this.updateNZ(v); return 5; } // ASL dp
+      case 0x1B: { const dp = this.readByte(this.state.pc++); const ea = this.getDpAddr((dp + this.state.x) & 0xFF); let v = this.readByte(ea); const carry = (v & 0x80) !== 0; v = (v << 1) & 0xFF; this.writeByte(ea, v); this.setFlagC(carry); this.updateNZ(v); return 5; } // ASL dp+X
       case 0x4B: { const dp = this.readByte(this.state.pc++); let v = this.readByte(this.getDpAddr(dp)); const carry = (v & 1) !== 0; v >>= 1; this.writeByte(this.getDpAddr(dp), v); this.setFlagC(carry); this.updateNZ(v); return 5; } // LSR dp
 
       // ---------- Bit operations (memory bits) ----------
@@ -828,13 +861,13 @@ export class Spc700 {
         this.writeByte(addr, b);
         return 5;
       }
-      case 0x4A: { // AND1 C, /mem.bit
+      case 0x4A: { // AND1 C, mem.bit
         const word = this.readWord(this.state.pc);
         this.state.pc += 2;
         const bit = word >> 13;
         const addr = word & 0x1FFF;
         const val = (this.readByte(addr) >> bit) & 1;
-        this.setFlagC(this.getFlagC() && (val === 0));
+        this.setFlagC(this.getFlagC() && (val === 1));
         return 4;
       }
       case 0x2A: { // OR1 C, /mem.bit
@@ -898,11 +931,17 @@ export class Spc700 {
       }
 
       // ---------- Additional indexed loads ----------
-      case 0xA7: { // MOV A, [dp+X]  (indexed indirect)
+      case 0xA7: { // SBC A, [dp+X]
         const dp = this.readByte(this.state.pc++);
         const ptr = (dp + this.state.x) & 0xFF;
         const addr = this.readWord(this.getDpAddr(ptr));
-        this.state.a = this.readByte(addr);
+        const val = this.readByte(addr);
+        const borrow = this.getFlagC() ? 0 : 1;
+        const diff = this.state.a - val - borrow;
+        this.setFlagH(((this.state.a ^ val ^ diff) & 0x10) === 0);
+        this.setFlagV(((this.state.a ^ val) & (this.state.a ^ diff) & 0x80) !== 0);
+        this.setFlagC(diff >= 0);
+        this.state.a = diff & 0xFF;
         this.updateNZ(this.state.a);
         return 6;
       }
@@ -917,7 +956,7 @@ export class Spc700 {
         this.writeByte(addr, this.state.x);
         return 5;
       }
-      case 0xCB: { // MOV !abs, Y (actually MOV dp, Y per some tables — using dp)
+      case 0xCB: { // MOV dp, Y
         const dp = this.readByte(this.state.pc++);
         this.writeByte(this.getDpAddr(dp), this.state.y);
         return 4;
@@ -948,6 +987,8 @@ export class Spc700 {
         const ya = (this.state.y << 8) | this.state.a;
         const result = ya + mem;
         this.setFlagC(result > 0xFFFF);
+        this.setFlagH(((ya ^ mem ^ result) & 0x1000) !== 0);
+        this.setFlagV(((~(ya ^ mem)) & (ya ^ result) & 0x8000) !== 0);
         const r16 = result & 0xFFFF;
         this.state.a = r16 & 0xFF;
         this.state.y = (r16 >> 8) & 0xFF;
@@ -961,6 +1002,8 @@ export class Spc700 {
         const ya = (this.state.y << 8) | this.state.a;
         const result = ya - mem;
         this.setFlagC(result >= 0);
+        this.setFlagH(((ya ^ mem ^ result) & 0x1000) === 0);
+        this.setFlagV(((ya ^ mem) & (ya ^ result) & 0x8000) !== 0);
         const r16 = result & 0xFFFF;
         this.state.a = r16 & 0xFF;
         this.state.y = (r16 >> 8) & 0xFF;
@@ -1015,9 +1058,12 @@ export class Spc700 {
         this.updateNZ(this.state.a);
         return 3;
       }
-      case 0x9B: { // XCN A (exchange nibbles of A)
-        this.state.a = ((this.state.a >> 4) | (this.state.a << 4)) & 0xFF;
-        this.updateNZ(this.state.a);
+      case 0x9B: { // DEC dp+X
+        const dp = this.readByte(this.state.pc++);
+        const ea = this.getDpAddr((dp + this.state.x) & 0xFF);
+        const res = (this.readByte(ea) - 1) & 0xFF;
+        this.writeByte(ea, res);
+        this.updateNZ(res);
         return 5;
       }
       case 0x9D: { // MOV X, SP
@@ -1094,7 +1140,14 @@ export class Spc700 {
 
       // ---------- Subroutines / Jumps ----------
       case 0x5F: { this.state.pc = this.readWord(this.state.pc); return 3; }      // JMP !abs
-      case 0x0F: { const dp = this.readByte(this.state.pc++); this.state.pc = this.readWord(this.getDpAddr(dp)); return 4; } // JMP [dp]
+      case 0x0F: { // BRK
+        this.pushWord(this.state.pc);
+        this.push(this.state.psw);
+        this.setFlagB(true);
+        this.setFlagI(false);
+        this.state.pc = this.readWord(0xFFDE);
+        return 8;
+      }
       case 0x3F: { const addr = this.readWord(this.state.pc); this.state.pc += 2; this.pushWord(this.state.pc); this.state.pc = addr; return 8; } // CALL !abs
       case 0x4F: { const page = this.readByte(this.state.pc++); const addr = 0xFF00 | page; this.pushWord(this.state.pc); this.state.pc = addr; return 6; } // PCALL
       case 0x6F: { this.state.pc = this.popWord(); return 5; }                   // RET
